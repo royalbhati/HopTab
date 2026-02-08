@@ -29,10 +29,27 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Fuzzy Match Helper
+
+private func fuzzyMatch(query: String, target: String) -> Bool {
+    var queryIndex = query.lowercased().startIndex
+    let lowerTarget = target.lowercased()
+    let lowerQuery = query.lowercased()
+
+    for char in lowerTarget {
+        guard queryIndex < lowerQuery.endIndex else { return true }
+        if char == lowerQuery[queryIndex] {
+            queryIndex = lowerQuery.index(after: queryIndex)
+        }
+    }
+    return queryIndex == lowerQuery.endIndex
+}
+
 // MARK: - Pinned Apps Tab
 
 private struct PinnedAppsTab: View {
     @EnvironmentObject private var appState: AppState
+    @State private var searchText = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -86,9 +103,23 @@ private struct PinnedAppsTab: View {
 
             // Running apps — click row to toggle pin
             GroupBox("Running Apps \u{2014} click to pin / unpin") {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Filter running apps\u{2026}", text: $searchText)
+                        .textFieldStyle(.plain)
+                }
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
+                .padding(.bottom, 4)
+
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(appState.runningApps, id: \.bundleIdentifier) { app in
+                        ForEach(appState.runningApps.filter { app in
+                            guard !searchText.isEmpty,
+                                  let name = app.localizedName else { return true }
+                            return fuzzyMatch(query: searchText, target: name)
+                        }, id: \.bundleIdentifier) { app in
                             if let bundleID = app.bundleIdentifier,
                                let name = app.localizedName {
                                 let pinned = appState.store.isPinned(bundleID)
