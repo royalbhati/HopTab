@@ -13,6 +13,11 @@ final class AppState: ObservableObject {
     @Published private(set) var selectedIndex: Int = 0
     @Published private(set) var isSwitcherVisible: Bool = false
     @Published var runningApps: [NSRunningApplication] = []
+    @Published var recentAppFirst: Bool = UserDefaults.standard.bool(forKey: "recentAppFirst") {
+        didSet {
+            UserDefaults.standard.set(recentAppFirst, forKey: "recentAppFirst")
+        }
+    }
     @Published var selectedShortcut: ShortcutPreset = ShortcutPreset.current {
         didSet {
             ShortcutPreset.current = selectedShortcut
@@ -117,6 +122,9 @@ final class AppState: ObservableObject {
         overlayController.dismiss()
         isSwitcherVisible = false
         AppSwitcherService.activate(selectedApp)
+        if recentAppFirst {
+            store.moveToFront(bundleIdentifier: selectedApp.bundleIdentifier)
+        }
     }
 
     private func cancelSwitcher() {

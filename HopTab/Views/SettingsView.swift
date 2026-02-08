@@ -400,6 +400,12 @@ private struct ShortcutTab: View {
                 .padding(8)
             }
 
+            GroupBox("Behavior") {
+                Toggle("Move recently switched app to front", isOn: $appState.recentAppFirst)
+                    .font(.system(size: 12))
+                    .padding(8)
+            }
+
             GroupBox("How It Works") {
                 VStack(alignment: .leading, spacing: 6) {
                     let preset = appState.selectedShortcut

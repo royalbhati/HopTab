@@ -113,6 +113,16 @@ final class PinnedAppsStore: ObservableObject {
         save()
     }
 
+    func moveToFront(bundleIdentifier: String) {
+        guard let idx = activeProfileIndex,
+              let appIdx = profiles[idx].pinnedApps.firstIndex(where: { $0.bundleIdentifier == bundleIdentifier })
+        else { return }
+        let app = profiles[idx].pinnedApps.remove(at: appIdx)
+        profiles[idx].pinnedApps.insert(app, at: 0)
+        reindex(profileIndex: idx)
+        save()
+    }
+
     func isPinned(_ bundleIdentifier: String) -> Bool {
         activeProfile?.pinnedApps.contains { $0.bundleIdentifier == bundleIdentifier } ?? false
     }
