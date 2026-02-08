@@ -1,0 +1,19 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project HopTab.xcodeproj \
+            -scheme HopTab \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="-"
