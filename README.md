@@ -43,7 +43,10 @@ Grab the latest `.zip` from [**Releases**](../../releases/latest), unzip, and dr
 
 ```bash
 # One-liner: download, unzip, and clear quarantine
-curl -sL $(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/latest | grep browser_download_url | cut -d '"' -f 4) -o /tmp/HopTab.zip \
+curl -sL "$(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/latest \
+  | grep -o '"browser_download_url": *"[^"]*"' \
+  | head -1 \
+  | cut -d '"' -f 4)" -o /tmp/HopTab.zip \
   && unzip -o /tmp/HopTab.zip -d /Applications \
   && xattr -d com.apple.quarantine /Applications/HopTab.app
 ```
