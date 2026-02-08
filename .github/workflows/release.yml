@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "→ Building release: $TAG"
+
+      - name: Stamp version into Xcode project
+        run: |
+          sed -i '' \
+            "s/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ steps.version.outputs.version }};/" \
+            HopTab.xcodeproj/project.pbxproj
+          sed -i '' \
+            "s/CURRENT_PROJECT_VERSION = .*;/CURRENT_PROJECT_VERSION = ${{ steps.version.outputs.build }};/" \
+            HopTab.xcodeproj/project.pbxproj
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -project HopTab.xcodeproj \
+            -scheme HopTab \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="-"
+
+      - name: Package
+        run: |
+          cd build/Build/Products/Release
+          ditto -c -k --sequesterRsrc --keepParent HopTab.app "$GITHUB_WORKSPACE/HopTab-${{ steps.version.outputs.version }}.zip"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: HopTab ${{ steps.version.outputs.tag }}
+          body: |
+            ## What's New
+
+            See the [commit log](https://github.com/${{ github.repository }}/commits/${{ steps.version.outputs.tag }}) for details.
+
+            ## Install
+
+            1. Download **HopTab-${{ steps.version.outputs.version }}.zip** below
+            2. Unzip and drag **HopTab.app** to `/Applications`
+            3. Run `xattr -d com.apple.quarantine /Applications/HopTab.app` to bypass Gatekeeper
+            4. Launch — grant **Accessibility** permission when prompted
+            5. Open **Settings** from the menu bar, pin your apps, and use **Option+Tab** to hop
+          files: HopTab-${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true
