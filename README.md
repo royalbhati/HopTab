@@ -82,6 +82,10 @@ Then **Cmd+R** to build and run.
 3. Open **Settings** from the menu bar icon and pin your apps
 4. Press **Option+Tab** to start hopping
 
+## How to Use
+
+https://github.com/royalbhati/HopTab/raw/main/demo/HopTab.mp4
+
 ## Usage
 
 | Action | Default Shortcut |
