@@ -15,7 +15,7 @@ final class OverlayPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         hidesOnDeactivate = false
         isMovableByWindowBackground = false
         isReleasedWhenClosed = false
