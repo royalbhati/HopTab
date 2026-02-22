@@ -23,6 +23,8 @@
 		A10015 /* ShortcutConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10015 /* ShortcutConfig.swift */; };
 		A10016 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10016 /* Profile.swift */; };
 		A10017 /* SpaceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10017 /* SpaceService.swift */; };
+		A10018 /* KeyCodeMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10018 /* KeyCodeMapping.swift */; };
+		A10019 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10019 /* ShortcutRecorderView.swift */; };
 		A10020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10020 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -44,6 +46,8 @@
 		B10015 /* ShortcutConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutConfig.swift; sourceTree = "<group>"; };
 		B10016 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		B10017 /* SpaceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceService.swift; sourceTree = "<group>"; };
+		B10018 /* KeyCodeMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCodeMapping.swift; sourceTree = "<group>"; };
+		B10019 /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderView.swift; sourceTree = "<group>"; };
 		B10020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10099 /* HopTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -97,6 +101,7 @@
 				B10005 /* PinnedAppsStore.swift */,
 				B10015 /* ShortcutConfig.swift */,
 				B10016 /* Profile.swift */,
+				B10018 /* KeyCodeMapping.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -120,6 +125,7 @@
 				B10011 /* AppIconView.swift */,
 				B10012 /* SettingsView.swift */,
 				B10013 /* MenuBarView.swift */,
+				B10019 /* ShortcutRecorderView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -212,6 +218,8 @@
 				A10015 /* ShortcutConfig.swift in Sources */,
 				A10016 /* Profile.swift in Sources */,
 				A10017 /* SpaceService.swift in Sources */,
+				A10018 /* KeyCodeMapping.swift in Sources */,
+				A10019 /* ShortcutRecorderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -328,7 +336,7 @@
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -339,7 +347,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoptab.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -355,7 +363,7 @@
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -366,7 +374,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoptab.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
