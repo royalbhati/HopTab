@@ -2,7 +2,7 @@ import Cocoa
 import Carbon.HIToolbox
 
 final class HotkeyService {
-    // Callbacks
+    // App Switcher Callbacks
     var onSwitcherActivated: (() -> Void)?
     var onCycleForward: (() -> Void)?
     var onCycleBackward: (() -> Void)?
@@ -10,13 +10,26 @@ final class HotkeyService {
     var onSwitcherCancelled: (() -> Void)?
     var onTapFailed: (() -> Void)?
 
-    // Configurable shortcut
+    // Profile Switcher Callbacks
+    var onProfileSwitcherActivated: (() -> Void)?
+    var onProfileCycleForward: (() -> Void)?
+    var onProfileCycleBackward: (() -> Void)?
+    var onProfileSwitcherDismissed: (() -> Void)?
+    var onProfileSwitcherCancelled: (() -> Void)?
+
+    // App Switcher shortcut (configurable)
     private(set) var modifierFlag: CGEventFlags = .maskAlternate
     private(set) var triggerKeyCode: Int64 = Int64(kVK_Tab)
+
+    // Profile Switcher shortcut (configurable)
+    private(set) var profileModifierFlag: CGEventFlags = .maskAlternate
+    private(set) var profileTriggerKeyCode: Int64 = Int64(kVK_ANSI_Grave)
 
     // State
     private(set) var isModifierHeld = false
     private(set) var isSwitcherActive = false
+    private(set) var isProfileModifierHeld = false
+    private(set) var isProfileSwitcherActive = false
 
     // Event tap
     private var eventTap: CFMachPort?
@@ -27,6 +40,14 @@ final class HotkeyService {
         if wasRunning { stop() }
         modifierFlag = preset.modifierFlag
         triggerKeyCode = preset.keyCode
+        if wasRunning { start() }
+    }
+
+    func configureProfileShortcut(modifierFlag: CGEventFlags, keyCode: Int64) {
+        let wasRunning = eventTap != nil
+        if wasRunning { stop() }
+        profileModifierFlag = modifierFlag
+        profileTriggerKeyCode = keyCode
         if wasRunning { start() }
     }
 
@@ -58,8 +79,9 @@ final class HotkeyService {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
 
-        NSLog("[HotkeyService] Event tap started — listening for modifier=0x%llx key=%lld",
-              modifierFlag.rawValue, triggerKeyCode)
+        NSLog("[HotkeyService] Event tap started — app modifier=0x%llx key=%lld, profile modifier=0x%llx key=%lld",
+              modifierFlag.rawValue, triggerKeyCode,
+              profileModifierFlag.rawValue, profileTriggerKeyCode)
     }
 
     func stop() {
@@ -73,6 +95,8 @@ final class HotkeyService {
         runLoopSource = nil
         isModifierHeld = false
         isSwitcherActive = false
+        isProfileModifierHeld = false
+        isProfileSwitcherActive = false
     }
 
     var isRunning: Bool { eventTap != nil }
@@ -93,18 +117,32 @@ final class HotkeyService {
 
         // MARK: Flags Changed (modifier key up/down)
         if type == .flagsChanged {
-            let modifierDown = flags.contains(modifierFlag)
-
-            if modifierDown && !isModifierHeld {
+            // App switcher modifier tracking
+            let appModDown = flags.contains(modifierFlag)
+            if appModDown && !isModifierHeld {
                 isModifierHeld = true
-            } else if !modifierDown && isModifierHeld {
+            } else if !appModDown && isModifierHeld {
                 isModifierHeld = false
                 if isSwitcherActive {
                     isSwitcherActive = false
                     onSwitcherDismissed?()
-                    return nil // swallow the release
+                    return nil
                 }
             }
+
+            // Profile switcher modifier tracking
+            let profileModDown = flags.contains(profileModifierFlag)
+            if profileModDown && !isProfileModifierHeld {
+                isProfileModifierHeld = true
+            } else if !profileModDown && isProfileModifierHeld {
+                isProfileModifierHeld = false
+                if isProfileSwitcherActive {
+                    isProfileSwitcherActive = false
+                    onProfileSwitcherDismissed?()
+                    return nil
+                }
+            }
+
             return event
         }
 
@@ -112,6 +150,7 @@ final class HotkeyService {
         if type == .keyDown {
             let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
 
+            // App switcher trigger
             if isModifierHeld && keyCode == triggerKeyCode {
                 let shiftHeld = flags.contains(.maskShift)
 
@@ -123,15 +162,39 @@ final class HotkeyService {
                 } else {
                     onCycleForward?()
                 }
-                return nil // swallow
+                return nil
             }
 
-            // Escape — cancel
-            if keyCode == kVK_Escape && isSwitcherActive {
-                isSwitcherActive = false
-                isModifierHeld = false
-                onSwitcherCancelled?()
+            // Profile switcher trigger
+            if isProfileModifierHeld && keyCode == profileTriggerKeyCode
+                && !(isSwitcherActive && triggerKeyCode == profileTriggerKeyCode && modifierFlag == profileModifierFlag) {
+                let shiftHeld = flags.contains(.maskShift)
+
+                if !isProfileSwitcherActive {
+                    isProfileSwitcherActive = true
+                    onProfileSwitcherActivated?()
+                } else if shiftHeld {
+                    onProfileCycleBackward?()
+                } else {
+                    onProfileCycleForward?()
+                }
                 return nil
+            }
+
+            // Escape — cancel either active switcher
+            if keyCode == kVK_Escape {
+                if isSwitcherActive {
+                    isSwitcherActive = false
+                    isModifierHeld = false
+                    onSwitcherCancelled?()
+                    return nil
+                }
+                if isProfileSwitcherActive {
+                    isProfileSwitcherActive = false
+                    isProfileModifierHeld = false
+                    onProfileSwitcherCancelled?()
+                    return nil
+                }
             }
         }
 

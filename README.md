@@ -30,6 +30,7 @@ HopTab gives you **focused switching**. Pin the 2-3 apps you need right now, and
 - **Cycle forward/backward** — Shift reverses direction, Escape cancels
 - **Release to activate** — let go of the modifier key to switch to the selected app
 - **Profiles** — create named profiles (e.g. "Coding", "Design", "Writing") each with their own set of pinned apps
+- **Profile switcher shortcut** — Option+` to cycle through profiles without leaving the keyboard
 - **Desktop assignment** — bind a profile to a macOS desktop, auto-switches when you swipe to that Space
 - **Persistent pins** — your pinned apps and profiles survive restarts
 - **Aggressive activation** — uses Accessibility API to force-raise windows (fixes stubborn apps like Simulator)
@@ -88,6 +89,8 @@ https://github.com/royalbhati/HopTab/raw/main/demo/HopTab.mp4
 
 ## Usage
 
+**App Switcher**
+
 | Action | Default Shortcut |
 |--------|-----------------|
 | Show switcher & cycle forward | Option + Tab |
@@ -95,10 +98,18 @@ https://github.com/royalbhati/HopTab/raw/main/demo/HopTab.mp4
 | Activate selected app | Release Option |
 | Cancel | Escape |
 
-The shortcut is configurable in **Settings > Shortcut**:
-- Option + Tab (default)
-- Control + Tab
-- Option + ` (backtick)
+The shortcut is configurable in **Settings > Shortcut**: Option + Tab (default), Control + Tab, or Option + `.
+
+**Profile Switcher**
+
+| Action | Shortcut |
+|--------|----------|
+| Show profiles & cycle forward | Option + ` |
+| Cycle backward | Shift + Option + ` |
+| Activate selected profile | Release Option |
+| Cancel | Escape |
+
+> If the app switcher is set to Option + `, the profile switcher automatically falls back to Control + ` to avoid conflicts.
 
 ### Profiles
 
@@ -109,7 +120,7 @@ Profiles let you maintain different sets of pinned apps for different workflows.
 1. Open **Settings > Profiles**
 2. Click **Add** to create a new profile (e.g. "Coding", "Design", "Research")
 3. Switch to a profile, then go to **Pinned Apps** tab to pin the apps for that workflow
-4. Switch profiles from the menu bar dropdown or from Settings
+4. Switch profiles from the menu bar dropdown, from Settings, or with the **Option + `** shortcut
 
 **Example setups:**
 
@@ -156,19 +167,10 @@ Swipe to Desktop 1 and Option+Tab hops between Xcode, Simulator, and Terminal. S
 - Accessibility permission (prompted on first launch)
 
 
-## Releases
-
-Releases are fully automated via GitHub Actions. To ship a new version:
-
-```bash
-git tag v0.2.0
-git push origin v0.2.0
-```
-
 That's it. The [release workflow](.github/workflows/release.yml) will:
 
 1. Extract the version from the tag
-2. Stamp it into the Xcode project (`MARKETING_VERSION` + `CURRENT_PROJECT_VERSION`)
+2. Stamp it into the Xcode project and Info.plist (`MARKETING_VERSION` + `CURRENT_PROJECT_VERSION`)
 3. Build a Release configuration binary (ad-hoc signed)
 4. Package `HopTab.app` into a `.zip`
 5. Create a GitHub Release with the `.zip` attached and install instructions

@@ -20,6 +20,48 @@ struct OverlayView: View {
     }
 }
 
+// MARK: - Profile Overlay View
+
+struct ProfileOverlayView: View {
+    let profiles: [Profile]
+    let selectedIndex: Int
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(Array(profiles.enumerated()), id: \.element.id) { index, profile in
+                let isSelected = index == selectedIndex
+                VStack(spacing: 4) {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(isSelected ? .white : .secondary)
+
+                    Text(profile.name)
+                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                        .foregroundStyle(isSelected ? .white : .primary)
+                        .lineLimit(1)
+
+                    Text("\(profile.pinnedApps.count) app\(profile.pinnedApps.count == 1 ? "" : "s")")
+                        .font(.system(size: 10))
+                        .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(isSelected ? Color.accentColor : Color.clear)
+                )
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background {
+            VisualEffectBlur(cornerRadius: 18)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+    }
+}
+
 // MARK: - Visual Effect (NSVisualEffectView wrapper)
 
 struct VisualEffectBlur: NSViewRepresentable {
