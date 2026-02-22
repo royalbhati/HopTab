@@ -352,119 +352,174 @@ private struct ShortcutTab: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        VStack(spacing: 20) {
-            GroupBox("Switcher Shortcut") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Picker("Shortcut", selection: $appState.selectedShortcut) {
+        ScrollView {
+            VStack(spacing: 20) {
+                GroupBox("Switcher Shortcut") {
+                    VStack(alignment: .leading, spacing: 12) {
                         ForEach(ShortcutPreset.allCases) { preset in
-                            Text(preset.displayName).tag(preset)
-                        }
-                    }
-                    .pickerStyle(.radioGroup)
-
-                    Divider()
-
-                    HStack(spacing: 6) {
-                        Text("Status:")
-                            .foregroundStyle(.secondary)
-                        switch appState.hotkeyStatus {
-                        case .running:
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                            Text("Active")
-                                .foregroundStyle(.green)
-                        case .failed:
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Text("Failed \u{2014} grant Accessibility in System Settings")
-                                .foregroundStyle(.orange)
-                            Spacer()
-                            Button("Retry") {
-                                appState.retryHotkey()
+                            HStack(spacing: 8) {
+                                Image(systemName: appState.selectedPreset == preset ? "circle.inset.filled" : "circle")
+                                    .foregroundStyle(appState.selectedPreset == preset ? Color.accentColor : .secondary)
+                                    .font(.system(size: 14))
+                                Text(preset.displayName)
+                                    .font(.system(size: 13))
+                                Spacer()
                             }
-                        case .stopped:
-                            Image(systemName: "minus.circle")
-                                .foregroundStyle(.secondary)
-                            Text("Not started")
-                                .foregroundStyle(.secondary)
+                            .contentShape(Rectangle())
+                            .onTapGesture { appState.selectPreset(preset) }
                         }
-                    }
-                    .font(.system(size: 12))
 
-                    if !appState.permissions.isTrusted {
-                        Button("Open Accessibility Settings") {
-                            appState.permissions.requestAccessibility()
+                        HStack(spacing: 8) {
+                            Image(systemName: appState.isCustomAppShortcut ? "circle.inset.filled" : "circle")
+                                .foregroundStyle(appState.isCustomAppShortcut ? Color.accentColor : .secondary)
+                                .font(.system(size: 14))
+                            Text("Custom")
+                                .font(.system(size: 13))
+
+                            if appState.isCustomAppShortcut {
+                                ShortcutRecorderView(shortcut: $appState.customAppShortcut)
+                            }
+
+                            Spacer()
                         }
-                    }
-                }
-                .padding(8)
-            }
+                        .contentShape(Rectangle())
+                        .onTapGesture { appState.selectCustomMode() }
 
-            GroupBox("Profile Switcher Shortcut") {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.2.fill")
-                            .foregroundStyle(.secondary)
-                        Text("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName)")
-                            .fontWeight(.medium)
-                        Text("(auto-configured)")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .font(.system(size: 12))
+                        if appState.shortcutsConflict {
+                            conflictBanner
+                        }
 
-                    if appState.selectedShortcut == .optionBacktick {
-                        Text("App switcher uses Option + `, so profile switcher uses Control + `")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(8)
-            }
+                        Divider()
 
-            GroupBox("Behavior") {
-                Toggle("Move recently switched app to front", isOn: $appState.recentAppFirst)
-                    .font(.system(size: 12))
+                        hotkeyStatusRow
+                    }
                     .padding(8)
-            }
-
-            GroupBox("How It Works") {
-                VStack(alignment: .leading, spacing: 6) {
-                    let preset = appState.selectedShortcut
-                    Text("App Switcher")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    Label("\(preset.modifierName) + \(preset.keyName) \u{2014} show switcher & cycle forward",
-                          systemImage: "arrow.right")
-                    Label("Shift + \(preset.modifierName) + \(preset.keyName) \u{2014} cycle backward",
-                          systemImage: "arrow.left")
-                    Label("Release \(preset.modifierName) \u{2014} activate selected app",
-                          systemImage: "checkmark")
-                    Label("Escape \u{2014} cancel",
-                          systemImage: "xmark")
-
-                    Divider().padding(.vertical, 2)
-
-                    Text("Profile Switcher")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    Label("\(appState.profileShortcutModifierName) + ` \u{2014} show profiles & cycle forward",
-                          systemImage: "arrow.right")
-                    Label("Shift + \(appState.profileShortcutModifierName) + ` \u{2014} cycle backward",
-                          systemImage: "arrow.left")
-                    Label("Release \(appState.profileShortcutModifierName) \u{2014} activate selected profile",
-                          systemImage: "checkmark")
-                    Label("Escape \u{2014} cancel",
-                          systemImage: "xmark")
                 }
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .padding(8)
-            }
 
-            Spacer()
+                GroupBox("Profile Switcher Shortcut") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("Custom shortcut", isOn: $appState.isCustomProfileShortcut)
+                            .font(.system(size: 12))
+
+                        if appState.isCustomProfileShortcut {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.2.fill")
+                                    .foregroundStyle(.secondary)
+                                ShortcutRecorderView(shortcut: $appState.customProfileShortcut)
+                            }
+                            .font(.system(size: 12))
+                        } else {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.2.fill")
+                                    .foregroundStyle(.secondary)
+                                Text("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName)")
+                                    .fontWeight(.medium)
+                                Text("(auto-configured)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .font(.system(size: 12))
+                        }
+
+                        if appState.shortcutsConflict {
+                            conflictBanner
+                        }
+                    }
+                    .padding(8)
+                }
+
+                GroupBox("Behavior") {
+                    Toggle("Move recently switched app to front", isOn: $appState.recentAppFirst)
+                        .font(.system(size: 12))
+                        .padding(8)
+                }
+
+                GroupBox("How It Works") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        let sel = appState.appShortcutSelection
+                        Text("App Switcher")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.primary)
+                        Label("\(sel.modifierName) + \(sel.keyName) \u{2014} show switcher & cycle forward",
+                              systemImage: "arrow.right")
+                        Label("Shift + \(sel.modifierName) + \(sel.keyName) \u{2014} cycle backward",
+                              systemImage: "arrow.left")
+                        Label("Release \(sel.modifierName) \u{2014} activate selected app",
+                              systemImage: "checkmark")
+                        Label("Escape \u{2014} cancel",
+                              systemImage: "xmark")
+
+                        Divider().padding(.vertical, 2)
+
+                        Text("Profile Switcher")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.primary)
+                        Label("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} show profiles & cycle forward",
+                              systemImage: "arrow.right")
+                        Label("Shift + \(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} cycle backward",
+                              systemImage: "arrow.left")
+                        Label("Release \(appState.profileShortcutModifierName) \u{2014} activate selected profile",
+                              systemImage: "checkmark")
+                        Label("Escape \u{2014} cancel",
+                              systemImage: "xmark")
+                    }
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .padding(8)
+                }
+            }
+            .padding()
         }
-        .padding()
+    }
+
+    private var conflictBanner: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text("App and profile shortcuts conflict \u{2014} app switcher takes priority.")
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(.orange)
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.orange.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private var hotkeyStatusRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text("Status:")
+                    .foregroundStyle(.secondary)
+                switch appState.hotkeyStatus {
+                case .running:
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Active")
+                        .foregroundStyle(.green)
+                case .failed:
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("Failed \u{2014} grant Accessibility in System Settings")
+                        .foregroundStyle(.orange)
+                    Spacer()
+                    Button("Retry") {
+                        appState.retryHotkey()
+                    }
+                case .stopped:
+                    Image(systemName: "minus.circle")
+                        .foregroundStyle(.secondary)
+                    Text("Not started")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.system(size: 12))
+
+            if !appState.permissions.isTrusted {
+                Button("Open Accessibility Settings") {
+                    appState.permissions.requestAccessibility()
+                }
+            }
+        }
     }
 }
 

@@ -43,6 +43,14 @@ final class HotkeyService {
         if wasRunning { start() }
     }
 
+    func configureAppShortcut(modifierFlag: CGEventFlags, keyCode: Int64) {
+        let wasRunning = eventTap != nil
+        if wasRunning { stop() }
+        self.modifierFlag = modifierFlag
+        self.triggerKeyCode = keyCode
+        if wasRunning { start() }
+    }
+
     func configureProfileShortcut(modifierFlag: CGEventFlags, keyCode: Int64) {
         let wasRunning = eventTap != nil
         if wasRunning { stop() }
@@ -56,6 +64,7 @@ final class HotkeyService {
 
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
             | (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.keyUp.rawValue)
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -107,8 +116,19 @@ final class HotkeyService {
         // Re-enable tap if macOS disabled it due to timeout
         if type == .tapDisabledByTimeout {
             if let tap = eventTap {
+                if isSwitcherActive {
+                    isSwitcherActive = false
+                    onSwitcherCancelled?()
+                }
+                if isProfileSwitcherActive {
+                    isProfileSwitcherActive = false
+                    onProfileSwitcherCancelled?()
+                }
+                isModifierHeld = false
+                isProfileModifierHeld = false
+
                 CGEvent.tapEnable(tap: tap, enable: true)
-                NSLog("[HotkeyService] Re-enabled event tap after timeout")
+                NSLog("[HotkeyService] Re-enabled event tap after timeout — reset modifier state")
             }
             return event
         }
@@ -144,6 +164,27 @@ final class HotkeyService {
             }
 
             return event
+        }
+
+      
+        if type == .keyDown || type == .keyUp {
+            let actualAppMod = flags.contains(modifierFlag)
+            if isModifierHeld && !actualAppMod {
+                isModifierHeld = false
+                if isSwitcherActive {
+                    isSwitcherActive = false
+                    onSwitcherDismissed?()
+                }
+            }
+
+            let actualProfileMod = flags.contains(profileModifierFlag)
+            if isProfileModifierHeld && !actualProfileMod {
+                isProfileModifierHeld = false
+                if isProfileSwitcherActive {
+                    isProfileSwitcherActive = false
+                    onProfileSwitcherDismissed?()
+                }
+            }
         }
 
         // MARK: Key Down

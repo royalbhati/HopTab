@@ -20,13 +20,46 @@ final class AppState: ObservableObject {
             UserDefaults.standard.set(recentAppFirst, forKey: "recentAppFirst")
         }
     }
-    @Published var selectedShortcut: ShortcutPreset = ShortcutPreset.current {
+
+
+    @Published var appShortcutSelection: ShortcutSelection = ShortcutSelection.current {
         didSet {
-            ShortcutPreset.current = selectedShortcut
-            hotkeyService.configure(preset: selectedShortcut)
-            configureProfileShortcut()
+            ShortcutSelection.current = appShortcutSelection
+            applyAppShortcut()
+            applyProfileShortcut()
         }
     }
+
+    @Published var selectedPreset: ShortcutPreset? = nil
+
+    @Published var isCustomAppShortcut: Bool = false
+
+    @Published var customAppShortcut: CustomShortcut? = nil {
+        didSet {
+            guard isCustomAppShortcut, let c = customAppShortcut else { return }
+            appShortcutSelection = .custom(c)
+        }
+    }
+
+
+    @Published var isCustomProfileShortcut: Bool = ShortcutSelection.isCustomProfileShortcut {
+        didSet {
+            ShortcutSelection.isCustomProfileShortcut = isCustomProfileShortcut
+            applyProfileShortcut()
+        }
+    }
+
+    @Published var customProfileShortcut: CustomShortcut? = ShortcutSelection.savedProfileShortcut {
+        didSet {
+            ShortcutSelection.savedProfileShortcut = customProfileShortcut
+            if isCustomProfileShortcut {
+                applyProfileShortcut()
+            }
+        }
+    }
+
+    @Published private(set) var shortcutsConflict: Bool = false
+
     @Published private(set) var hotkeyStatus: HotkeyStatus = .stopped
 
     @Published private(set) var profileSelectedIndex: Int = 0
@@ -52,33 +85,87 @@ final class AppState: ObservableObject {
             }
             .store(in: &cancellables)
 
-        hotkeyService.configure(preset: selectedShortcut)
-        configureProfileShortcut()
+        switch appShortcutSelection {
+        case .preset(let p):
+            selectedPreset = p
+            isCustomAppShortcut = false
+        case .custom(let c):
+            selectedPreset = nil
+            isCustomAppShortcut = true
+            customAppShortcut = c
+        }
+
+        applyAppShortcut()
+        applyProfileShortcut()
         refreshRunningApps()
         observeWorkspace()
         setupHotkeyCallbacks()
     }
 
 
+    func selectPreset(_ preset: ShortcutPreset) {
+        selectedPreset = preset
+        isCustomAppShortcut = false
+        appShortcutSelection = .preset(preset)
+    }
 
-    private func configureProfileShortcut() {
+    func selectCustomMode() {
+        selectedPreset = nil
+        isCustomAppShortcut = true
+        if let c = customAppShortcut {
+            appShortcutSelection = .custom(c)
+        }
+    }
+
+    private func applyAppShortcut() {
+        switch appShortcutSelection {
+        case .preset(let p):
+            hotkeyService.configure(preset: p)
+        case .custom(let c):
+            hotkeyService.configureAppShortcut(modifierFlag: c.modifierFlags, keyCode: c.keyCode)
+        }
+        checkConflicts()
+    }
+
+    private func applyProfileShortcut() {
         let modFlag: CGEventFlags
         let keyCode: Int64
         let modName: String
+        let keyName: String
 
-        if selectedShortcut == .optionBacktick {
-            modFlag = .maskControl
-            keyCode = Int64(kVK_ANSI_Grave)
-            modName = "Control"
+        if isCustomProfileShortcut, let c = customProfileShortcut {
+            modFlag = c.modifierFlags
+            keyCode = c.keyCode
+            modName = c.modifierName
+            keyName = c.keyName
         } else {
-            modFlag = .maskAlternate
-            keyCode = Int64(kVK_ANSI_Grave)
-            modName = "Option"
+            if appShortcutSelection.modifierFlags == .maskAlternate &&
+               appShortcutSelection.keyCode == Int64(kVK_ANSI_Grave) {
+                modFlag = .maskControl
+                keyCode = Int64(kVK_ANSI_Grave)
+                modName = "Control"
+            } else {
+                modFlag = .maskAlternate
+                keyCode = Int64(kVK_ANSI_Grave)
+                modName = "Option"
+            }
+            keyName = "`"
         }
 
         hotkeyService.configureProfileShortcut(modifierFlag: modFlag, keyCode: keyCode)
         profileShortcutModifierName = modName
-        profileShortcutKeyName = "`"
+        profileShortcutKeyName = keyName
+        checkConflicts()
+    }
+
+    private func checkConflicts() {
+        let appFlags = appShortcutSelection.modifierFlags
+        let appKey = appShortcutSelection.keyCode
+
+        let profileFlags = hotkeyService.profileModifierFlag
+        let profileKey = hotkeyService.profileTriggerKeyCode
+
+        shortcutsConflict = appFlags == profileFlags && appKey == profileKey
     }
 
     // MARK: - Hotkey Setup
@@ -187,7 +274,10 @@ final class AppState: ObservableObject {
 
     private func showProfileSwitcher() {
         let profiles = store.profiles
-        guard profiles.count > 1 else { return }
+        guard profiles.count > 1 else {
+            NSLog("[HopTab] Profile shortcut pressed but only %d profile(s) exist — need at least 2", profiles.count)
+            return
+        }
 
         let currentIndex = profiles.firstIndex { $0.id == store.activeProfileId } ?? 0
         profileSelectedIndex = (currentIndex + 1) % profiles.count
