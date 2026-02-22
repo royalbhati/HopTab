@@ -24,7 +24,7 @@ jobs:
           echo "build=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           echo "→ Building release: $TAG"
 
-      - name: Stamp version into Xcode project
+      - name: Stamp version into Xcode project & Info.plist
         run: |
           sed -i '' \
             "s/MARKETING_VERSION = .*;/MARKETING_VERSION = ${{ steps.version.outputs.version }};/" \
@@ -32,6 +32,12 @@ jobs:
           sed -i '' \
             "s/CURRENT_PROJECT_VERSION = .*;/CURRENT_PROJECT_VERSION = ${{ steps.version.outputs.build }};/" \
             HopTab.xcodeproj/project.pbxproj
+
+          # Also stamp Info.plist so Bundle.main picks up the correct version
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
+            HopTab/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.build }}" \
+            HopTab/Info.plist
 
       - name: Build
         run: |

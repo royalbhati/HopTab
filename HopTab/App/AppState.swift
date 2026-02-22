@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import Carbon.HIToolbox
 
 @MainActor
 final class AppState: ObservableObject {
@@ -9,6 +10,7 @@ final class AppState: ObservableObject {
 
     private let hotkeyService = HotkeyService()
     private let overlayController = OverlayWindowController()
+    private let profileOverlayController = ProfileOverlayWindowController()
 
     @Published private(set) var selectedIndex: Int = 0
     @Published private(set) var isSwitcherVisible: Bool = false
@@ -22,9 +24,16 @@ final class AppState: ObservableObject {
         didSet {
             ShortcutPreset.current = selectedShortcut
             hotkeyService.configure(preset: selectedShortcut)
+            configureProfileShortcut()
         }
     }
     @Published private(set) var hotkeyStatus: HotkeyStatus = .stopped
+
+    @Published private(set) var profileSelectedIndex: Int = 0
+    @Published private(set) var isProfileSwitcherVisible: Bool = false
+
+    @Published private(set) var profileShortcutModifierName: String = "Option"
+    @Published private(set) var profileShortcutKeyName: String = "`"
 
     enum HotkeyStatus: Equatable {
         case stopped
@@ -44,9 +53,32 @@ final class AppState: ObservableObject {
             .store(in: &cancellables)
 
         hotkeyService.configure(preset: selectedShortcut)
+        configureProfileShortcut()
         refreshRunningApps()
         observeWorkspace()
         setupHotkeyCallbacks()
+    }
+
+
+
+    private func configureProfileShortcut() {
+        let modFlag: CGEventFlags
+        let keyCode: Int64
+        let modName: String
+
+        if selectedShortcut == .optionBacktick {
+            modFlag = .maskControl
+            keyCode = Int64(kVK_ANSI_Grave)
+            modName = "Control"
+        } else {
+            modFlag = .maskAlternate
+            keyCode = Int64(kVK_ANSI_Grave)
+            modName = "Option"
+        }
+
+        hotkeyService.configureProfileShortcut(modifierFlag: modFlag, keyCode: keyCode)
+        profileShortcutModifierName = modName
+        profileShortcutKeyName = "`"
     }
 
     // MARK: - Hotkey Setup
@@ -80,9 +112,29 @@ final class AppState: ObservableObject {
         hotkeyService.onTapFailed = { [weak self] in
             self?.hotkeyStatus = .failed
         }
+
+        hotkeyService.onProfileSwitcherActivated = { [weak self] in
+            self?.showProfileSwitcher()
+        }
+
+        hotkeyService.onProfileCycleForward = { [weak self] in
+            self?.cycleProfileForward()
+        }
+
+        hotkeyService.onProfileCycleBackward = { [weak self] in
+            self?.cycleProfileBackward()
+        }
+
+        hotkeyService.onProfileSwitcherDismissed = { [weak self] in
+            self?.dismissAndActivateProfile()
+        }
+
+        hotkeyService.onProfileSwitcherCancelled = { [weak self] in
+            self?.cancelProfileSwitcher()
+        }
     }
 
-    // MARK: - Switcher Logic
+    // MARK: - App Switcher Logic
 
     private func showSwitcher() {
         let apps = store.apps
@@ -132,7 +184,50 @@ final class AppState: ObservableObject {
         isSwitcherVisible = false
     }
 
-    // MARK: - Running Apps
+
+    private func showProfileSwitcher() {
+        let profiles = store.profiles
+        guard profiles.count > 1 else { return }
+
+        let currentIndex = profiles.firstIndex { $0.id == store.activeProfileId } ?? 0
+        profileSelectedIndex = (currentIndex + 1) % profiles.count
+
+        isProfileSwitcherVisible = true
+        profileOverlayController.show(profiles: profiles, selectedIndex: profileSelectedIndex)
+    }
+
+    private func cycleProfileForward() {
+        let profiles = store.profiles
+        guard !profiles.isEmpty else { return }
+        profileSelectedIndex = (profileSelectedIndex + 1) % profiles.count
+        profileOverlayController.update(profiles: profiles, selectedIndex: profileSelectedIndex)
+    }
+
+    private func cycleProfileBackward() {
+        let profiles = store.profiles
+        guard !profiles.isEmpty else { return }
+        profileSelectedIndex = (profileSelectedIndex - 1 + profiles.count) % profiles.count
+        profileOverlayController.update(profiles: profiles, selectedIndex: profileSelectedIndex)
+    }
+
+    private func dismissAndActivateProfile() {
+        let profiles = store.profiles
+        guard profileSelectedIndex < profiles.count else {
+            cancelProfileSwitcher()
+            return
+        }
+
+        let selected = profiles[profileSelectedIndex]
+        profileOverlayController.dismiss()
+        isProfileSwitcherVisible = false
+        store.setActiveProfile(id: selected.id)
+    }
+
+    private func cancelProfileSwitcher() {
+        profileOverlayController.dismiss()
+        isProfileSwitcherVisible = false
+    }
+
 
     func refreshRunningApps() {
         runningApps = NSWorkspace.shared.runningApplications

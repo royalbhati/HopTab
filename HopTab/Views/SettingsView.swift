@@ -25,7 +25,7 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 480, height: 450)
+        .frame(width: 480, height: 520)
     }
 }
 
@@ -400,6 +400,28 @@ private struct ShortcutTab: View {
                 .padding(8)
             }
 
+            GroupBox("Profile Switcher Shortcut") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.2.fill")
+                            .foregroundStyle(.secondary)
+                        Text("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName)")
+                            .fontWeight(.medium)
+                        Text("(auto-configured)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .font(.system(size: 12))
+
+                    if appState.selectedShortcut == .optionBacktick {
+                        Text("App switcher uses Option + `, so profile switcher uses Control + `")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+            }
+
             GroupBox("Behavior") {
                 Toggle("Move recently switched app to front", isOn: $appState.recentAppFirst)
                     .font(.system(size: 12))
@@ -409,11 +431,28 @@ private struct ShortcutTab: View {
             GroupBox("How It Works") {
                 VStack(alignment: .leading, spacing: 6) {
                     let preset = appState.selectedShortcut
+                    Text("App Switcher")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
                     Label("\(preset.modifierName) + \(preset.keyName) \u{2014} show switcher & cycle forward",
                           systemImage: "arrow.right")
                     Label("Shift + \(preset.modifierName) + \(preset.keyName) \u{2014} cycle backward",
                           systemImage: "arrow.left")
                     Label("Release \(preset.modifierName) \u{2014} activate selected app",
+                          systemImage: "checkmark")
+                    Label("Escape \u{2014} cancel",
+                          systemImage: "xmark")
+
+                    Divider().padding(.vertical, 2)
+
+                    Text("Profile Switcher")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    Label("\(appState.profileShortcutModifierName) + ` \u{2014} show profiles & cycle forward",
+                          systemImage: "arrow.right")
+                    Label("Shift + \(appState.profileShortcutModifierName) + ` \u{2014} cycle backward",
+                          systemImage: "arrow.left")
+                    Label("Release \(appState.profileShortcutModifierName) \u{2014} activate selected profile",
                           systemImage: "checkmark")
                     Label("Escape \u{2014} cancel",
                           systemImage: "xmark")
@@ -442,7 +481,7 @@ private struct AboutTab: View {
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text("Version 1.0")
+            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
                 .foregroundStyle(.secondary)
 
             Text("A supercharged macOS app switcher.\nPin your favorite apps and switch between them instantly.")
