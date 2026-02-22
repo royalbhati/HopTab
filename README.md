@@ -167,15 +167,6 @@ Swipe to Desktop 1 and Option+Tab hops between Xcode, Simulator, and Terminal. S
 - Accessibility permission (prompted on first launch)
 
 
-## Releases
-
-Releases are fully automated via GitHub Actions. To ship a new version:
-
-```bash
-git tag v0.3.2
-git push origin v0.3.2
-```
-
 That's it. The [release workflow](.github/workflows/release.yml) will:
 
 1. Extract the version from the tag
