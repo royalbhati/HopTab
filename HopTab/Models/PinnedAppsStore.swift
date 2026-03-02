@@ -88,6 +88,22 @@ final class PinnedAppsStore: ObservableObject {
         spaceMapping.first { $0.value == profileId }?.key
     }
 
+    // MARK: - Profile Hotkeys
+
+    func setProfileHotkey(id: UUID, hotkey: CustomShortcut?) {
+        guard let idx = profiles.firstIndex(where: { $0.id == id }) else { return }
+        profiles[idx].hotkey = hotkey
+        save()
+    }
+
+    /// All profiles that have a hotkey configured.
+    var profileHotkeys: [(UUID, CustomShortcut)] {
+        profiles.compactMap { p in
+            guard let hk = p.hotkey else { return nil }
+            return (p.id, hk)
+        }
+    }
+
     // MARK: - Pin CRUD (operates on active profile)
 
     func add(_ app: PinnedApp) {

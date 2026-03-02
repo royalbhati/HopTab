@@ -25,14 +25,19 @@ HopTab gives you **focused switching**. Pin the 2-3 apps you need right now, and
 ## Features
 
 - **Pin any app** — pick from running apps in Settings, click to pin/unpin
+- **Pin from installed apps** — browse all installed apps (not just running ones) to pin apps you haven't opened yet
 - **Global hotkey** — Option+Tab (default), configurable to Control+Tab or Option+`
 - **Overlay switcher** — native vibrancy blur panel shows pinned apps with icons
 - **Cycle forward/backward** — Shift reverses direction, Escape cancels
 - **Release to activate** — let go of the modifier key to switch to the selected app
 - **Profiles** — create named profiles (e.g. "Coding", "Design", "Writing") each with their own set of pinned apps
+- **Per-profile hotkeys** — assign a custom keyboard shortcut to any profile for instant one-key access
 - **Profile switcher shortcut** — Option+` to cycle through profiles without leaving the keyboard
+- **Window picker** — when an app has multiple windows, automatically shows a picker to choose which window to focus
+- **App actions in switcher** — Cmd+Q, Cmd+H, Cmd+M while the switcher is open to quit, hide, or minimize the highlighted app
 - **Desktop assignment** — bind a profile to a macOS desktop, auto-switches when you swipe to that Space
 - **Persistent pins** — your pinned apps and profiles survive restarts
+- **Auto-unminimize** — minimized apps are automatically restored when activated through the switcher
 - **Aggressive activation** — uses Accessibility API to force-raise windows (fixes stubborn apps like Simulator)
 - **Menu bar app** — lives in the menu bar, doesn't clutter your Dock
 
@@ -96,6 +101,9 @@ https://github.com/royalbhati/HopTab/raw/main/demo/HopTab.mp4
 | Show switcher & cycle forward | Option + Tab |
 | Cycle backward | Shift + Option + Tab |
 | Activate selected app | Release Option |
+| Quit highlighted app | Cmd + Q |
+| Hide highlighted app | Cmd + H |
+| Minimize highlighted app | Cmd + M |
 | Cancel | Escape |
 
 The shortcut is configurable in **Settings > Shortcut**: Option + Tab (default), Control + Tab, or Option + `.
@@ -111,6 +119,19 @@ The shortcut is configurable in **Settings > Shortcut**: Option + Tab (default),
 
 > If the app switcher is set to Option + `, the profile switcher automatically falls back to Control + ` to avoid conflicts.
 
+**Window Picker** (appears automatically when an app has 2+ windows)
+
+| Action | Shortcut |
+|--------|----------|
+| Navigate up | Up Arrow |
+| Navigate down | Down Arrow |
+| Select window | Enter |
+| Cancel | Escape |
+
+**Per-Profile Hotkeys**
+
+Assign a custom shortcut to any profile in **Settings > Profiles**. Press the shortcut to instantly activate that profile and open the app switcher — no need to switch profiles first.
+
 ### Profiles
 
 Profiles let you maintain different sets of pinned apps for different workflows. Instead of constantly pinning and unpinning apps throughout the day, create profiles and switch between them in one click.
@@ -120,7 +141,10 @@ Profiles let you maintain different sets of pinned apps for different workflows.
 1. Open **Settings > Profiles**
 2. Click **Add** to create a new profile (e.g. "Coding", "Design", "Research")
 3. Switch to a profile, then go to **Pinned Apps** tab to pin the apps for that workflow
-4. Switch profiles from the menu bar dropdown, from Settings, or with the **Option + `** shortcut
+4. Optionally assign a custom hotkey to the profile for instant access
+5. Switch profiles from the menu bar dropdown, from Settings, or with the **Option + `** shortcut
+
+> **Tip:** The Pinned Apps tab lets you toggle between **Running** and **Installed** apps. Use "Installed" to pin apps you haven't opened yet.
 
 **Example setups:**
 

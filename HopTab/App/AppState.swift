@@ -11,10 +11,12 @@ final class AppState: ObservableObject {
     private let hotkeyService = HotkeyService()
     private let overlayController = OverlayWindowController()
     private let profileOverlayController = ProfileOverlayWindowController()
+    private let windowPickerController = WindowPickerOverlayController()
 
     @Published private(set) var selectedIndex: Int = 0
     @Published private(set) var isSwitcherVisible: Bool = false
     @Published var runningApps: [NSRunningApplication] = []
+    @Published var installedApps: [InstalledAppsService.AppInfo] = []
     @Published var recentAppFirst: Bool = UserDefaults.standard.bool(forKey: "recentAppFirst") {
         didSet {
             UserDefaults.standard.set(recentAppFirst, forKey: "recentAppFirst")
@@ -68,6 +70,12 @@ final class AppState: ObservableObject {
     @Published private(set) var profileShortcutModifierName: String = "Option"
     @Published private(set) var profileShortcutKeyName: String = "`"
 
+    // Window picker state
+    @Published private(set) var isWindowPickerVisible: Bool = false
+    @Published private(set) var windowPickerSelectedIndex: Int = 0
+    private var windowPickerWindows: [WindowInfo] = []
+    private var windowPickerApp: PinnedApp?
+
     enum HotkeyStatus: Equatable {
         case stopped
         case running
@@ -97,9 +105,19 @@ final class AppState: ObservableObject {
 
         applyAppShortcut()
         applyProfileShortcut()
+        syncProfileHotkeys()
         refreshRunningApps()
+        refreshInstalledApps()
         observeWorkspace()
         setupHotkeyCallbacks()
+
+        // Re-sync profile hotkeys whenever profiles change
+        store.objectWillChange
+            .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.syncProfileHotkeys()
+            }
+            .store(in: &cancellables)
     }
 
 
@@ -219,6 +237,54 @@ final class AppState: ObservableObject {
         hotkeyService.onProfileSwitcherCancelled = { [weak self] in
             self?.cancelProfileSwitcher()
         }
+
+        // Per-profile hotkey callbacks
+        hotkeyService.onProfileHotkeyActivated = { [weak self] profileId in
+            self?.store.setActiveProfile(id: profileId)
+            self?.showSwitcher()
+        }
+
+        hotkeyService.onProfileHotkeyCycleForward = { [weak self] _ in
+            self?.cycleForward()
+        }
+
+        hotkeyService.onProfileHotkeyCycleBackward = { [weak self] _ in
+            self?.cycleBackward()
+        }
+
+        hotkeyService.onProfileHotkeyDismissed = { [weak self] _ in
+            self?.dismissAndActivate()
+        }
+
+        // Cmd+Q/H/M callbacks
+        hotkeyService.onQuitHighlighted = { [weak self] in
+            self?.quitHighlightedApp()
+        }
+
+        hotkeyService.onHideHighlighted = { [weak self] in
+            self?.hideHighlightedApp()
+        }
+
+        hotkeyService.onMinimizeHighlighted = { [weak self] in
+            self?.minimizeHighlightedApp()
+        }
+
+        // Window picker callbacks
+        hotkeyService.onWindowPickerNavigateUp = { [weak self] in
+            self?.windowPickerNavigateUp()
+        }
+
+        hotkeyService.onWindowPickerNavigateDown = { [weak self] in
+            self?.windowPickerNavigateDown()
+        }
+
+        hotkeyService.onWindowPickerSelect = { [weak self] in
+            self?.windowPickerSelect()
+        }
+
+        hotkeyService.onWindowPickerCancel = { [weak self] in
+            self?.windowPickerCancel()
+        }
     }
 
     // MARK: - App Switcher Logic
@@ -260,9 +326,19 @@ final class AppState: ObservableObject {
         let selectedApp = apps[selectedIndex]
         overlayController.dismiss()
         isSwitcherVisible = false
+
+        // Activate the app first so its windows come forward
         AppSwitcherService.activate(selectedApp)
         if recentAppFirst {
             store.moveToFront(bundleIdentifier: selectedApp.bundleIdentifier)
+        }
+
+        // If the app has 2+ windows, show the window picker
+        if let running = selectedApp.runningApplication {
+            let windows = AppSwitcherService.enumerateWindows(of: running)
+            if windows.count >= 2 {
+                showWindowPicker(app: selectedApp, windows: windows)
+            }
         }
     }
 
@@ -271,6 +347,67 @@ final class AppState: ObservableObject {
         isSwitcherVisible = false
     }
 
+    // MARK: - Window Picker
+
+    private func showWindowPicker(app: PinnedApp, windows: [WindowInfo]) {
+        windowPickerApp = app
+        windowPickerWindows = windows
+        windowPickerSelectedIndex = 0
+        isWindowPickerVisible = true
+        hotkeyService.enterWindowPickerMode()
+        windowPickerController.show(
+            appName: app.displayName,
+            appIcon: app.icon,
+            windows: windows,
+            selectedIndex: 0
+        )
+    }
+
+    private func windowPickerNavigateUp() {
+        guard !windowPickerWindows.isEmpty else { return }
+        windowPickerSelectedIndex = (windowPickerSelectedIndex - 1 + windowPickerWindows.count) % windowPickerWindows.count
+        updateWindowPickerOverlay()
+    }
+
+    private func windowPickerNavigateDown() {
+        guard !windowPickerWindows.isEmpty else { return }
+        windowPickerSelectedIndex = (windowPickerSelectedIndex + 1) % windowPickerWindows.count
+        updateWindowPickerOverlay()
+    }
+
+    private func windowPickerSelect() {
+        guard windowPickerSelectedIndex < windowPickerWindows.count,
+              let app = windowPickerApp?.runningApplication else {
+            dismissWindowPicker()
+            return
+        }
+
+        let window = windowPickerWindows[windowPickerSelectedIndex]
+        dismissWindowPicker()
+        AppSwitcherService.raiseWindow(of: app, atIndex: window.id)
+    }
+
+    private func windowPickerCancel() {
+        dismissWindowPicker()
+    }
+
+    private func dismissWindowPicker() {
+        windowPickerController.dismiss()
+        isWindowPickerVisible = false
+        hotkeyService.exitWindowPickerMode()
+        windowPickerWindows = []
+        windowPickerApp = nil
+    }
+
+    private func updateWindowPickerOverlay() {
+        guard let app = windowPickerApp else { return }
+        windowPickerController.update(
+            appName: app.displayName,
+            appIcon: app.icon,
+            windows: windowPickerWindows,
+            selectedIndex: windowPickerSelectedIndex
+        )
+    }
 
     private func showProfileSwitcher() {
         let profiles = store.profiles
@@ -319,10 +456,62 @@ final class AppState: ObservableObject {
     }
 
 
+    private func syncProfileHotkeys() {
+        hotkeyService.configureProfileHotkeys(store.profileHotkeys)
+    }
+
+    // MARK: - App Actions (Q/H/M)
+
+    private func quitHighlightedApp() {
+        let apps = store.apps
+        guard selectedIndex < apps.count else { return }
+        let app = apps[selectedIndex]
+        app.runningApplication?.terminate()
+        // Adjust selection after quit
+        if apps.count > 1 {
+            if selectedIndex >= apps.count - 1 {
+                selectedIndex = max(0, apps.count - 2)
+            }
+            overlayController.update(apps: store.apps, selectedIndex: selectedIndex)
+        } else {
+            cancelSwitcher()
+        }
+    }
+
+    private func hideHighlightedApp() {
+        let apps = store.apps
+        guard selectedIndex < apps.count else { return }
+        let app = apps[selectedIndex]
+        app.runningApplication?.hide()
+        // Move to next app
+        if apps.count > 1 {
+            selectedIndex = (selectedIndex + 1) % apps.count
+            overlayController.update(apps: apps, selectedIndex: selectedIndex)
+        }
+    }
+
+    private func minimizeHighlightedApp() {
+        let apps = store.apps
+        guard selectedIndex < apps.count else { return }
+        let app = apps[selectedIndex]
+        if let running = app.runningApplication {
+            AppSwitcherService.minimizeFirstWindow(of: running)
+        }
+        // Move to next app
+        if apps.count > 1 {
+            selectedIndex = (selectedIndex + 1) % apps.count
+            overlayController.update(apps: apps, selectedIndex: selectedIndex)
+        }
+    }
+
     func refreshRunningApps() {
         runningApps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
             .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
+    }
+
+    func refreshInstalledApps() {
+        installedApps = InstalledAppsService.discoverInstalledApps()
     }
 
     private func observeWorkspace() {

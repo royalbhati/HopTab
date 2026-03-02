@@ -26,6 +26,7 @@
 		A10018 /* KeyCodeMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10018 /* KeyCodeMapping.swift */; };
 		A10019 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10019 /* ShortcutRecorderView.swift */; };
 		A10020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10020 /* Assets.xcassets */; };
+		A10021 /* InstalledAppsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10021 /* InstalledAppsService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		B10018 /* KeyCodeMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCodeMapping.swift; sourceTree = "<group>"; };
 		B10019 /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderView.swift; sourceTree = "<group>"; };
 		B10020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B10021 /* InstalledAppsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledAppsService.swift; sourceTree = "<group>"; };
 		B10099 /* HopTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -113,6 +115,7 @@
 				B10007 /* AppSwitcherService.swift */,
 				B10008 /* PermissionsService.swift */,
 				B10017 /* SpaceService.swift */,
+				B10021 /* InstalledAppsService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -220,6 +223,7 @@
 				A10017 /* SpaceService.swift in Sources */,
 				A10018 /* KeyCodeMapping.swift in Sources */,
 				A10019 /* ShortcutRecorderView.swift in Sources */,
+				A10021 /* InstalledAppsService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

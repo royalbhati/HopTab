@@ -17,6 +17,23 @@ final class HotkeyService {
     var onProfileSwitcherDismissed: (() -> Void)?
     var onProfileSwitcherCancelled: (() -> Void)?
 
+    // Per-Profile Hotkey Callbacks
+    var onProfileHotkeyActivated: ((UUID) -> Void)?
+    var onProfileHotkeyCycleForward: ((UUID) -> Void)?
+    var onProfileHotkeyCycleBackward: ((UUID) -> Void)?
+    var onProfileHotkeyDismissed: ((UUID) -> Void)?
+
+    // App Action Callbacks (Cmd+Q/H/M while switcher is active)
+    var onQuitHighlighted: (() -> Void)?
+    var onHideHighlighted: (() -> Void)?
+    var onMinimizeHighlighted: (() -> Void)?
+
+    // Window Picker Callbacks
+    var onWindowPickerNavigateUp: (() -> Void)?
+    var onWindowPickerNavigateDown: (() -> Void)?
+    var onWindowPickerSelect: (() -> Void)?
+    var onWindowPickerCancel: (() -> Void)?
+
     // App Switcher shortcut (configurable)
     private(set) var modifierFlag: CGEventFlags = .maskAlternate
     private(set) var triggerKeyCode: Int64 = Int64(kVK_Tab)
@@ -30,6 +47,15 @@ final class HotkeyService {
     private(set) var isSwitcherActive = false
     private(set) var isProfileModifierHeld = false
     private(set) var isProfileSwitcherActive = false
+
+    // Window picker state
+    private(set) var isWindowPickerActive = false
+
+    // Per-profile hotkey state
+    private(set) var profileHotkeys: [(modifierFlag: CGEventFlags, keyCode: Int64, profileId: UUID)] = []
+    private(set) var activeProfileHotkeyId: UUID?
+    private(set) var profileHotkeyModifierHeld = false
+    private(set) var profileHotkeyModifier: CGEventFlags?
 
     // Event tap
     private var eventTap: CFMachPort?
@@ -57,6 +83,20 @@ final class HotkeyService {
         profileModifierFlag = modifierFlag
         profileTriggerKeyCode = keyCode
         if wasRunning { start() }
+    }
+
+    func configureProfileHotkeys(_ hotkeys: [(UUID, CustomShortcut)]) {
+        profileHotkeys = hotkeys.map { (id, shortcut) in
+            (modifierFlag: shortcut.modifierFlags, keyCode: shortcut.keyCode, profileId: id)
+        }
+        // Only reset active state if the active profile's hotkey was removed;
+        // otherwise an in-flight interaction (modifier still held) would break.
+        if let activeId = activeProfileHotkeyId,
+           !profileHotkeys.contains(where: { $0.profileId == activeId }) {
+            activeProfileHotkeyId = nil
+            profileHotkeyModifierHeld = false
+            profileHotkeyModifier = nil
+        }
     }
 
     func start() {
@@ -106,9 +146,21 @@ final class HotkeyService {
         isSwitcherActive = false
         isProfileModifierHeld = false
         isProfileSwitcherActive = false
+        isWindowPickerActive = false
+        activeProfileHotkeyId = nil
+        profileHotkeyModifierHeld = false
+        profileHotkeyModifier = nil
     }
 
     var isRunning: Bool { eventTap != nil }
+
+    func enterWindowPickerMode() {
+        isWindowPickerActive = true
+    }
+
+    func exitWindowPickerMode() {
+        isWindowPickerActive = false
+    }
 
     // MARK: - Event Processing
 
@@ -116,6 +168,10 @@ final class HotkeyService {
         // Re-enable tap if macOS disabled it due to timeout
         if type == .tapDisabledByTimeout {
             if let tap = eventTap {
+                if isWindowPickerActive {
+                    isWindowPickerActive = false
+                    onWindowPickerCancel?()
+                }
                 if isSwitcherActive {
                     isSwitcherActive = false
                     onSwitcherCancelled?()
@@ -163,10 +219,21 @@ final class HotkeyService {
                 }
             }
 
+            // Per-profile hotkey modifier release tracking
+            if let mod = profileHotkeyModifier, let profileId = activeProfileHotkeyId {
+                if !flags.contains(mod) {
+                    activeProfileHotkeyId = nil
+                    profileHotkeyModifierHeld = false
+                    profileHotkeyModifier = nil
+                    onProfileHotkeyDismissed?(profileId)
+                    return nil
+                }
+            }
+
             return event
         }
 
-      
+
         if type == .keyDown || type == .keyUp {
             let actualAppMod = flags.contains(modifierFlag)
             if isModifierHeld && !actualAppMod {
@@ -185,11 +252,57 @@ final class HotkeyService {
                     onProfileSwitcherDismissed?()
                 }
             }
+
+            // Sync per-profile hotkey modifier on key events
+            if let mod = profileHotkeyModifier, let profileId = activeProfileHotkeyId {
+                if !flags.contains(mod) {
+                    activeProfileHotkeyId = nil
+                    profileHotkeyModifierHeld = false
+                    profileHotkeyModifier = nil
+                    onProfileHotkeyDismissed?(profileId)
+                }
+            }
         }
 
         // MARK: Key Down
         if type == .keyDown {
             let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+
+            // Window picker mode — intercept all keys, only allow Up/Down/Enter/Escape
+            if isWindowPickerActive {
+                switch keyCode {
+                case Int64(kVK_UpArrow):
+                    onWindowPickerNavigateUp?()
+                case Int64(kVK_DownArrow):
+                    onWindowPickerNavigateDown?()
+                case Int64(kVK_Return), Int64(kVK_ANSI_KeypadEnter):
+                    onWindowPickerSelect?()
+                case Int64(kVK_Escape):
+                    onWindowPickerCancel?()
+                default:
+                    break // swallow all other keys
+                }
+                return nil
+            }
+
+            // Cmd+Q/H/M while any switcher is active
+            if isSwitcherActive || activeProfileHotkeyId != nil {
+                if flags.contains(.maskCommand) {
+                    switch keyCode {
+                    case Int64(kVK_ANSI_Q):
+                        onQuitHighlighted?()
+                        return nil
+                    case Int64(kVK_ANSI_H):
+                        onHideHighlighted?()
+                        return nil
+                    case Int64(kVK_ANSI_M):
+                        onMinimizeHighlighted?()
+                        return nil
+                    default:
+                        break
+                    }
+                }
+            }
 
             // App switcher trigger
             if isModifierHeld && keyCode == triggerKeyCode {
@@ -222,7 +335,33 @@ final class HotkeyService {
                 return nil
             }
 
-            // Escape — cancel either active switcher
+            // Per-profile hotkey triggers
+            for entry in profileHotkeys {
+                guard flags.contains(entry.modifierFlag) && keyCode == entry.keyCode else { continue }
+                // Skip if it matches the app or profile switcher shortcut
+                if entry.modifierFlag == modifierFlag && entry.keyCode == triggerKeyCode { continue }
+                if entry.modifierFlag == profileModifierFlag && entry.keyCode == profileTriggerKeyCode { continue }
+
+                let shiftHeld = flags.contains(.maskShift)
+
+                if activeProfileHotkeyId == nil {
+                    // First press — activate this profile's switcher
+                    activeProfileHotkeyId = entry.profileId
+                    profileHotkeyModifierHeld = true
+                    profileHotkeyModifier = entry.modifierFlag
+                    onProfileHotkeyActivated?(entry.profileId)
+                } else if activeProfileHotkeyId == entry.profileId {
+                    // Repeat press — cycle
+                    if shiftHeld {
+                        onProfileHotkeyCycleBackward?(entry.profileId)
+                    } else {
+                        onProfileHotkeyCycleForward?(entry.profileId)
+                    }
+                }
+                return nil
+            }
+
+            // Escape — cancel any active switcher
             if keyCode == kVK_Escape {
                 if isSwitcherActive {
                     isSwitcherActive = false
@@ -234,6 +373,13 @@ final class HotkeyService {
                     isProfileSwitcherActive = false
                     isProfileModifierHeld = false
                     onProfileSwitcherCancelled?()
+                    return nil
+                }
+                if activeProfileHotkeyId != nil {
+                    activeProfileHotkeyId = nil
+                    profileHotkeyModifierHeld = false
+                    profileHotkeyModifier = nil
+                    onSwitcherCancelled?()
                     return nil
                 }
             }

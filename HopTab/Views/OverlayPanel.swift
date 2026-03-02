@@ -127,3 +127,54 @@ final class ProfileOverlayWindowController {
         panel = nil
     }
 }
+
+// MARK: - Window Picker Overlay Controller
+
+final class WindowPickerOverlayController {
+    private var panel: OverlayPanel?
+
+    func show(appName: String, appIcon: NSImage, windows: [WindowInfo], selectedIndex: Int) {
+        let panel = OverlayPanel()
+
+        let view = WindowPickerView(appName: appName, appIcon: appIcon, windows: windows, selectedIndex: selectedIndex)
+        let hostingView = NSHostingView(rootView: view)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 1, height: 1)
+        panel.contentView = hostingView
+
+        let fittingSize = hostingView.fittingSize
+        let screenFrame = NSScreen.main?.frame ?? .zero
+        let panelFrame = NSRect(
+            x: (screenFrame.width - fittingSize.width) / 2 + screenFrame.origin.x,
+            y: (screenFrame.height - fittingSize.height) / 2 + screenFrame.origin.y,
+            width: fittingSize.width,
+            height: fittingSize.height
+        )
+        panel.setFrame(panelFrame, display: true)
+
+        panel.orderFrontRegardless()
+        self.panel = panel
+    }
+
+    func update(appName: String, appIcon: NSImage, windows: [WindowInfo], selectedIndex: Int) {
+        guard let panel else { return }
+
+        let view = WindowPickerView(appName: appName, appIcon: appIcon, windows: windows, selectedIndex: selectedIndex)
+        let hostingView = NSHostingView(rootView: view)
+        panel.contentView = hostingView
+
+        let fittingSize = hostingView.fittingSize
+        let screenFrame = NSScreen.main?.frame ?? .zero
+        let panelFrame = NSRect(
+            x: (screenFrame.width - fittingSize.width) / 2 + screenFrame.origin.x,
+            y: (screenFrame.height - fittingSize.height) / 2 + screenFrame.origin.y,
+            width: fittingSize.width,
+            height: fittingSize.height
+        )
+        panel.setFrame(panelFrame, display: true, animate: false)
+    }
+
+    func dismiss() {
+        panel?.orderOut(nil)
+        panel = nil
+    }
+}

@@ -50,6 +50,12 @@ private func fuzzyMatch(query: String, target: String) -> Bool {
 private struct PinnedAppsTab: View {
     @EnvironmentObject private var appState: AppState
     @State private var searchText = ""
+    @State private var appSource: AppSource = .running
+
+    enum AppSource: String, CaseIterable {
+        case running = "Running"
+        case allApps = "All Apps"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -101,61 +107,91 @@ private struct PinnedAppsTab: View {
                 }
             }
 
-            // Running apps — click row to toggle pin
-            GroupBox("Running Apps \u{2014} click to pin / unpin") {
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField("Filter running apps\u{2026}", text: $searchText)
-                        .textFieldStyle(.plain)
-                }
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
-                .padding(.bottom, 4)
+            // Source picker + search
+            GroupBox {
+                VStack(spacing: 8) {
+                    Picker("", selection: $appSource) {
+                        ForEach(AppSource.allCases, id: \.self) { source in
+                            Text(source.rawValue).tag(source)
+                        }
+                    }
+                    .pickerStyle(.segmented)
 
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(appState.runningApps.filter { app in
-                            guard !searchText.isEmpty,
-                                  let name = app.localizedName else { return true }
-                            return fuzzyMatch(query: searchText, target: name)
-                        }, id: \.bundleIdentifier) { app in
-                            if let bundleID = app.bundleIdentifier,
-                               let name = app.localizedName {
-                                let pinned = appState.store.isPinned(bundleID)
-                                HStack {
-                                    if let icon = app.icon {
-                                        Image(nsImage: icon)
-                                            .resizable()
-                                            .frame(width: 20, height: 20)
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField("Filter apps\u{2026}", text: $searchText)
+                            .textFieldStyle(.plain)
+                    }
+                    .padding(6)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.05)))
+
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 2) {
+                            if appSource == .running {
+                                ForEach(filteredRunningApps, id: \.bundleIdentifier) { app in
+                                    if let bundleID = app.bundleIdentifier,
+                                       let name = app.localizedName {
+                                        appRow(bundleID: bundleID, name: name, icon: app.icon)
                                     }
-                                    Text(name)
-                                    Spacer()
-                                    Image(systemName: pinned ? "pin.fill" : "pin")
-                                        .foregroundStyle(pinned ? Color.accentColor : .secondary)
-                                        .font(.system(size: 12))
                                 }
-                                .padding(.vertical, 4)
-                                .padding(.horizontal, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(pinned ? Color.accentColor.opacity(0.1) : Color.clear)
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    appState.store.togglePin(
-                                        bundleIdentifier: bundleID,
-                                        displayName: name
-                                    )
+                            } else {
+                                ForEach(filteredInstalledApps) { app in
+                                    appRow(bundleID: app.bundleIdentifier, name: app.displayName, icon: app.icon)
                                 }
                             }
                         }
                     }
+                    .frame(minHeight: 80, maxHeight: 150)
                 }
-                .frame(minHeight: 80, maxHeight: 150)
+            } label: {
+                Text(appSource == .running
+                     ? "Running Apps \u{2014} click to pin / unpin"
+                     : "All Apps \u{2014} click to pin / unpin")
             }
         }
         .padding()
+    }
+
+    private var filteredRunningApps: [NSRunningApplication] {
+        appState.runningApps.filter { app in
+            guard !searchText.isEmpty,
+                  let name = app.localizedName else { return true }
+            return fuzzyMatch(query: searchText, target: name)
+        }
+    }
+
+    private var filteredInstalledApps: [InstalledAppsService.AppInfo] {
+        appState.installedApps.filter { app in
+            guard !searchText.isEmpty else { return true }
+            return fuzzyMatch(query: searchText, target: app.displayName)
+        }
+    }
+
+    private func appRow(bundleID: String, name: String, icon: NSImage?) -> some View {
+        let pinned = appState.store.isPinned(bundleID)
+        return HStack {
+            if let icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 20, height: 20)
+            }
+            Text(name)
+            Spacer()
+            Image(systemName: pinned ? "pin.fill" : "pin")
+                .foregroundStyle(pinned ? Color.accentColor : .secondary)
+                .font(.system(size: 12))
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(pinned ? Color.accentColor.opacity(0.1) : Color.clear)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            appState.store.togglePin(bundleIdentifier: bundleID, displayName: name)
+        }
     }
 
     private var profilePicker: some View {
@@ -190,125 +226,30 @@ private struct PinnedAppsTab: View {
 private struct ProfilesTab: View {
     @EnvironmentObject private var appState: AppState
     @State private var newProfileName = ""
-    @State private var editingProfileId: UUID?
-    @State private var editingName = ""
+    @State private var settingsProfileId: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             GroupBox("Profiles") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Create profiles for different workflows. Each profile has its own set of pinned apps. Assign a profile to a desktop and it auto-activates when you switch there.")
+                    Text("Create profiles for different workflows. Click the gear icon to configure desktop assignment and hotkey.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 4)
 
                     List {
                         ForEach(appState.store.profiles) { profile in
-                            VStack(alignment: .leading, spacing: 4) {
-                                if editingProfileId == profile.id {
-                                    HStack {
-                                        TextField("Profile name", text: $editingName, onCommit: {
-                                            commitRename(id: profile.id)
-                                        })
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(maxWidth: 200)
-
-                                        Button("Save") { commitRename(id: profile.id) }
-                                            .buttonStyle(.borderedProminent)
-                                            .controlSize(.small)
-
-                                        Button("Cancel") { editingProfileId = nil }
-                                            .controlSize(.small)
-                                    }
-                                } else {
-                                    HStack {
-                                        Image(systemName: profile.id == appState.store.activeProfileId ? "circle.fill" : "circle")
-                                            .foregroundStyle(profile.id == appState.store.activeProfileId ? Color.accentColor : .secondary)
-                                            .font(.system(size: 8))
-
-                                        Text(profile.name)
-                                            .fontWeight(profile.id == appState.store.activeProfileId ? .semibold : .regular)
-
-                                        Text("\(profile.pinnedApps.count) app\(profile.pinnedApps.count == 1 ? "" : "s")")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.secondary)
-
-                                        Spacer()
-
-                                        if profile.id == appState.store.activeProfileId {
-                                            Text("Active")
-                                                .font(.system(size: 10))
-                                                .foregroundStyle(.secondary)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 2)
-                                                .background(Color.accentColor.opacity(0.15))
-                                                .clipShape(RoundedRectangle(cornerRadius: 4))
-                                        } else {
-                                            Button("Activate") {
-                                                appState.store.setActiveProfile(id: profile.id)
-                                            }
-                                            .controlSize(.small)
-                                        }
-
-                                        Button {
-                                            editingProfileId = profile.id
-                                            editingName = profile.name
-                                        } label: {
-                                            Image(systemName: "pencil")
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundStyle(.secondary)
-
-                                        if appState.store.profiles.count > 1 {
-                                            Button(role: .destructive) {
-                                                appState.store.deleteProfile(id: profile.id)
-                                            } label: {
-                                                Image(systemName: "trash")
-                                            }
-                                            .buttonStyle(.plain)
-                                            .foregroundStyle(.red.opacity(0.7))
-                                        }
-                                    }
-
-                                    // Desktop assignment row
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "desktopcomputer")
-                                            .font(.system(size: 10))
-                                            .foregroundStyle(.secondary)
-
-                                        if appState.store.spaceForProfile(profile.id) != nil {
-                                            Text("Assigned to a desktop")
-                                                .font(.system(size: 11))
-                                                .foregroundStyle(.secondary)
-                                            Button("Reassign to this desktop") {
-                                                appState.store.assignProfileToCurrentSpace(profileId: profile.id)
-                                            }
-                                            .font(.system(size: 11))
-                                            .controlSize(.small)
-                                            Button("Remove") {
-                                                appState.store.unassignProfileFromSpace(profileId: profile.id)
-                                            }
-                                            .font(.system(size: 11))
-                                            .controlSize(.small)
-                                            .foregroundStyle(.red.opacity(0.7))
-                                        } else {
-                                            Text("No desktop assigned")
-                                                .font(.system(size: 11))
-                                                .foregroundStyle(.tertiary)
-                                            Button("Assign to this desktop") {
-                                                appState.store.assignProfileToCurrentSpace(profileId: profile.id)
-                                            }
-                                            .font(.system(size: 11))
-                                            .controlSize(.small)
-                                        }
-                                    }
-                                    .padding(.leading, 16)
-                                }
-                            }
+                            ProfileRow(
+                                profile: profile,
+                                isSettingsOpen: Binding(
+                                    get: { settingsProfileId == profile.id },
+                                    set: { settingsProfileId = $0 ? profile.id : nil }
+                                )
+                            )
                             .padding(.vertical, 2)
                         }
                     }
-                    .frame(minHeight: 120, maxHeight: 250)
+                    .frame(minHeight: 120, maxHeight: 300)
                 }
                 .padding(4)
             }
@@ -336,13 +277,242 @@ private struct ProfilesTab: View {
         appState.store.addProfile(name: name)
         newProfileName = ""
     }
+}
 
-    private func commitRename(id: UUID) {
+// MARK: - Profile Row
+
+private struct ProfileRow: View {
+    @EnvironmentObject private var appState: AppState
+    let profile: Profile
+    @Binding var isSettingsOpen: Bool
+
+    @State private var isEditing = false
+    @State private var editingName = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if isEditing {
+                HStack {
+                    TextField("Profile name", text: $editingName, onCommit: commitRename)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 200)
+                    Button("Save") { commitRename() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    Button("Cancel") { isEditing = false }
+                        .controlSize(.small)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: isActive ? "circle.fill" : "circle")
+                        .foregroundStyle(isActive ? Color.accentColor : .secondary)
+                        .font(.system(size: 8))
+
+                    Text(profile.name)
+                        .fontWeight(isActive ? .semibold : .regular)
+
+                    Text("\(profile.pinnedApps.count) app\(profile.pinnedApps.count == 1 ? "" : "s")")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    // Compact status badges
+                    if appState.store.spaceForProfile(profile.id) != nil {
+                        Image(systemName: "desktopcomputer")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .help("Assigned to a desktop")
+                    }
+                    if profile.hotkey != nil {
+                        Image(systemName: "keyboard")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .help("Hotkey: \(profile.hotkey!.displayName)")
+                    }
+
+                    Spacer()
+
+                    if isActive {
+                        Text("Active")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    } else {
+                        Button("Activate") {
+                            appState.store.setActiveProfile(id: profile.id)
+                        }
+                        .controlSize(.small)
+                    }
+
+                    Button {
+                        isSettingsOpen.toggle()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(isSettingsOpen ? Color.accentColor : .secondary)
+                    .popover(isPresented: $isSettingsOpen, arrowEdge: .trailing) {
+                        ProfileSettingsPopover(profile: profile, isEditing: $isEditing, editingName: $editingName)
+                            .environmentObject(appState)
+                    }
+
+                    if appState.store.profiles.count > 1 {
+                        Button(role: .destructive) {
+                            appState.store.deleteProfile(id: profile.id)
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.red.opacity(0.7))
+                    }
+                }
+            }
+        }
+    }
+
+    private var isActive: Bool { profile.id == appState.store.activeProfileId }
+
+    private func commitRename() {
         let name = editingName.trimmingCharacters(in: .whitespaces)
         if !name.isEmpty {
-            appState.store.renameProfile(id: id, to: name)
+            appState.store.renameProfile(id: profile.id, to: name)
         }
-        editingProfileId = nil
+        isEditing = false
+    }
+}
+
+// MARK: - Profile Settings Popover
+
+private struct ProfileSettingsPopover: View {
+    @EnvironmentObject private var appState: AppState
+    let profile: Profile
+    @Binding var isEditing: Bool
+    @Binding var editingName: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Rename
+            HStack(spacing: 6) {
+                Image(systemName: "pencil")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+                Button("Rename") {
+                    editingName = profile.name
+                    isEditing = true
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.primary)
+            }
+
+            Divider()
+
+            // Desktop assignment
+            HStack(spacing: 6) {
+                Image(systemName: "desktopcomputer")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+
+                if appState.store.spaceForProfile(profile.id) != nil {
+                    Text("Desktop assigned")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Reassign") {
+                        appState.store.assignProfileToCurrentSpace(profileId: profile.id)
+                    }
+                    .controlSize(.small)
+                    Button("Remove") {
+                        appState.store.unassignProfileFromSpace(profileId: profile.id)
+                    }
+                    .controlSize(.small)
+                    .foregroundStyle(.red.opacity(0.7))
+                } else {
+                    Text("No desktop")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                    Button("Assign current") {
+                        appState.store.assignProfileToCurrentSpace(profileId: profile.id)
+                    }
+                    .controlSize(.small)
+                }
+            }
+
+            Divider()
+
+            // Hotkey
+            ProfileHotkeyRow(profile: profile)
+        }
+        .padding(12)
+        .frame(width: 300)
+    }
+}
+
+// MARK: - Profile Hotkey Row
+
+private struct ProfileHotkeyRow: View {
+    @EnvironmentObject private var appState: AppState
+    let profile: Profile
+
+    @State private var shortcut: CustomShortcut?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "keyboard")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+
+            Text("Hotkey:")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            ShortcutRecorderView(shortcut: $shortcut)
+                .onChange(of: shortcut) {
+                    appState.store.setProfileHotkey(id: profile.id, hotkey: shortcut)
+                }
+
+            if shortcut != nil {
+                Button("Clear") {
+                    shortcut = nil
+                    appState.store.setProfileHotkey(id: profile.id, hotkey: nil)
+                }
+                .font(.system(size: 11))
+                .controlSize(.small)
+            }
+
+            if let conflict = hotkeyConflict {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.system(size: 10))
+                    .help(conflict)
+            }
+        }
+        .padding(.leading, 16)
+        .onAppear {
+            shortcut = profile.hotkey
+        }
+    }
+
+    private var hotkeyConflict: String? {
+        guard let hk = shortcut else { return nil }
+
+        // Check against app switcher shortcut
+        let appSel = appState.appShortcutSelection
+        if appSel.modifierFlags == hk.modifierFlags && appSel.keyCode == hk.keyCode {
+            return "Conflicts with app switcher shortcut"
+        }
+
+        // Check against other profiles
+        for p in appState.store.profiles where p.id != profile.id {
+            if let other = p.hotkey,
+               other.modifierFlagsRawValue == hk.modifierFlagsRawValue && other.keyCode == hk.keyCode {
+                return "Conflicts with \(p.name) profile hotkey"
+            }
+        }
+
+        return nil
     }
 }
 
@@ -354,121 +524,140 @@ private struct ShortcutTab: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                GroupBox("Switcher Shortcut") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(ShortcutPreset.allCases) { preset in
-                            HStack(spacing: 8) {
-                                Image(systemName: appState.selectedPreset == preset ? "circle.inset.filled" : "circle")
-                                    .foregroundStyle(appState.selectedPreset == preset ? Color.accentColor : .secondary)
-                                    .font(.system(size: 14))
-                                Text(preset.displayName)
-                                    .font(.system(size: 13))
-                                Spacer()
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture { appState.selectPreset(preset) }
-                        }
-
-                        HStack(spacing: 8) {
-                            Image(systemName: appState.isCustomAppShortcut ? "circle.inset.filled" : "circle")
-                                .foregroundStyle(appState.isCustomAppShortcut ? Color.accentColor : .secondary)
-                                .font(.system(size: 14))
-                            Text("Custom")
-                                .font(.system(size: 13))
-
-                            if appState.isCustomAppShortcut {
-                                ShortcutRecorderView(shortcut: $appState.customAppShortcut)
-                            }
-
-                            Spacer()
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { appState.selectCustomMode() }
-
-                        if appState.shortcutsConflict {
-                            conflictBanner
-                        }
-
-                        Divider()
-
-                        hotkeyStatusRow
-                    }
-                    .padding(8)
-                }
-
-                GroupBox("Profile Switcher Shortcut") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Toggle("Custom shortcut", isOn: $appState.isCustomProfileShortcut)
-                            .font(.system(size: 12))
-
-                        if appState.isCustomProfileShortcut {
-                            HStack(spacing: 6) {
-                                Image(systemName: "person.2.fill")
-                                    .foregroundStyle(.secondary)
-                                ShortcutRecorderView(shortcut: $appState.customProfileShortcut)
-                            }
-                            .font(.system(size: 12))
-                        } else {
-                            HStack(spacing: 6) {
-                                Image(systemName: "person.2.fill")
-                                    .foregroundStyle(.secondary)
-                                Text("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName)")
-                                    .fontWeight(.medium)
-                                Text("(auto-configured)")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .font(.system(size: 12))
-                        }
-
-                        if appState.shortcutsConflict {
-                            conflictBanner
-                        }
-                    }
-                    .padding(8)
-                }
-
-                GroupBox("Behavior") {
-                    Toggle("Move recently switched app to front", isOn: $appState.recentAppFirst)
-                        .font(.system(size: 12))
-                        .padding(8)
-                }
-
-                GroupBox("How It Works") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        let sel = appState.appShortcutSelection
-                        Text("App Switcher")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.primary)
-                        Label("\(sel.modifierName) + \(sel.keyName) \u{2014} show switcher & cycle forward",
-                              systemImage: "arrow.right")
-                        Label("Shift + \(sel.modifierName) + \(sel.keyName) \u{2014} cycle backward",
-                              systemImage: "arrow.left")
-                        Label("Release \(sel.modifierName) \u{2014} activate selected app",
-                              systemImage: "checkmark")
-                        Label("Escape \u{2014} cancel",
-                              systemImage: "xmark")
-
-                        Divider().padding(.vertical, 2)
-
-                        Text("Profile Switcher")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.primary)
-                        Label("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} show profiles & cycle forward",
-                              systemImage: "arrow.right")
-                        Label("Shift + \(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} cycle backward",
-                              systemImage: "arrow.left")
-                        Label("Release \(appState.profileShortcutModifierName) \u{2014} activate selected profile",
-                              systemImage: "checkmark")
-                        Label("Escape \u{2014} cancel",
-                              systemImage: "xmark")
-                    }
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .padding(8)
-                }
+                switcherShortcutSection
+                profileShortcutSection
+                behaviorSection
+                howItWorksSection
             }
             .padding()
+        }
+    }
+
+    private var switcherShortcutSection: some View {
+        GroupBox("Switcher Shortcut") {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(ShortcutPreset.allCases) { preset in
+                    HStack(spacing: 8) {
+                        Image(systemName: appState.selectedPreset == preset ? "circle.inset.filled" : "circle")
+                            .foregroundStyle(appState.selectedPreset == preset ? Color.accentColor : .secondary)
+                            .font(.system(size: 14))
+                        Text(preset.displayName)
+                            .font(.system(size: 13))
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { appState.selectPreset(preset) }
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: appState.isCustomAppShortcut ? "circle.inset.filled" : "circle")
+                        .foregroundStyle(appState.isCustomAppShortcut ? Color.accentColor : .secondary)
+                        .font(.system(size: 14))
+                    Text("Custom")
+                        .font(.system(size: 13))
+
+                    if appState.isCustomAppShortcut {
+                        ShortcutRecorderView(shortcut: $appState.customAppShortcut)
+                    }
+
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { appState.selectCustomMode() }
+
+                if appState.shortcutsConflict {
+                    conflictBanner
+                }
+
+                Divider()
+
+                hotkeyStatusRow
+            }
+            .padding(8)
+        }
+    }
+
+    private var profileShortcutSection: some View {
+        GroupBox("Profile Switcher Shortcut") {
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle("Custom shortcut", isOn: $appState.isCustomProfileShortcut)
+                    .font(.system(size: 12))
+
+                if appState.isCustomProfileShortcut {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.2.fill")
+                            .foregroundStyle(.secondary)
+                        ShortcutRecorderView(shortcut: $appState.customProfileShortcut)
+                    }
+                    .font(.system(size: 12))
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.2.fill")
+                            .foregroundStyle(.secondary)
+                        Text("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName)")
+                            .fontWeight(.medium)
+                        Text("(auto-configured)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .font(.system(size: 12))
+                }
+
+                if appState.shortcutsConflict {
+                    conflictBanner
+                }
+            }
+            .padding(8)
+        }
+    }
+
+    private var behaviorSection: some View {
+        GroupBox("Behavior") {
+            Toggle("Move recently switched app to front", isOn: $appState.recentAppFirst)
+                .font(.system(size: 12))
+                .padding(8)
+        }
+    }
+
+    private var howItWorksSection: some View {
+        GroupBox("How It Works") {
+            VStack(alignment: .leading, spacing: 6) {
+                let sel = appState.appShortcutSelection
+                Text("App Switcher")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                Label("\(sel.modifierName) + \(sel.keyName) \u{2014} show switcher & cycle forward",
+                      systemImage: "arrow.right")
+                Label("Shift + \(sel.modifierName) + \(sel.keyName) \u{2014} cycle backward",
+                      systemImage: "arrow.left")
+                Label("Release \(sel.modifierName) \u{2014} activate selected app",
+                      systemImage: "checkmark")
+                Label("Escape \u{2014} cancel",
+                      systemImage: "xmark")
+                Label("\u{2318}Q \u{2014} quit highlighted app",
+                      systemImage: "xmark.circle")
+                Label("\u{2318}H \u{2014} hide highlighted app",
+                      systemImage: "eye.slash")
+                Label("\u{2318}M \u{2014} minimize highlighted app",
+                      systemImage: "minus.rectangle")
+
+                Divider().padding(.vertical, 2)
+
+                Text("Profile Switcher")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                Label("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} show profiles & cycle forward",
+                      systemImage: "arrow.right")
+                Label("Shift + \(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} cycle backward",
+                      systemImage: "arrow.left")
+                Label("Release \(appState.profileShortcutModifierName) \u{2014} activate selected profile",
+                      systemImage: "checkmark")
+                Label("Escape \u{2014} cancel",
+                      systemImage: "xmark")
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .padding(8)
         }
     }
 

@@ -62,6 +62,70 @@ struct ProfileOverlayView: View {
     }
 }
 
+// MARK: - Window Picker View
+
+struct WindowPickerView: View {
+    let appName: String
+    let appIcon: NSImage
+    let windows: [WindowInfo]
+    let selectedIndex: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: app icon + name
+            HStack(spacing: 10) {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .frame(width: 32, height: 32)
+                Text(appName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+
+            Divider()
+                .padding(.horizontal, 12)
+
+            // Window list
+            VStack(spacing: 2) {
+                ForEach(Array(windows.enumerated()), id: \.element.id) { index, window in
+                    let isSelected = index == selectedIndex
+                    HStack(spacing: 8) {
+                        Image(systemName: window.isMinimized ? "minus.circle" : "macwindow")
+                            .font(.system(size: 13))
+                            .foregroundStyle(isSelected ? .white : .secondary)
+                            .frame(width: 16)
+
+                        Text(window.title)
+                            .font(.system(size: 13))
+                            .foregroundStyle(isSelected ? .white : .primary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(isSelected ? Color.accentColor : Color.clear)
+                    )
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 6)
+            .padding(.bottom, 10)
+        }
+        .frame(width: 320)
+        .background {
+            VisualEffectBlur(cornerRadius: 18)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+    }
+}
+
 // MARK: - Visual Effect (NSVisualEffectView wrapper)
 
 struct VisualEffectBlur: NSViewRepresentable {
