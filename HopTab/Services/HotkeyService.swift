@@ -242,6 +242,8 @@ final class HotkeyService {
                     isSwitcherActive = false
                     onSwitcherDismissed?()
                 }
+            } else if !isModifierHeld && actualAppMod {
+                isModifierHeld = true
             }
 
             let actualProfileMod = flags.contains(profileModifierFlag)
@@ -251,6 +253,8 @@ final class HotkeyService {
                     isProfileSwitcherActive = false
                     onProfileSwitcherDismissed?()
                 }
+            } else if !isProfileModifierHeld && actualProfileMod {
+                isProfileModifierHeld = true
             }
 
             // Sync per-profile hotkey modifier on key events
