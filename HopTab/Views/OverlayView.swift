@@ -3,11 +3,14 @@ import SwiftUI
 struct OverlayView: View {
     let apps: [PinnedApp]
     let selectedIndex: Int
+    var onAppClicked: ((Int) -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
             ForEach(Array(apps.enumerated()), id: \.element.id) { index, app in
                 AppIconView(app: app, isSelected: index == selectedIndex)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onAppClicked?(index) }
             }
         }
         .padding(.horizontal, 20)

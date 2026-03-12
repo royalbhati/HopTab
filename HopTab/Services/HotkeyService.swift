@@ -308,8 +308,13 @@ final class HotkeyService {
                 }
             }
 
+            // Modifier mask for exact matching (shift excluded — it's used for reverse cycling)
+            let nonShiftModifiers = CGEventFlags([.maskControl, .maskAlternate, .maskCommand])
+
             // App switcher trigger
-            if isModifierHeld && keyCode == triggerKeyCode {
+            let appEventMods = flags.intersection(nonShiftModifiers)
+            let appRequiredMods = modifierFlag.intersection(nonShiftModifiers)
+            if isModifierHeld && keyCode == triggerKeyCode && appEventMods == appRequiredMods {
                 let shiftHeld = flags.contains(.maskShift)
 
                 if !isSwitcherActive {
@@ -324,7 +329,9 @@ final class HotkeyService {
             }
 
             // Profile switcher trigger
-            if isProfileModifierHeld && keyCode == profileTriggerKeyCode
+            let profileEventMods = flags.intersection(nonShiftModifiers)
+            let profileRequiredMods = profileModifierFlag.intersection(nonShiftModifiers)
+            if isProfileModifierHeld && keyCode == profileTriggerKeyCode && profileEventMods == profileRequiredMods
                 && !(isSwitcherActive && triggerKeyCode == profileTriggerKeyCode && modifierFlag == profileModifierFlag) {
                 let shiftHeld = flags.contains(.maskShift)
 
@@ -340,8 +347,10 @@ final class HotkeyService {
             }
 
             // Per-profile hotkey triggers
+            let eventNonShiftMods = flags.intersection(nonShiftModifiers)
             for entry in profileHotkeys {
-                guard flags.contains(entry.modifierFlag) && keyCode == entry.keyCode else { continue }
+                let entryMods = entry.modifierFlag.intersection(nonShiftModifiers)
+                guard eventNonShiftMods == entryMods && keyCode == entry.keyCode else { continue }
                 // Skip if it matches the app or profile switcher shortcut
                 if entry.modifierFlag == modifierFlag && entry.keyCode == triggerKeyCode { continue }
                 if entry.modifierFlag == profileModifierFlag && entry.keyCode == profileTriggerKeyCode { continue }

@@ -103,6 +103,12 @@ final class AppState: ObservableObject {
             customAppShortcut = c
         }
 
+        overlayController.onAppClicked = { [weak self] index in
+            guard let self, self.isSwitcherVisible else { return }
+            self.selectedIndex = index
+            self.dismissAndActivate()
+        }
+
         applyAppShortcut()
         applyProfileShortcut()
         syncProfileHotkeys()
@@ -317,6 +323,7 @@ final class AppState: ObservableObject {
     }
 
     private func dismissAndActivate() {
+        guard isSwitcherVisible else { return }
         let apps = store.apps
         guard selectedIndex < apps.count else {
             cancelSwitcher()

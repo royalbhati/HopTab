@@ -1,6 +1,12 @@
 import AppKit
 import SwiftUI
 
+/// NSHostingView subclass that accepts the first mouse click without
+/// requiring the window to be key — needed for non-activating panels.
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// A non-activating, borderless floating panel for the app switcher overlay.
 final class OverlayPanel: NSPanel {
     init() {
@@ -29,12 +35,13 @@ final class OverlayPanel: NSPanel {
 
 final class OverlayWindowController {
     private var panel: OverlayPanel?
+    var onAppClicked: ((Int) -> Void)?
 
     func show(apps: [PinnedApp], selectedIndex: Int) {
         let panel = OverlayPanel()
 
-        let overlayView = OverlayView(apps: apps, selectedIndex: selectedIndex)
-        let hostingView = NSHostingView(rootView: overlayView)
+        let overlayView = OverlayView(apps: apps, selectedIndex: selectedIndex, onAppClicked: onAppClicked)
+        let hostingView = FirstMouseHostingView(rootView: overlayView)
         hostingView.frame = NSRect(x: 0, y: 0, width: 1, height: 1) // will resize
         panel.contentView = hostingView
 
@@ -56,8 +63,8 @@ final class OverlayWindowController {
     func update(apps: [PinnedApp], selectedIndex: Int) {
         guard let panel else { return }
 
-        let overlayView = OverlayView(apps: apps, selectedIndex: selectedIndex)
-        let hostingView = NSHostingView(rootView: overlayView)
+        let overlayView = OverlayView(apps: apps, selectedIndex: selectedIndex, onAppClicked: onAppClicked)
+        let hostingView = FirstMouseHostingView(rootView: overlayView)
         panel.contentView = hostingView
 
         let fittingSize = hostingView.fittingSize
