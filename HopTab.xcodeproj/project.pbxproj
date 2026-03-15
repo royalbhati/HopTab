@@ -27,6 +27,13 @@
 		A10019 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10019 /* ShortcutRecorderView.swift */; };
 		A10020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10020 /* Assets.xcassets */; };
 		A10021 /* InstalledAppsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10021 /* InstalledAppsService.swift */; };
+		A10022 /* SessionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10022 /* SessionSnapshot.swift */; };
+		A10023 /* SessionSnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10023 /* SessionSnapshotService.swift */; };
+		A10024 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10024 /* OnboardingView.swift */; };
+		A10025 /* LayoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10025 /* LayoutTemplate.swift */; };
+		A10026 /* LayoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10026 /* LayoutService.swift */; };
+		A10027 /* LayoutPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10027 /* LayoutPickerView.swift */; };
+		A10028 /* UpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10028 /* UpdateService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +58,13 @@
 		B10019 /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderView.swift; sourceTree = "<group>"; };
 		B10020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10021 /* InstalledAppsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledAppsService.swift; sourceTree = "<group>"; };
+		B10022 /* SessionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSnapshot.swift; sourceTree = "<group>"; };
+		B10023 /* SessionSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSnapshotService.swift; sourceTree = "<group>"; };
+		B10024 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		B10025 /* LayoutTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutTemplate.swift; sourceTree = "<group>"; };
+		B10026 /* LayoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutService.swift; sourceTree = "<group>"; };
+		B10027 /* LayoutPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutPickerView.swift; sourceTree = "<group>"; };
+		B10028 /* UpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateService.swift; sourceTree = "<group>"; };
 		B10099 /* HopTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -104,6 +118,8 @@
 				B10015 /* ShortcutConfig.swift */,
 				B10016 /* Profile.swift */,
 				B10018 /* KeyCodeMapping.swift */,
+				B10022 /* SessionSnapshot.swift */,
+				B10025 /* LayoutTemplate.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -116,6 +132,9 @@
 				B10008 /* PermissionsService.swift */,
 				B10017 /* SpaceService.swift */,
 				B10021 /* InstalledAppsService.swift */,
+				B10023 /* SessionSnapshotService.swift */,
+				B10026 /* LayoutService.swift */,
+				B10028 /* UpdateService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -129,6 +148,8 @@
 				B10012 /* SettingsView.swift */,
 				B10013 /* MenuBarView.swift */,
 				B10019 /* ShortcutRecorderView.swift */,
+				B10024 /* OnboardingView.swift */,
+				B10027 /* LayoutPickerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -224,6 +245,13 @@
 				A10018 /* KeyCodeMapping.swift in Sources */,
 				A10019 /* ShortcutRecorderView.swift in Sources */,
 				A10021 /* InstalledAppsService.swift in Sources */,
+				A10022 /* SessionSnapshot.swift in Sources */,
+				A10023 /* SessionSnapshotService.swift in Sources */,
+				A10024 /* OnboardingView.swift in Sources */,
+				A10025 /* LayoutTemplate.swift in Sources */,
+				A10026 /* LayoutService.swift in Sources */,
+				A10027 /* LayoutPickerView.swift in Sources */,
+				A10028 /* UpdateService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

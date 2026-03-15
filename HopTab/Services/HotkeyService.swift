@@ -34,6 +34,11 @@ final class HotkeyService {
     var onWindowPickerSelect: (() -> Void)?
     var onWindowPickerCancel: (() -> Void)?
 
+    // Snap Callbacks (arrow keys while switcher active)
+    var onSnapLeft: (() -> Void)?
+    var onSnapRight: (() -> Void)?
+    var onSnapFull: (() -> Void)?
+
     // App Switcher shortcut (configurable)
     private(set) var modifierFlag: CGEventFlags = .maskAlternate
     private(set) var triggerKeyCode: Int64 = Int64(kVK_Tab)
@@ -305,6 +310,21 @@ final class HotkeyService {
                     default:
                         break
                     }
+                }
+
+                // Arrow key snapping while switcher is active
+                switch keyCode {
+                case Int64(kVK_LeftArrow):
+                    onSnapLeft?()
+                    return nil
+                case Int64(kVK_RightArrow):
+                    onSnapRight?()
+                    return nil
+                case Int64(kVK_UpArrow):
+                    onSnapFull?()
+                    return nil
+                default:
+                    break
                 }
             }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HopTab — Focused App Switching for macOS</title>
+  <title>HopTab — Your macOS Workspace, Supercharged</title>
   <style>
     :root {
       --bg: #0a0a0f;
@@ -18,6 +18,8 @@
       --orange: #fb923c;
       --pink: #f472b6;
       --blue: #60a5fa;
+      --purple: #a78bfa;
+      --red: #f87171;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,7 +32,7 @@
       line-height: 1.6;
     }
 
-    /* ---- Noise texture overlay ---- */
+    /* Noise texture */
     body::before {
       content: '';
       position: fixed;
@@ -40,7 +42,6 @@
       z-index: 9999;
     }
 
-    /* ---- Glow background ---- */
     .glow-bg {
       position: fixed;
       top: -40%;
@@ -54,7 +55,7 @@
       opacity: 0.5;
     }
 
-    /* ---- Navigation ---- */
+    /* Nav */
     nav {
       position: fixed;
       top: 0;
@@ -83,12 +84,8 @@
     .nav-logo .icon {
       width: 32px;
       height: 32px;
-      background: linear-gradient(135deg, var(--accent), #a78bfa);
       border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
+      object-fit: contain;
     }
 
     .nav-links {
@@ -123,7 +120,7 @@
       box-shadow: 0 4px 20px var(--accent-glow);
     }
 
-    /* ---- Sections ---- */
+    /* Sections */
     section {
       position: relative;
       z-index: 1;
@@ -156,7 +153,7 @@
       line-height: 1.7;
     }
 
-    /* ---- Hero ---- */
+    /* Hero */
     .hero {
       padding-top: 180px;
       text-align: center;
@@ -211,7 +208,7 @@
     .hero .subtitle {
       font-size: 20px;
       color: var(--text-muted);
-      max-width: 560px;
+      max-width: 620px;
       margin-bottom: 48px;
       line-height: 1.7;
     }
@@ -258,72 +255,861 @@
       border-color: var(--text-muted);
     }
 
-    /* ---- Hero Demo (Overlay Mockup) ---- */
-    .hero-demo {
+    /* Hero Visual - Floating Feature Cards */
+    .hero-visual {
       position: relative;
       width: 100%;
-      max-width: 780px;
+      max-width: 900px;
+      height: 400px;
     }
 
-    .demo-window {
-      background: var(--surface);
-      border: 1px solid var(--border);
+    .hero-mock {
+      position: absolute;
       border-radius: 16px;
+      border: 1px solid var(--border);
       overflow: hidden;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      transition: transform 0.4s ease;
     }
 
-    .demo-titlebar {
+    .hero-mock:hover { transform: translateY(-4px) scale(1.02); }
+
+    /* Overlay mockup in center */
+    .hero-overlay-mock {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      background: rgba(30, 30, 40, 0.9);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    .hero-overlay-mock:hover { transform: translate(-50%, -50%) translateY(-4px); }
+
+    .mock-app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      min-width: 72px;
+      transition: all 0.3s;
+    }
+
+    .mock-app.active {
+      background: rgba(99, 102, 241, 0.2);
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    .mock-app-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .mock-app-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .mock-app.active .mock-app-name { color: var(--text); }
+
+    /* Layout mockup - left side */
+    .hero-layout-mock {
+      left: 0;
+      top: 20px;
+      width: 260px;
+      height: 170px;
+      z-index: 2;
+      background: var(--surface);
+    }
+
+    .layout-mock-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 12px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .layout-mock-body {
+      padding: 10px;
+      display: grid;
+      gap: 4px;
+      height: calc(100% - 38px);
+    }
+
+    .layout-zone {
+      border-radius: 6px;
+      border: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      transition: all 0.3s;
+    }
+
+    .layout-zone.filled {
+      border-style: solid;
+      background: rgba(99, 102, 241, 0.08);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: var(--accent);
+    }
+
+    /* Window picker mockup - right side */
+    .hero-picker-mock {
+      right: 0;
+      top: 40px;
+      width: 240px;
+      z-index: 2;
+      background: var(--surface);
+    }
+
+    .picker-mock-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 14px 18px;
+      padding: 10px 12px;
       background: var(--surface2);
       border-bottom: 1px solid var(--border);
     }
 
-    .traffic-light {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-
-    .traffic-light.red { background: #ff5f57; }
-    .traffic-light.yellow { background: #ffbd2e; }
-    .traffic-light.green { background: #28c840; }
-
-    .demo-content {
-      position: relative;
-      height: 420px;
+    .picker-app-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background:
-        linear-gradient(135deg, rgba(99,102,241,0.05) 0%, transparent 50%),
-        var(--bg);
+      font-size: 13px;
     }
 
-    /* Fake desktop icons */
-    .desktop-grid {
+    .picker-app-name {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .picker-mock-list {
+      padding: 6px;
+    }
+
+    .picker-window-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .picker-window-row.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .picker-window-row .win-icon { font-size: 13px; width: 14px; }
+
+    /* Snap mockup - bottom right */
+    .hero-snap-mock {
+      right: 40px;
+      bottom: 0;
+      width: 200px;
+      height: 130px;
+      z-index: 2;
+      background: var(--surface);
+      padding: 8px;
+    }
+
+    .snap-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 4px;
+      height: 100%;
+    }
+
+    .snap-cell {
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.3s;
+    }
+
+    .snap-cell.active {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    /* Problem Section */
+    .problem { text-align: center; }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0;
+      margin-top: 60px;
+      align-items: center;
+    }
+
+    .comparison-card {
+      padding: 40px 32px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .comparison-card.before {
+      background: linear-gradient(135deg, rgba(244,114,182,0.05), var(--surface));
+      border-color: rgba(244,114,182,0.2);
+    }
+
+    .comparison-card.after {
+      background: linear-gradient(135deg, rgba(52,211,153,0.05), var(--surface));
+      border-color: rgba(52,211,153,0.2);
+    }
+
+    .comparison-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .comparison-card.before h3 { color: var(--pink); }
+    .comparison-card.after h3 { color: var(--green); }
+
+    .comparison-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .comparison-arrow {
+      font-size: 32px;
+      color: var(--text-muted);
+      padding: 0 24px;
+    }
+
+    .app-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .app-strip .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .app-strip .chip .chip-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .app-strip .chip.highlight {
+      background: rgba(99,102,241,0.15);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .app-strip .chip.dimmed { opacity: 0.35; }
+
+    /* Powerhouse Features - Alternating layout */
+    .power-section { padding: 100px 40px; }
+
+    .power-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+      max-width: 1100px;
+      margin: 0 auto 120px;
+    }
+
+    .power-row:last-child { margin-bottom: 0; }
+
+    .power-row.reverse .power-text { order: 2; }
+    .power-row.reverse .power-visual { order: 1; }
+
+    .power-text .power-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+    }
+
+    .power-text h2 {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+
+    .power-text p {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .power-text .power-shortcuts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .shortcut-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .shortcut-tag kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* Power Visual Containers */
+    .power-visual {
+      position: relative;
+    }
+
+    .visual-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .visual-card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .visual-card-header .dot-sm {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-sm.red { background: #ff5f57; }
+    .dot-sm.yellow { background: #ffbd2e; }
+    .dot-sm.green { background: #28c840; }
+
+    .visual-card-header .title {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Layout Visual */
+    .layout-visual-body {
+      padding: 20px;
+    }
+
+    .layout-screen {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      height: 260px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .layout-screen-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 10px;
+      background: var(--surface2);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .layout-zones {
+      display: grid;
+      gap: 4px;
+      padding: 4px;
+      height: calc(100% - 24px);
+    }
+
+    .lz {
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lz::before {
+      content: '';
       position: absolute;
       inset: 0;
-      padding: 40px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      opacity: 0.15;
+      border-radius: 6px;
+      opacity: 0.06;
     }
 
-    .desktop-grid .fake-line {
-      height: 8px;
-      background: var(--text-muted);
+    .lz-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    .lz-name { color: var(--text-muted); font-size: 10px; }
+
+    /* Profile Visual */
+    .profile-visual-body {
+      padding: 16px;
+    }
+
+    .pv-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+
+    .pv-tab {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .pv-tab.active {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .pv-tab:hover:not(.active) {
+      background: var(--surface2);
+    }
+
+    .pv-content {
+      display: none;
+    }
+
+    .pv-content.active { display: block; }
+
+    .pv-app-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pv-app-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+    }
+
+    .pv-app-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .pv-app-info { flex: 1; }
+
+    .pv-app-name {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .pv-app-meta {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .pv-hotkey {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 8px;
+      background: var(--bg);
       border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
     }
 
-    /* ---- Overlay Switcher ---- */
-    .overlay-switcher {
+    .pv-desktop-tag {
+      padding: 3px 8px;
+      border-radius: 100px;
+      font-size: 10px;
+      font-weight: 600;
+      background: rgba(52, 211, 153, 0.1);
+      color: var(--green);
+    }
+
+    .pv-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .pv-header-row .pv-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    /* Window Picker Visual */
+    .picker-visual-body {
+      padding: 16px;
+    }
+
+    .pv-picker-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pv-picker-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .pv-picker-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pv-picker-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .pv-picker-row.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .pv-picker-row:hover:not(.active) {
+      background: var(--surface2);
+    }
+
+    .pv-picker-row .win-icon { width: 16px; font-size: 14px; }
+
+    /* Snap Visual */
+    .snap-visual-body {
+      padding: 20px;
+    }
+
+    .snap-screen {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      height: 200px;
       position: relative;
-      z-index: 2;
+      overflow: hidden;
+    }
+
+    .snap-screen-bar {
+      display: flex;
+      align-items: center;
+      padding: 4px 10px;
+      background: var(--surface2);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .snap-area {
+      position: absolute;
+      border-radius: 6px;
+      transition: all 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .snap-area .snap-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .snap-area .snap-label {
+      font-size: 9px;
+      font-weight: 600;
+    }
+
+    /* More Features Grid */
+    .more-features { text-align: center; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: 60px;
+    }
+
+    .feature-card {
+      padding: 28px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      text-align: left;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 14px;
+    }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .fi-1 { background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.05)); }
+    .fi-2 { background: linear-gradient(135deg, rgba(52,211,153,0.2), rgba(52,211,153,0.05)); }
+    .fi-3 { background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(251,146,60,0.05)); }
+    .fi-4 { background: linear-gradient(135deg, rgba(96,165,250,0.2), rgba(96,165,250,0.05)); }
+    .fi-5 { background: linear-gradient(135deg, rgba(244,114,182,0.2), rgba(244,114,182,0.05)); }
+    .fi-6 { background: linear-gradient(135deg, rgba(167,139,250,0.2), rgba(167,139,250,0.05)); }
+
+    /* Interactive Demo */
+    .interactive { text-align: center; }
+
+    .interactive-container { margin-top: 60px; position: relative; }
+
+    .interactive-screen {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      height: 460px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .interactive-menubar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .menubar-left { display: flex; gap: 16px; align-items: center; }
+    .menubar-right { display: flex; gap: 12px; align-items: center; color: var(--text-muted); font-weight: 400; font-size: 12px; }
+    .menubar-apple { font-size: 16px; }
+
+    .hoptab-menubar-icon {
+      padding: 2px 8px;
+      background: rgba(99,102,241,0.2);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .interactive-desktop {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: calc(100% - 34px);
+      position: relative;
+    }
+
+    .active-app-window {
+      width: 70%;
+      height: 75%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .app-window-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .app-window-titlebar .dots { display: flex; gap: 6px; }
+
+    .app-window-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      flex: 1;
+      text-align: center;
+    }
+
+    .app-window-body {
+      padding: 20px;
+      font-size: 13px;
+      color: var(--text-muted);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      line-height: 1.8;
+    }
+
+    .interactive-overlay {
+      position: absolute;
+      inset: 0;
+      top: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 10;
+    }
+
+    .interactive-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .overlay-switcher {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -334,6 +1120,12 @@
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 20px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      transform: scale(0.85);
+      transition: transform 0.2s;
+    }
+
+    .interactive-overlay.visible .overlay-switcher {
+      transform: scale(1);
     }
 
     .switcher-app {
@@ -384,25 +1176,32 @@
       border: 2px solid rgba(30, 30, 40, 0.85);
     }
 
-    /* App icon colors */
     .icon-xcode { background: linear-gradient(135deg, #1c8aff, #5856d6); }
     .icon-simulator { background: linear-gradient(135deg, #30d158, #34c759); }
     .icon-terminal { background: linear-gradient(135deg, #1c1c1e, #3a3a3c); color: #28c840; }
     .icon-safari { background: linear-gradient(135deg, #007aff, #5ac8fa); }
     .icon-figma { background: linear-gradient(135deg, #f24e1e, #a259ff); }
+    .icon-slack { background: linear-gradient(135deg, #4a154b, #611f69); }
+    .icon-notion { background: linear-gradient(135deg, #1c1c1e, #3a3a3c); }
+    .icon-mail { background: linear-gradient(135deg, #007aff, #34aadc); }
+    .icon-vscode { background: linear-gradient(135deg, #0078d4, #007acc); }
+    .icon-chrome { background: linear-gradient(135deg, #4285f4, #ea4335); }
+    .icon-preview { background: linear-gradient(135deg, #ff6b6b, #ffa500); }
 
-    /* Shortcut hint */
-    .shortcut-hint {
-      position: absolute;
-      bottom: -56px;
-      left: 50%;
-      transform: translateX(-50%);
+    .instruction-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 24px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .instruction-bar .step {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 14px;
-      color: var(--text-muted);
-      white-space: nowrap;
     }
 
     kbd {
@@ -420,383 +1219,7 @@
       min-width: 28px;
     }
 
-    /* ---- Problem Section ---- */
-    .problem { text-align: center; }
-
-    .comparison {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      margin-top: 60px;
-    }
-
-    .comparison-card {
-      padding: 40px 32px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      text-align: left;
-    }
-
-    .comparison-card.before {
-      background: linear-gradient(135deg, rgba(244,114,182,0.05), var(--surface));
-      border-color: rgba(244,114,182,0.2);
-    }
-
-    .comparison-card.after {
-      background: linear-gradient(135deg, rgba(52,211,153,0.05), var(--surface));
-      border-color: rgba(52,211,153,0.2);
-    }
-
-    .comparison-card h3 {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .comparison-card.before h3 { color: var(--pink); }
-    .comparison-card.after h3 { color: var(--green); }
-
-    .comparison-card p {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-    }
-
-    /* Fake app switcher strip */
-    .app-strip {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .app-strip .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      transition: all 0.3s;
-    }
-
-    .app-strip .chip .chip-icon {
-      width: 20px;
-      height: 20px;
-      border-radius: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-    }
-
-    .app-strip .chip.highlight {
-      background: rgba(99,102,241,0.15);
-      border-color: var(--accent);
-      color: var(--text);
-    }
-
-    .app-strip .chip.dimmed {
-      opacity: 0.35;
-    }
-
-    /* ---- Features Grid ---- */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-top: 60px;
-    }
-
-    .feature-card {
-      padding: 32px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-
-    .feature-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--accent);
-    }
-
-    .feature-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      margin-bottom: 16px;
-    }
-
-    .feature-card h3 {
-      font-size: 17px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .feature-card p {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
-
-    .fi-1 { background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(99,102,241,0.05)); }
-    .fi-2 { background: linear-gradient(135deg, rgba(52,211,153,0.2), rgba(52,211,153,0.05)); }
-    .fi-3 { background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(251,146,60,0.05)); }
-    .fi-4 { background: linear-gradient(135deg, rgba(96,165,250,0.2), rgba(96,165,250,0.05)); }
-    .fi-5 { background: linear-gradient(135deg, rgba(244,114,182,0.2), rgba(244,114,182,0.05)); }
-    .fi-6 { background: linear-gradient(135deg, rgba(167,139,250,0.2), rgba(167,139,250,0.05)); }
-
-    /* ---- Profiles Section ---- */
-    .profiles-section {
-      text-align: center;
-    }
-
-    .profiles-demo {
-      display: flex;
-      gap: 24px;
-      margin-top: 60px;
-      justify-content: center;
-    }
-
-    .profile-card {
-      width: 240px;
-      padding: 28px 24px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      text-align: left;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .profile-card:hover, .profile-card.selected {
-      border-color: var(--accent);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 40px rgba(99,102,241,0.15);
-    }
-
-    .profile-card.selected {
-      background: linear-gradient(135deg, rgba(99,102,241,0.08), var(--surface));
-    }
-
-    .profile-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-    }
-
-    .profile-name {
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .profile-desktop {
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 100px;
-      background: var(--surface2);
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-
-    .profile-apps {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .profile-app-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .profile-app-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 7px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-
-    .profile-app-name {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-
-    /* ---- Interactive Demo Section ---- */
-    .interactive {
-      text-align: center;
-    }
-
-    .interactive-container {
-      margin-top: 60px;
-      position: relative;
-    }
-
-    .interactive-screen {
-      width: 100%;
-      max-width: 800px;
-      margin: 0 auto;
-      height: 460px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .interactive-menubar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 16px;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .menubar-left { display: flex; gap: 16px; align-items: center; }
-    .menubar-right { display: flex; gap: 12px; align-items: center; color: var(--text-muted); font-weight: 400; font-size: 12px; }
-
-    .menubar-apple { font-size: 16px; }
-
-    .hoptab-menubar-icon {
-      padding: 2px 8px;
-      background: rgba(99,102,241,0.2);
-      border-radius: 4px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .interactive-desktop {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: calc(100% - 34px);
-      position: relative;
-    }
-
-    /* Active app window inside the interactive demo */
-    .active-app-window {
-      width: 70%;
-      height: 75%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      transition: all 0.3s ease;
-    }
-
-    .app-window-titlebar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .app-window-titlebar .dots {
-      display: flex;
-      gap: 6px;
-    }
-
-    .app-window-titlebar .dot-sm {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }
-
-    .dot-sm.red { background: #ff5f57; }
-    .dot-sm.yellow { background: #ffbd2e; }
-    .dot-sm.green { background: #28c840; }
-
-    .app-window-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      flex: 1;
-      text-align: center;
-    }
-
-    .app-window-body {
-      padding: 20px;
-      font-size: 13px;
-      color: var(--text-muted);
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      line-height: 1.8;
-    }
-
-    /* The overlay that appears on top */
-    .interactive-overlay {
-      position: absolute;
-      inset: 0;
-      top: 34px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,0.3);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s;
-      z-index: 10;
-    }
-
-    .interactive-overlay.visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .interactive-overlay .overlay-switcher {
-      transform: scale(0.85);
-      transition: transform 0.2s;
-    }
-
-    .interactive-overlay.visible .overlay-switcher {
-      transform: scale(1);
-    }
-
-    /* Instruction bar */
-    .instruction-bar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 24px;
-      margin-top: 24px;
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-
-    .instruction-bar .step {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .key-combo {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    /* ---- Install Section ---- */
+    /* Install */
     .install-section { text-align: center; }
 
     .install-card {
@@ -877,11 +1300,10 @@
       line-height: 1.6;
     }
 
-    .step-text strong {
-      color: var(--text);
-    }
+    .step-text strong { color: var(--text); }
+    .step-text a { color: var(--accent); text-decoration: none; }
 
-    /* ---- Footer ---- */
+    /* Footer */
     footer {
       position: relative;
       z-index: 1;
@@ -899,7 +1321,7 @@
 
     footer a:hover { text-decoration: underline; }
 
-    /* ---- Animations ---- */
+    /* Animations */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
@@ -915,14 +1337,21 @@
     .fade-up.d3 { animation-delay: 0.35s; }
     .fade-up.d4 { animation-delay: 0.5s; }
 
-    /* ---- Responsive ---- */
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Responsive */
     @media (max-width: 768px) {
       .hero h1 { font-size: 42px; }
+      .hero-visual { display: none; }
       .comparison { grid-template-columns: 1fr; }
+      .comparison-arrow { transform: rotate(90deg); text-align: center; }
       .features-grid { grid-template-columns: 1fr; }
-      .profiles-demo { flex-direction: column; align-items: center; }
+      .power-row { grid-template-columns: 1fr; gap: 40px; }
+      .power-row.reverse .power-text { order: 1; }
+      .power-row.reverse .power-visual { order: 2; }
       .install-steps { flex-direction: column; gap: 16px; }
       section { padding: 80px 20px; }
+      .power-section { padding: 60px 20px; }
       nav { padding: 12px 20px; }
       .nav-links { display: none; }
       .hero-buttons { flex-direction: column; }
@@ -936,12 +1365,12 @@
 <!-- Nav -->
 <nav>
   <a href="#" class="nav-logo">
-    <div class="icon">&#8677;</div>
+    <img src="icon.png" alt="HopTab" class="icon">
     HopTab
   </a>
   <ul class="nav-links">
+    <li><a href="#problem">Why</a></li>
     <li><a href="#features">Features</a></li>
-    <li><a href="#profiles">Profiles</a></li>
     <li><a href="#demo">Try It</a></li>
     <li><a href="#install">Install</a></li>
   </ul>
@@ -955,10 +1384,10 @@
     macOS 14+ &middot; Free &middot; Open Source
   </div>
 
-  <h1 class="fade-up d1">Stop cycling.<br><span>Start hopping.</span></h1>
+  <h1 class="fade-up d1">Your workspace,<br><span>supercharged.</span></h1>
 
   <p class="subtitle fade-up d2">
-    Pin the 2-3 apps you're actually using and switch between them instantly. Everything else stays out of the way.
+    Pin apps. Tile windows. Switch profiles. HopTab is the workspace manager macOS should've shipped with.
   </p>
 
   <div class="hero-buttons fade-up d3">
@@ -966,88 +1395,97 @@
     <a href="https://github.com/royalbhati/HopTab" class="btn-secondary">View on GitHub</a>
   </div>
 
-  <div class="hero-demo fade-up d4">
-    <div class="demo-window">
-      <div class="demo-titlebar">
-        <div class="traffic-light red"></div>
-        <div class="traffic-light yellow"></div>
-        <div class="traffic-light green"></div>
+  <!-- Hero Visual: floating mockups showing different features -->
+  <div class="hero-visual fade-up d4">
+    <!-- Layout mockup (left) -->
+    <div class="hero-mock hero-layout-mock">
+      <div class="layout-mock-header">
+        <span style="font-size:13px">&#9638;</span> Layout: Coding
       </div>
-      <div class="demo-content">
-        <!-- Background lines to suggest a desktop -->
-        <div class="desktop-grid">
-          <div class="fake-line" style="width:80%"></div>
-          <div class="fake-line" style="width:60%"></div>
-          <div class="fake-line" style="width:90%"></div>
-          <div class="fake-line" style="width:50%"></div>
-          <div class="fake-line" style="width:70%"></div>
-          <div class="fake-line" style="width:85%"></div>
-          <div class="fake-line" style="width:45%"></div>
-          <div class="fake-line" style="width:95%"></div>
-        </div>
+      <div class="layout-mock-body" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;">
+        <div class="layout-zone filled" style="grid-row: span 2;">Xcode</div>
+        <div class="layout-zone filled">Simulator</div>
+        <div class="layout-zone filled">Terminal</div>
+      </div>
+    </div>
 
-        <!-- Overlay Switcher -->
-        <div class="overlay-switcher" id="heroSwitcher">
-          <div class="switcher-app active" data-index="0">
-            <div class="app-icon icon-xcode">
-              &#9775;
-              <span class="running-dot"></span>
-            </div>
-            <span class="app-name">Xcode</span>
-          </div>
-          <div class="switcher-app" data-index="1">
-            <div class="app-icon icon-simulator">
-              &#9742;
-              <span class="running-dot"></span>
-            </div>
-            <span class="app-name">Simulator</span>
-          </div>
-          <div class="switcher-app" data-index="2">
-            <div class="app-icon icon-terminal">
-              &gt;_
-              <span class="running-dot"></span>
-            </div>
-            <span class="app-name">Terminal</span>
-          </div>
-        </div>
+    <!-- Overlay Switcher (center) -->
+    <div class="hero-mock hero-overlay-mock" id="heroSwitcher">
+      <div class="mock-app active" data-index="0">
+        <div class="mock-app-icon icon-xcode">&#9775;</div>
+        <span class="mock-app-name">Xcode</span>
+      </div>
+      <div class="mock-app" data-index="1">
+        <div class="mock-app-icon icon-simulator">&#9742;</div>
+        <span class="mock-app-name">Simulator</span>
+      </div>
+      <div class="mock-app" data-index="2">
+        <div class="mock-app-icon icon-terminal">&gt;_</div>
+        <span class="mock-app-name">Terminal</span>
+      </div>
+    </div>
 
-        <div class="shortcut-hint">
-          <span class="key-combo"><kbd>&#8997;</kbd> <kbd>&#8677;</kbd></span>
-          to hop between pinned apps
+    <!-- Window Picker (right) -->
+    <div class="hero-mock hero-picker-mock">
+      <div class="picker-mock-header">
+        <div class="picker-app-icon icon-safari">&#127760;</div>
+        <span class="picker-app-name">Safari</span>
+      </div>
+      <div class="picker-mock-list">
+        <div class="picker-window-row active">
+          <span class="win-icon">&#9634;</span> GitHub - HopTab
         </div>
+        <div class="picker-window-row">
+          <span class="win-icon">&#9634;</span> Stack Overflow
+        </div>
+        <div class="picker-window-row">
+          <span class="win-icon">&#8854;</span> Downloads
+        </div>
+      </div>
+    </div>
+
+    <!-- Snap indicator (bottom right) -->
+    <div class="hero-mock hero-snap-mock" style="border-radius:10px;">
+      <div class="snap-grid" id="heroSnap">
+        <div class="snap-cell">TL</div>
+        <div class="snap-cell">TR</div>
+        <div class="snap-cell active">BL</div>
+        <div class="snap-cell">BR</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Problem Section -->
+<!-- Problem -->
 <section class="problem" id="problem">
   <div class="section-label">The Problem</div>
-  <h2 class="section-title">Cmd+Tab is a chaotic<br>family reunion</h2>
+  <h2 class="section-title">Cmd+Tab doesn't know<br>what you're working on</h2>
   <p class="section-subtitle" style="margin: 0 auto;">
-    10 apps open, 2 that matter. Yet every Cmd+Tab invites the whole party.
+    10 apps open, 2 that matter. Every Cmd+Tab forces you through all of them.
   </p>
 
   <div class="comparison">
     <div class="comparison-card before">
-      <h3>Before &mdash; Cmd+Tab</h3>
-      <p>Cycle through every open app, every time</p>
+      <h3>Cmd+Tab</h3>
+      <p>Every open app shows up. Every time.</p>
       <div class="app-strip">
         <div class="chip dimmed"><span class="chip-icon icon-xcode" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9775;</span> Xcode</div>
-        <div class="chip dimmed"><span class="chip-icon" style="background:#ff5f57;border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9993;</span> Mail</div>
-        <div class="chip dimmed"><span class="chip-icon" style="background:#5856d6;border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9835;</span> Spotify</div>
+        <div class="chip dimmed"><span class="chip-icon icon-mail" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9993;</span> Mail</div>
+        <div class="chip dimmed"><span class="chip-icon icon-slack" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9993;</span> Slack</div>
         <div class="chip highlight"><span class="chip-icon icon-simulator" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9742;</span> Simulator</div>
-        <div class="chip dimmed"><span class="chip-icon" style="background:#007aff;border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#127760;</span> Safari</div>
+        <div class="chip dimmed"><span class="chip-icon icon-safari" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#127760;</span> Safari</div>
+        <div class="chip dimmed"><span class="chip-icon icon-figma" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9830;</span> Figma</div>
+        <div class="chip dimmed"><span class="chip-icon" style="background:#5856d6;border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9835;</span> Spotify</div>
         <div class="chip dimmed"><span class="chip-icon" style="background:#ff9500;border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9998;</span> Notes</div>
-        <div class="chip dimmed"><span class="chip-icon" style="background:#4a154b;border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9993;</span> Slack</div>
-        <div class="chip dimmed"><span class="chip-icon" style="background:#f24e1e;border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9830;</span> Figma</div>
         <div class="chip dimmed"><span class="chip-icon icon-terminal" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#28c840">&gt;_</span> Terminal</div>
       </div>
     </div>
 
+    <div class="comparison-arrow">&#8594;</div>
+
     <div class="comparison-card after">
-      <h3>After &mdash; HopTab</h3>
-      <p>Only the apps you pinned, nothing else</p>
+      <h3>HopTab</h3>
+      <p>Only what you pinned. Nothing else.</p>
       <div class="app-strip">
         <div class="chip highlight"><span class="chip-icon icon-xcode" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9775;</span> Xcode</div>
         <div class="chip highlight"><span class="chip-icon icon-simulator" style="border-radius:5px;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">&#9742;</span> Simulator</div>
@@ -1057,117 +1495,295 @@
   </div>
 </section>
 
-<!-- Features -->
-<section id="features">
-  <div style="text-align:center">
-    <div class="section-label">Features</div>
-    <h2 class="section-title">Everything you need,<br>nothing you don't</h2>
+<!-- Feature Sections -->
+<div class="power-section" id="features">
+
+  <!-- 1. Focused App Switching -->
+  <div class="power-row">
+    <div class="power-text">
+      <div class="power-badge" style="background:rgba(99,102,241,0.1);color:var(--accent);">Core</div>
+      <h2>Focused app switching</h2>
+      <p>Pin the 2-5 apps you're actually using. Option+Tab hops only between those. Release to switch. Everything else stays out of the way.</p>
+      <div class="power-shortcuts">
+        <span class="shortcut-tag"><kbd>&#8997;</kbd> + <kbd>Tab</kbd> Cycle forward</span>
+        <span class="shortcut-tag"><kbd>&#8679;</kbd> Reverse</span>
+        <span class="shortcut-tag"><kbd>Esc</kbd> Cancel</span>
+      </div>
+    </div>
+    <div class="power-visual">
+      <div class="visual-card">
+        <div class="visual-card-header">
+          <span class="dot-sm red"></span>
+          <span class="dot-sm yellow"></span>
+          <span class="dot-sm green"></span>
+          <span class="title">App Switcher</span>
+          <div style="width:50px"></div>
+        </div>
+        <div style="padding:24px;display:flex;align-items:center;justify-content:center;">
+          <div class="overlay-switcher" id="featureSwitcher" style="box-shadow:none;border:none;background:rgba(30,30,40,0.5);">
+            <div class="switcher-app active" data-f="0">
+              <div class="app-icon icon-xcode">&#9775;<span class="running-dot"></span></div>
+              <span class="app-name">Xcode</span>
+            </div>
+            <div class="switcher-app" data-f="1">
+              <div class="app-icon icon-simulator">&#9742;<span class="running-dot"></span></div>
+              <span class="app-name">Simulator</span>
+            </div>
+            <div class="switcher-app" data-f="2">
+              <div class="app-icon icon-terminal">&gt;_<span class="running-dot"></span></div>
+              <span class="app-name">Terminal</span>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;padding:0 0 16px;font-size:11px;color:var(--text-muted);">
+          Tab to cycle &middot; Release to switch &middot; Esc to cancel
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- 2. Window Layouts -->
+  <div class="power-row reverse">
+    <div class="power-text">
+      <div class="power-badge" style="background:rgba(52,211,153,0.1);color:var(--green);">Layouts</div>
+      <h2>Tile your windows<br>with one click</h2>
+      <p>Pick a layout template, assign apps to zones, and apply. Your windows snap into place instantly. Choose from split, thirds, quarters, or create custom arrangements.</p>
+      <div class="power-shortcuts">
+        <span class="shortcut-tag">50/50 Split</span>
+        <span class="shortcut-tag">70/30 Split</span>
+        <span class="shortcut-tag">Thirds</span>
+        <span class="shortcut-tag">Quarters</span>
+      </div>
+    </div>
+    <div class="power-visual">
+      <div class="visual-card">
+        <div class="visual-card-header">
+          <span class="dot-sm red"></span>
+          <span class="dot-sm yellow"></span>
+          <span class="dot-sm green"></span>
+          <span class="title">Window Layout</span>
+          <div style="width:50px"></div>
+        </div>
+        <div class="layout-visual-body">
+          <div class="layout-screen" id="layoutScreen">
+            <div class="layout-screen-bar">
+              <span>&#63743; Desktop</span>
+              <span id="layoutName">Coding Layout</span>
+            </div>
+            <div class="layout-zones" id="layoutZones" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;">
+              <div class="lz" style="grid-row:span 2;background:rgba(28,138,255,0.12);border:1px solid rgba(28,138,255,0.3);">
+                <div class="lz-icon icon-xcode">&#9775;</div>
+                <span class="lz-name">Xcode</span>
+              </div>
+              <div class="lz" style="background:rgba(48,209,88,0.12);border:1px solid rgba(48,209,88,0.3);">
+                <div class="lz-icon icon-simulator">&#9742;</div>
+                <span class="lz-name">Simulator</span>
+              </div>
+              <div class="lz" style="background:rgba(40,200,64,0.12);border:1px solid rgba(40,200,64,0.3);">
+                <div class="lz-icon icon-terminal" style="color:#28c840">&gt;_</div>
+                <span class="lz-name">Terminal</span>
+              </div>
+            </div>
+          </div>
+          <!-- Layout switcher pills -->
+          <div style="display:flex;gap:6px;margin-top:12px;justify-content:center;" id="layoutPills">
+            <button class="layout-pill active" data-layout="coding" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--accent);color:white;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;">Coding</button>
+            <button class="layout-pill" data-layout="design" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;">Design</button>
+            <button class="layout-pill" data-layout="writing" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;">Writing</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Profiles -->
+  <div class="power-row">
+    <div class="power-text">
+      <div class="power-badge" style="background:rgba(251,146,60,0.1);color:var(--orange);">Profiles</div>
+      <h2>Switch context,<br>not configuration</h2>
+      <p>Create profiles for each workflow &mdash; Coding, Design, Writing. Each has its own pinned apps, hotkey, and desktop assignment. Swipe to a different desktop and your pinned apps change automatically.</p>
+      <div class="power-shortcuts">
+        <span class="shortcut-tag"><kbd>&#8997;</kbd> + <kbd>`</kbd> Cycle profiles</span>
+        <span class="shortcut-tag">Per-profile hotkeys</span>
+        <span class="shortcut-tag">Auto-switch by desktop</span>
+      </div>
+    </div>
+    <div class="power-visual">
+      <div class="visual-card">
+        <div class="visual-card-header">
+          <span class="dot-sm red"></span>
+          <span class="dot-sm yellow"></span>
+          <span class="dot-sm green"></span>
+          <span class="title">Profiles</span>
+          <div style="width:50px"></div>
+        </div>
+        <div class="profile-visual-body">
+          <div class="pv-tabs" id="pvTabs">
+            <div class="pv-tab active" data-pv="coding" onclick="switchProfileTab('coding')">Coding</div>
+            <div class="pv-tab" data-pv="design" onclick="switchProfileTab('design')">Design</div>
+            <div class="pv-tab" data-pv="writing" onclick="switchProfileTab('writing')">Writing</div>
+          </div>
+
+          <div class="pv-content active" id="pv-coding">
+            <div class="pv-header-row">
+              <span class="pv-label">Pinned Apps</span>
+              <div style="display:flex;gap:6px;">
+                <span class="pv-hotkey"><kbd style="padding:1px 4px;font-size:9px;min-width:auto;">&#8963;</kbd><kbd style="padding:1px 4px;font-size:9px;min-width:auto;">1</kbd></span>
+                <span class="pv-desktop-tag">Desktop 1</span>
+              </div>
+            </div>
+            <div class="pv-app-list">
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-xcode">&#9775;</div>
+                <div class="pv-app-info"><div class="pv-app-name">Xcode</div></div>
+              </div>
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-simulator">&#9742;</div>
+                <div class="pv-app-info"><div class="pv-app-name">Simulator</div></div>
+              </div>
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-terminal" style="color:#28c840">&gt;_</div>
+                <div class="pv-app-info"><div class="pv-app-name">Terminal</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pv-content" id="pv-design">
+            <div class="pv-header-row">
+              <span class="pv-label">Pinned Apps</span>
+              <div style="display:flex;gap:6px;">
+                <span class="pv-hotkey"><kbd style="padding:1px 4px;font-size:9px;min-width:auto;">&#8963;</kbd><kbd style="padding:1px 4px;font-size:9px;min-width:auto;">2</kbd></span>
+                <span class="pv-desktop-tag">Desktop 2</span>
+              </div>
+            </div>
+            <div class="pv-app-list">
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-figma">&#9830;</div>
+                <div class="pv-app-info"><div class="pv-app-name">Figma</div></div>
+              </div>
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-safari">&#127760;</div>
+                <div class="pv-app-info"><div class="pv-app-name">Safari</div></div>
+              </div>
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-preview">&#128065;</div>
+                <div class="pv-app-info"><div class="pv-app-name">Preview</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pv-content" id="pv-writing">
+            <div class="pv-header-row">
+              <span class="pv-label">Pinned Apps</span>
+              <div style="display:flex;gap:6px;">
+                <span class="pv-hotkey"><kbd style="padding:1px 4px;font-size:9px;min-width:auto;">&#8963;</kbd><kbd style="padding:1px 4px;font-size:9px;min-width:auto;">3</kbd></span>
+                <span class="pv-desktop-tag">Desktop 3</span>
+              </div>
+            </div>
+            <div class="pv-app-list">
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-notion">&#128214;</div>
+                <div class="pv-app-info"><div class="pv-app-name">Notion</div></div>
+              </div>
+              <div class="pv-app-row">
+                <div class="pv-app-icon icon-safari">&#127760;</div>
+                <div class="pv-app-info"><div class="pv-app-name">Safari</div></div>
+              </div>
+              <div class="pv-app-row">
+                <div class="pv-app-icon" style="background:linear-gradient(135deg,#10a37f,#1a7f64);">&#10038;</div>
+                <div class="pv-app-info"><div class="pv-app-name">ChatGPT</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Window Picker + Snap -->
+  <div class="power-row reverse">
+    <div class="power-text">
+      <div class="power-badge" style="background:rgba(96,165,250,0.1);color:var(--blue);">Windows</div>
+      <h2>Pick any window.<br>Snap to any edge.</h2>
+      <p>When an app has multiple windows, HopTab shows a picker so you choose exactly which one to focus. Plus, snap any window to halves, quarters, or fullscreen with keyboard shortcuts.</p>
+      <div class="power-shortcuts">
+        <span class="shortcut-tag">Left half</span>
+        <span class="shortcut-tag">Right half</span>
+        <span class="shortcut-tag">Quarters</span>
+        <span class="shortcut-tag">Fullscreen</span>
+      </div>
+    </div>
+    <div class="power-visual">
+      <div class="visual-card">
+        <div class="visual-card-header">
+          <span class="dot-sm red"></span>
+          <span class="dot-sm yellow"></span>
+          <span class="dot-sm green"></span>
+          <span class="title">Window Picker</span>
+          <div style="width:50px"></div>
+        </div>
+        <div class="picker-visual-body">
+          <div class="pv-picker-header">
+            <div class="pv-app-icon icon-safari" style="width:32px;height:32px;border-radius:8px;font-size:17px;">&#127760;</div>
+            <span class="pv-picker-name">Safari &mdash; 3 windows</span>
+          </div>
+          <div class="pv-picker-list" id="pickerList">
+            <div class="pv-picker-row active">
+              <span class="win-icon">&#9634;</span> GitHub - royalbhati/HopTab
+            </div>
+            <div class="pv-picker-row">
+              <span class="win-icon">&#9634;</span> Swift Documentation
+            </div>
+            <div class="pv-picker-row">
+              <span class="win-icon">&#8854;</span> Downloads (minimized)
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:center;">
+            <span class="shortcut-tag" style="font-size:11px;"><kbd style="font-size:10px;padding:2px 5px;">&#8593;</kbd><kbd style="font-size:10px;padding:2px 5px;">&#8595;</kbd> Navigate</span>
+            <span class="shortcut-tag" style="font-size:11px;"><kbd style="font-size:10px;padding:2px 5px;">&#9166;</kbd> Select</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- More Features -->
+<section class="more-features">
+  <div class="section-label">And More</div>
+  <h2 class="section-title">Built for power users</h2>
 
   <div class="features-grid">
     <div class="feature-card">
       <div class="feature-icon fi-1">&#9881;</div>
-      <h3>Pin Any App</h3>
-      <p>Pick from running apps in Settings. Click to pin or unpin. Your selections persist across restarts.</p>
+      <h3>Pin from Anywhere</h3>
+      <p>Pin from running apps or browse all installed apps. Pin apps before you even open them.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon fi-2">&#9000;</div>
-      <h3>Global Hotkey</h3>
-      <p>Option+Tab by default. Also supports Control+Tab or Option+Backtick. Works everywhere, always.</p>
+      <h3>Multi-Monitor</h3>
+      <p>Overlays follow your cursor to the active screen. Layouts apply to the correct monitor.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon fi-3">&#10024;</div>
-      <h3>Native Overlay</h3>
-      <p>Beautiful vibrancy blur panel with app icons. Non-activating panel floats above everything without stealing focus.</p>
+      <h3>App Actions</h3>
+      <p>Cmd+Q, Cmd+H, Cmd+M while the switcher is open to quit, hide, or minimize any app.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon fi-4">&#8644;</div>
-      <h3>Cycle Both Ways</h3>
-      <p>Tab to go forward, Shift+Tab to go backward. Release the modifier to activate. Escape to cancel.</p>
+      <h3>Click to Switch</h3>
+      <p>Click any app icon in the overlay to switch directly. No keyboard required.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon fi-5">&#128736;</div>
-      <h3>Profiles</h3>
-      <p>Create named profiles for different workflows. "Coding", "Design", "Writing" &mdash; each with their own pinned apps.</p>
+      <h3>Auto-Unminimize</h3>
+      <p>Minimized apps are automatically restored when activated through HopTab. No more fishing in the dock.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon fi-6">&#9109;</div>
-      <h3>Desktop Assignment</h3>
-      <p>Bind profiles to macOS Spaces. Swipe to Desktop 2 and your pinned apps automatically change.</p>
-    </div>
-  </div>
-</section>
-
-<!-- Profiles -->
-<section class="profiles-section" id="profiles">
-  <div class="section-label">Profiles</div>
-  <h2 class="section-title">One shortcut, many workflows</h2>
-  <p class="section-subtitle" style="margin:0 auto;">
-    Switch context without switching configuration. Each profile carries its own set of pinned apps.
-  </p>
-
-  <div class="profiles-demo" id="profilesDemo">
-    <div class="profile-card selected" data-profile="coding" onclick="selectProfile('coding')">
-      <div class="profile-header">
-        <span class="profile-name">Coding</span>
-        <span class="profile-desktop">Desktop 1</span>
-      </div>
-      <div class="profile-apps">
-        <div class="profile-app-row">
-          <div class="profile-app-icon icon-xcode" style="font-size:14px">&#9775;</div>
-          <span class="profile-app-name">Xcode</span>
-        </div>
-        <div class="profile-app-row">
-          <div class="profile-app-icon icon-simulator" style="font-size:14px">&#9742;</div>
-          <span class="profile-app-name">Simulator</span>
-        </div>
-        <div class="profile-app-row">
-          <div class="profile-app-icon icon-terminal" style="font-size:13px;color:#28c840">&gt;_</div>
-          <span class="profile-app-name">Terminal</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="profile-card" data-profile="design" onclick="selectProfile('design')">
-      <div class="profile-header">
-        <span class="profile-name">Design</span>
-        <span class="profile-desktop">Desktop 2</span>
-      </div>
-      <div class="profile-apps">
-        <div class="profile-app-row">
-          <div class="profile-app-icon icon-figma" style="font-size:14px">&#9830;</div>
-          <span class="profile-app-name">Figma</span>
-        </div>
-        <div class="profile-app-row">
-          <div class="profile-app-icon icon-safari" style="font-size:14px">&#127760;</div>
-          <span class="profile-app-name">Safari</span>
-        </div>
-        <div class="profile-app-row">
-          <div class="profile-app-icon" style="background:linear-gradient(135deg,#ff6b6b,#ffa500);font-size:14px;border-radius:7px;width:28px;height:28px;display:flex;align-items:center;justify-content:center">&#128065;</div>
-          <span class="profile-app-name">Preview</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="profile-card" data-profile="writing" onclick="selectProfile('writing')">
-      <div class="profile-header">
-        <span class="profile-name">Writing</span>
-        <span class="profile-desktop">Desktop 3</span>
-      </div>
-      <div class="profile-apps">
-        <div class="profile-app-row">
-          <div class="profile-app-icon" style="background:linear-gradient(135deg,#1c1c1e,#3a3a3c);font-size:14px;border-radius:7px;width:28px;height:28px;display:flex;align-items:center;justify-content:center">&#128214;</div>
-          <span class="profile-app-name">Notion</span>
-        </div>
-        <div class="profile-app-row">
-          <div class="profile-app-icon icon-safari" style="font-size:14px">&#127760;</div>
-          <span class="profile-app-name">Safari</span>
-        </div>
-        <div class="profile-app-row">
-          <div class="profile-app-icon" style="background:linear-gradient(135deg,#10a37f,#1a7f64);font-size:14px;border-radius:7px;width:28px;height:28px;display:flex;align-items:center;justify-content:center">&#10038;</div>
-          <span class="profile-app-name">ChatGPT</span>
-        </div>
-      </div>
+      <h3>Menu Bar Native</h3>
+      <p>Lives quietly in your menu bar. No Dock clutter, no distractions. Just there when you need it.</p>
     </div>
   </div>
 </section>
@@ -1177,7 +1793,7 @@
   <div class="section-label">Interactive Demo</div>
   <h2 class="section-title">Try it yourself</h2>
   <p class="section-subtitle" style="margin:0 auto;">
-    Hold <kbd>&#8997; Option</kbd> and press <kbd>&#8677; Tab</kbd> to cycle. Release <kbd>&#8997;</kbd> to switch.
+    Click the screen below, then hold <kbd>&#8997; Option</kbd> and press <kbd>&#8677; Tab</kbd> to cycle. Release <kbd>&#8997;</kbd> to switch.
   </p>
 
   <div class="interactive-container">
@@ -1220,7 +1836,6 @@
           </div>
         </div>
 
-        <!-- Interactive overlay -->
         <div class="interactive-overlay" id="interactiveOverlay">
           <div class="overlay-switcher">
             <div class="switcher-app active" data-i="0">
@@ -1242,7 +1857,7 @@
 
     <div class="instruction-bar">
       <div class="step">
-        <span>Click the screen, then hold</span>
+        <span>Hold</span>
         <span class="key-combo"><kbd>&#8997;</kbd></span>
         <span>+</span>
         <span class="key-combo"><kbd>Tab</kbd></span>
@@ -1252,6 +1867,11 @@
         <span>Release</span>
         <span class="key-combo"><kbd>&#8997;</kbd></span>
         <span>to switch</span>
+      </div>
+      <div class="step" style="color:var(--text-muted);opacity:0.5">|</div>
+      <div class="step">
+        <span class="key-combo"><kbd>Esc</kbd></span>
+        <span>to cancel</span>
       </div>
     </div>
   </div>
@@ -1266,21 +1886,21 @@
     <div class="install-code">
       <button class="copy-btn" onclick="copyInstall()">Copy</button>
       <span class="comment"># Download, unzip, and clear quarantine</span><br>
-curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopTab/releases/latest \<br>&nbsp;&nbsp;| grep -o '"browser_download_url": *"[^"]*"' \<br>&nbsp;&nbsp;| head -1 | cut -d '"' -f 4)" \<br>&nbsp;&nbsp;-o /tmp/HopTab.zip \<br>&nbsp;&nbsp;&& unzip -o /tmp/HopTab.zip -d /Applications \<br>&nbsp;&nbsp;&& xattr -d com.apple.quarantine \<br>&nbsp;&nbsp;/Applications/HopTab.app
+curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopTab/releases/latest \<br>&nbsp;&nbsp;| grep -o '"browser_download_url": *"[^"]*"' \<br>&nbsp;&nbsp;| head -1 | cut -d '"' -f 4)" \<br>&nbsp;&nbsp;-o /tmp/HopTab.zip \<br>&nbsp;&nbsp;&amp;&amp; unzip -o /tmp/HopTab.zip -d /Applications \<br>&nbsp;&nbsp;&amp;&amp; xattr -d com.apple.quarantine \<br>&nbsp;&nbsp;/Applications/HopTab.app
     </div>
 
     <div class="install-steps">
       <div class="install-step">
         <div class="step-num">1</div>
-        <div class="step-text"><strong>Run the command</strong> or download from <a href="https://github.com/royalbhati/HopTab/releases/latest" style="color:var(--accent)">Releases</a></div>
+        <div class="step-text"><strong>Run the command</strong> or download from <a href="https://github.com/royalbhati/HopTab/releases/latest">Releases</a></div>
       </div>
       <div class="install-step">
         <div class="step-num">2</div>
-        <div class="step-text"><strong>Grant Accessibility</strong> permission when prompted on first launch</div>
+        <div class="step-text"><strong>Grant Accessibility</strong> permission when prompted</div>
       </div>
       <div class="install-step">
         <div class="step-num">3</div>
-        <div class="step-text"><strong>Pin your apps</strong> and press <kbd>&#8997;</kbd>+<kbd>&#8677;</kbd> to start hopping</div>
+        <div class="step-text"><strong>Pin your apps</strong> and press <kbd style="font-size:11px;padding:2px 6px;">&#8997;</kbd>+<kbd style="font-size:11px;padding:2px 6px;">Tab</kbd></div>
       </div>
     </div>
   </div>
@@ -1296,7 +1916,7 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
 </footer>
 
 <script>
-  // ---- Time display ----
+  // ---- Time ----
   function updateTime() {
     const now = new Date();
     document.getElementById('demoTime').textContent =
@@ -1306,27 +1926,125 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
   setInterval(updateTime, 60000);
 
   // ---- Hero switcher auto-cycle ----
-  const heroApps = document.querySelectorAll('#heroSwitcher .switcher-app');
+  const heroApps = document.querySelectorAll('#heroSwitcher .mock-app');
   let heroIndex = 0;
-
   setInterval(() => {
     heroApps[heroIndex].classList.remove('active');
     heroIndex = (heroIndex + 1) % heroApps.length;
     heroApps[heroIndex].classList.add('active');
   }, 2000);
 
-  // ---- Profile selection ----
-  function selectProfile(name) {
-    document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('selected'));
-    document.querySelector(`[data-profile="${name}"]`).classList.add('selected');
+  // ---- Feature switcher auto-cycle ----
+  const featureApps = document.querySelectorAll('#featureSwitcher .switcher-app');
+  let featureIndex = 0;
+  setInterval(() => {
+    featureApps[featureIndex].classList.remove('active');
+    featureIndex = (featureIndex + 1) % featureApps.length;
+    featureApps[featureIndex].classList.add('active');
+  }, 1800);
+
+  // ---- Hero snap auto-cycle ----
+  const snapCells = document.querySelectorAll('#heroSnap .snap-cell');
+  let snapIndex = 2;
+  setInterval(() => {
+    snapCells[snapIndex].classList.remove('active');
+    snapIndex = (snapIndex + 1) % snapCells.length;
+    snapCells[snapIndex].classList.add('active');
+  }, 2500);
+
+  // ---- Layout switcher ----
+  const layouts = {
+    coding: {
+      name: 'Coding Layout',
+      grid: 'grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;',
+      zones: [
+        { style: 'grid-row:span 2;background:rgba(28,138,255,0.12);border:1px solid rgba(28,138,255,0.3);', icon: 'icon-xcode', emoji: '&#9775;', name: 'Xcode' },
+        { style: 'background:rgba(48,209,88,0.12);border:1px solid rgba(48,209,88,0.3);', icon: 'icon-simulator', emoji: '&#9742;', name: 'Simulator' },
+        { style: 'background:rgba(40,200,64,0.12);border:1px solid rgba(40,200,64,0.3);', icon: 'icon-terminal', emoji: '&gt;_', name: 'Terminal', extraStyle: 'color:#28c840' },
+      ]
+    },
+    design: {
+      name: 'Design Layout',
+      grid: 'grid-template-columns: 2fr 1fr; grid-template-rows: 1fr;',
+      zones: [
+        { style: 'background:rgba(242,78,30,0.12);border:1px solid rgba(242,78,30,0.3);', icon: 'icon-figma', emoji: '&#9830;', name: 'Figma' },
+        { style: 'background:rgba(0,122,255,0.12);border:1px solid rgba(0,122,255,0.3);', icon: 'icon-safari', emoji: '&#127760;', name: 'Safari' },
+      ]
+    },
+    writing: {
+      name: 'Writing Layout',
+      grid: 'grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr;',
+      zones: [
+        { style: 'background:rgba(28,28,30,0.3);border:1px solid rgba(60,60,70,0.5);', icon: 'icon-notion', emoji: '&#128214;', name: 'Notion' },
+        { style: 'background:rgba(0,122,255,0.12);border:1px solid rgba(0,122,255,0.3);', icon: 'icon-safari', emoji: '&#127760;', name: 'Safari' },
+        { style: 'background:rgba(16,163,127,0.12);border:1px solid rgba(16,163,127,0.3);', icon: '', emoji: '&#10038;', name: 'ChatGPT', bgStyle: 'background:linear-gradient(135deg,#10a37f,#1a7f64)' },
+      ]
+    }
+  };
+
+  document.querySelectorAll('.layout-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const key = pill.dataset.layout;
+      const layout = layouts[key];
+
+      // Update pills
+      document.querySelectorAll('.layout-pill').forEach(p => {
+        p.style.background = 'var(--surface2)';
+        p.style.color = 'var(--text-muted)';
+        p.classList.remove('active');
+      });
+      pill.style.background = 'var(--accent)';
+      pill.style.color = 'white';
+      pill.classList.add('active');
+
+      // Update layout name
+      document.getElementById('layoutName').textContent = layout.name;
+
+      // Update zones
+      const zonesEl = document.getElementById('layoutZones');
+      zonesEl.style.cssText = layout.grid;
+      zonesEl.innerHTML = layout.zones.map(z => {
+        const iconBg = z.bgStyle || '';
+        const iconClass = z.icon || '';
+        const extraStyle = z.extraStyle || '';
+        return `<div class="lz" style="${z.style}">
+          <div class="lz-icon ${iconClass}" style="${iconBg};${extraStyle}">${z.emoji}</div>
+          <span class="lz-name">${z.name}</span>
+        </div>`;
+      }).join('');
+    });
+  });
+
+  // ---- Profile tab switcher ----
+  function switchProfileTab(name) {
+    document.querySelectorAll('.pv-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.pv-tab[data-pv="${name}"]`).classList.add('active');
+    document.querySelectorAll('.pv-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`pv-${name}`).classList.add('active');
   }
+
+  // Auto-cycle profile tabs
+  const profileNames = ['coding', 'design', 'writing'];
+  let profileIdx = 0;
+  setInterval(() => {
+    profileIdx = (profileIdx + 1) % profileNames.length;
+    switchProfileTab(profileNames[profileIdx]);
+  }, 3500);
+
+  // ---- Window picker auto-cycle ----
+  const pickerRows = document.querySelectorAll('#pickerList .pv-picker-row');
+  let pickerIdx = 0;
+  setInterval(() => {
+    pickerRows[pickerIdx].classList.remove('active');
+    pickerIdx = (pickerIdx + 1) % pickerRows.length;
+    pickerRows[pickerIdx].classList.add('active');
+  }, 2200);
 
   // ---- Interactive Demo ----
   const screen = document.getElementById('interactiveScreen');
   const overlay = document.getElementById('interactiveOverlay');
   const interactiveApps = overlay.querySelectorAll('.switcher-app');
   let demoIndex = 0;
-  let optionHeld = false;
 
   const appData = [
     {
@@ -1342,7 +2060,7 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
     {
       name: 'Terminal',
       title: 'Terminal &mdash; zsh',
-      body: `<span style="color:#28c840">royal@mac</span> <span style="color:#60a5fa">~/HopTab</span> $ git log --oneline -3\n<span style="color:#fb923c">90a752e</span> feat: add fuzzy search\n<span style="color:#fb923c">3de954c</span> fix installation curl\n<span style="color:#fb923c">6741e46</span> v 0.1.0 done\n<span style="color:#28c840">royal@mac</span> <span style="color:#60a5fa">~/HopTab</span> $ <span class="cursor" style="display:inline-block;width:8px;height:16px;background:var(--text);animation:blink 1s step-end infinite"></span>`
+      body: `<span style="color:#28c840">royal@mac</span> <span style="color:#60a5fa">~/HopTab</span> $ git log --oneline -3\n<span style="color:#fb923c">7d434a1</span> add click support and strict modifier matching\n<span style="color:#fb923c">ebbd464</span> add hyperkey support\n<span style="color:#fb923c">e13f9c8</span> per-profile hotkeys and app actions\n<span style="color:#28c840">royal@mac</span> <span style="color:#60a5fa">~/HopTab</span> $ <span style="display:inline-block;width:8px;height:16px;background:var(--text);animation:blink 1s step-end infinite"></span>`
     }
   ];
 
@@ -1360,15 +2078,9 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
   }
 
   screen.addEventListener('keydown', (e) => {
-    // Option = Alt key
-    if (e.key === 'Alt' || e.altKey) {
-      optionHeld = true;
-    }
-
     if (e.key === 'Tab' && e.altKey) {
       e.preventDefault();
       overlay.classList.add('visible');
-
       if (e.shiftKey) {
         demoIndex = (demoIndex - 1 + interactiveApps.length) % interactiveApps.length;
       } else {
@@ -1376,7 +2088,6 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
       }
       updateDemoSelection();
     }
-
     if (e.key === 'Escape') {
       overlay.classList.remove('visible');
     }
@@ -1384,7 +2095,6 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
 
   screen.addEventListener('keyup', (e) => {
     if (e.key === 'Alt') {
-      optionHeld = false;
       if (overlay.classList.contains('visible')) {
         overlay.classList.remove('visible');
         switchToApp(demoIndex);
@@ -1392,17 +2102,15 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
     }
   });
 
-  // Focus indicator
   screen.addEventListener('focus', () => {
     screen.style.boxShadow = '0 0 0 2px var(--accent)';
   });
   screen.addEventListener('blur', () => {
     screen.style.boxShadow = 'none';
     overlay.classList.remove('visible');
-    optionHeld = false;
   });
 
-  // ---- Copy install command ----
+  // ---- Copy install ----
   function copyInstall() {
     const cmd = `curl -sL "$(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/latest | grep -o '"browser_download_url": *"[^"]*"' | head -1 | cut -d '"' -f 4)" -o /tmp/HopTab.zip && unzip -o /tmp/HopTab.zip -d /Applications && xattr -d com.apple.quarantine /Applications/HopTab.app`;
     navigator.clipboard.writeText(cmd).then(() => {
@@ -1411,11 +2119,6 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
       setTimeout(() => btn.textContent = 'Copy', 2000);
     });
   }
-
-  // ---- Blink cursor keyframe ----
-  const style = document.createElement('style');
-  style.textContent = '@keyframes blink { 50% { opacity: 0; } }';
-  document.head.appendChild(style);
 
   // ---- Scroll animations ----
   const observer = new IntersectionObserver((entries) => {
@@ -1427,7 +2130,7 @@ curl -sL "$(curl -s https://api.github.com/repos/<br>&nbsp;&nbsp;royalbhati/HopT
     });
   }, { threshold: 0.1 });
 
-  document.querySelectorAll('.feature-card, .comparison-card, .profile-card, .install-card').forEach(el => {
+  document.querySelectorAll('.feature-card, .comparison-card, .power-row, .install-card, .visual-card').forEach(el => {
     el.style.opacity = '0';
     el.style.transform = 'translateY(20px)';
     el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';

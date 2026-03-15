@@ -12,6 +12,8 @@ final class AppState: ObservableObject {
     private let overlayController = OverlayWindowController()
     private let profileOverlayController = ProfileOverlayWindowController()
     private let windowPickerController = WindowPickerOverlayController()
+    private let stickyNoteController = StickyNoteOverlayController()
+    private let toastController = ToastOverlayController()
 
     @Published private(set) var selectedIndex: Int = 0
     @Published private(set) var isSwitcherVisible: Bool = false
@@ -246,7 +248,7 @@ final class AppState: ObservableObject {
 
         // Per-profile hotkey callbacks
         hotkeyService.onProfileHotkeyActivated = { [weak self] profileId in
-            self?.store.setActiveProfile(id: profileId)
+            self?.switchToProfile(id: profileId)
             self?.showSwitcher()
         }
 
@@ -275,6 +277,19 @@ final class AppState: ObservableObject {
             self?.minimizeHighlightedApp()
         }
 
+        // Snap callbacks (arrow keys while switcher is active)
+        hotkeyService.onSnapLeft = { [weak self] in
+            self?.snapSelectedApp(direction: .left)
+        }
+
+        hotkeyService.onSnapRight = { [weak self] in
+            self?.snapSelectedApp(direction: .right)
+        }
+
+        hotkeyService.onSnapFull = { [weak self] in
+            self?.snapSelectedApp(direction: .full)
+        }
+
         // Window picker callbacks
         hotkeyService.onWindowPickerNavigateUp = { [weak self] in
             self?.windowPickerNavigateUp()
@@ -295,6 +310,19 @@ final class AppState: ObservableObject {
 
     // MARK: - App Switcher Logic
 
+    /// Show overlay keyboard hints for the first few activations.
+    private static let hintThreshold = 5
+    private static let switcherCountKey = "switcherActivationCount"
+
+    private var shouldShowHints: Bool {
+        UserDefaults.standard.integer(forKey: Self.switcherCountKey) < Self.hintThreshold
+    }
+
+    private func incrementSwitcherCount() {
+        let count = UserDefaults.standard.integer(forKey: Self.switcherCountKey)
+        UserDefaults.standard.set(count + 1, forKey: Self.switcherCountKey)
+    }
+
     private func showSwitcher() {
         let apps = store.apps
         guard !apps.isEmpty else { return }
@@ -305,7 +333,9 @@ final class AppState: ObservableObject {
         }
 
         isSwitcherVisible = true
+        overlayController.showHints = shouldShowHints
         overlayController.show(apps: apps, selectedIndex: selectedIndex)
+        incrementSwitcherCount()
     }
 
     private func cycleForward() {
@@ -454,7 +484,7 @@ final class AppState: ObservableObject {
         let selected = profiles[profileSelectedIndex]
         profileOverlayController.dismiss()
         isProfileSwitcherVisible = false
-        store.setActiveProfile(id: selected.id)
+        switchToProfile(id: selected.id)
     }
 
     private func cancelProfileSwitcher() {
@@ -549,11 +579,148 @@ final class AppState: ObservableObject {
         workspaceObservers.append(spaceObserver)
     }
 
+    // MARK: - Session-Aware Profile Switching
+
+    /// Public entry point for all UI-triggered profile switches.
+    func activateProfile(id: UUID) {
+        switchToProfile(id: id)
+    }
+
+    /// Core profile switch: snapshot outgoing, hide, switch, unhide, restore incoming, show sticky note.
+    private func switchToProfile(id: UUID) {
+        let outgoingId = store.activeProfileId
+        guard outgoingId != id else { return }
+
+        // 1. Snapshot outgoing profile
+        if let outgoingId, let outgoing = store.profiles.first(where: { $0.id == outgoingId }) {
+            let snapshot = SessionSnapshotService.captureSnapshot(for: outgoing)
+            store.saveSnapshot(snapshot)
+        }
+
+        // 2. Get incoming profile
+        guard let incoming = store.profiles.first(where: { $0.id == id }) else { return }
+
+        // 3. Hide outgoing apps (except shared ones)
+        if let outgoingId, let outgoing = store.profiles.first(where: { $0.id == outgoingId }) {
+            SessionSnapshotService.hideProfileApps(outgoing, excluding: incoming)
+        }
+
+        // 4. Switch the active profile
+        store.setActiveProfile(id: id)
+
+        // 5. Unhide incoming apps
+        SessionSnapshotService.unhideProfileApps(incoming)
+
+        // 6. Apply layout or restore window positions after a small delay (let unhide take effect)
+        if let binding = incoming.layoutBinding,
+           let template = store.allTemplates.first(where: { $0.id == binding.templateId }),
+           !binding.zoneAssignments.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                LayoutService.applyLayout(binding: binding, template: template, profile: incoming)
+            }
+        } else if let snapshot = store.snapshot(for: id) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                SessionSnapshotService.restoreSnapshot(snapshot, for: incoming)
+            }
+        }
+
+        // 7. Show sticky note if set
+        if let note = incoming.stickyNote, !note.isEmpty {
+            stickyNoteController.show(profileName: incoming.name, note: note)
+        }
+    }
+
+    // MARK: - Save & Close / Restore Session
+
+    /// Save window positions and quit all apps in a profile.
+    func saveAndCloseSession(profileId: UUID) {
+        guard let profile = store.profiles.first(where: { $0.id == profileId }) else { return }
+
+        // Capture current window positions
+        let snapshot = SessionSnapshotService.captureSnapshot(for: profile)
+        store.saveSnapshot(snapshot)
+
+        // Quit all running apps
+        SessionSnapshotService.quitProfileApps(profile)
+    }
+
+    /// Relaunch all apps in a profile and restore their window positions.
+    func restoreSession(profileId: UUID) {
+        guard let profile = store.profiles.first(where: { $0.id == profileId }) else { return }
+
+        // Launch all apps
+        SessionSnapshotService.launchProfileApps(profile)
+
+        // Check if this profile has a layout binding — use that instead of snapshot
+        if let binding = profile.layoutBinding,
+           let template = store.allTemplates.first(where: { $0.id == binding.templateId }),
+           !binding.zoneAssignments.isEmpty {
+            // Apply layout after apps have had time to launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                LayoutService.applyLayout(binding: binding, template: template, profile: profile)
+            }
+            // Second attempt for slow-launching apps
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                LayoutService.applyLayout(binding: binding, template: template, profile: profile)
+            }
+        } else if let snapshot = store.snapshot(for: profileId) {
+            // Restore saved window positions
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                SessionSnapshotService.restoreSnapshot(snapshot, for: profile)
+            }
+            // Second attempt for slow-launching apps
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                SessionSnapshotService.restoreSnapshot(snapshot, for: profile)
+            }
+        }
+
+        // Show sticky note if set
+        if let note = profile.stickyNote, !note.isEmpty {
+            stickyNoteController.show(profileName: profile.name, note: note)
+        }
+    }
+
+    /// Whether a profile has a saved session (snapshot exists and no apps are running).
+    func canRestoreSession(profileId: UUID) -> Bool {
+        guard let profile = store.profiles.first(where: { $0.id == profileId }),
+              store.snapshot(for: profileId) != nil else { return false }
+        return !SessionSnapshotService.hasRunningApps(profile)
+    }
+
+    // MARK: - Layout Actions
+
+    /// Apply the active profile's layout template now.
+    func applyLayoutForActiveProfile() {
+        guard let profile = store.activeProfile else { return }
+        guard let binding = profile.layoutBinding else { return }
+        guard let template = store.allTemplates.first(where: { $0.id == binding.templateId }) else { return }
+        guard !binding.zoneAssignments.isEmpty else { return }
+
+        let result = LayoutService.applyLayout(binding: binding, template: template, profile: profile)
+        if result == -1 {
+            // AX not trusted — prompt and show error
+            permissions.requestAccessibility()
+            toastController.show(icon: "exclamationmark.triangle.fill", message: "Grant Accessibility in System Settings")
+        } else if result == 0 {
+            toastController.show(icon: "exclamationmark.circle", message: "No windows moved — are apps running?")
+        } else {
+            toastController.show(icon: "checkmark.circle.fill", message: "Layout Applied")
+        }
+    }
+
+    /// Quick-snap the currently highlighted app in the switcher.
+    func snapSelectedApp(direction: SnapDirection) {
+        let apps = store.apps
+        guard selectedIndex < apps.count else { return }
+        let app = apps[selectedIndex]
+        LayoutService.snapApp(bundleIdentifier: app.bundleIdentifier, to: direction)
+    }
+
     private func handleSpaceChange() {
         guard let spaceId = SpaceService.currentSpaceId,
               let profileId = store.profileForSpace(spaceId)
         else { return }
-        store.setActiveProfile(id: profileId)
+        switchToProfile(id: profileId)
     }
 
     /// Retry starting the event tap (e.g. after granting Accessibility).

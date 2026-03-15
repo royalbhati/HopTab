@@ -15,6 +15,11 @@ struct SettingsView: View {
                     Label("Profiles", systemImage: "person.2.fill")
                 }
 
+            LayoutsTab()
+                .tabItem {
+                    Label("Layouts", systemImage: "rectangle.3.group")
+                }
+
             ShortcutTab()
                 .tabItem {
                     Label("Shortcut", systemImage: "keyboard")
@@ -25,7 +30,7 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 480, height: 520)
+        .frame(width: 520, height: 560)
     }
 }
 
@@ -75,9 +80,18 @@ private struct PinnedAppsTab: View {
             // Pinned apps section
             GroupBox("Pinned Apps") {
                 if appState.store.apps.isEmpty {
-                    Text("No apps pinned yet. Add apps from the list below.")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 40)
+                    VStack(spacing: 6) {
+                        Image(systemName: "pin")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.tertiary)
+                        Text("No apps pinned yet")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Text("Click the pin icon on any app below to add it")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 50)
                 } else {
                     List {
                         ForEach(appState.store.apps) { app in
@@ -198,7 +212,7 @@ private struct PinnedAppsTab: View {
         Menu {
             ForEach(appState.store.profiles) { profile in
                 Button {
-                    appState.store.setActiveProfile(id: profile.id)
+                    appState.activateProfile(id: profile.id)
                 } label: {
                     HStack {
                         Text(profile.name)
@@ -341,7 +355,7 @@ private struct ProfileRow: View {
                             .clipShape(RoundedRectangle(cornerRadius: 4))
                     } else {
                         Button("Activate") {
-                            appState.store.setActiveProfile(id: profile.id)
+                            appState.activateProfile(id: profile.id)
                         }
                         .controlSize(.small)
                     }
@@ -390,6 +404,7 @@ private struct ProfileSettingsPopover: View {
     let profile: Profile
     @Binding var isEditing: Bool
     @Binding var editingName: String
+    @State private var noteText: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -438,6 +453,114 @@ private struct ProfileSettingsPopover: View {
                     }
                     .controlSize(.small)
                 }
+            }
+
+            Divider()
+
+            // Sticky note
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "note.text")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+                    .padding(.top, 4)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sticky Note")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+
+                    TextEditor(text: $noteText)
+                    .font(.system(size: 12))
+                    .frame(height: 60)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                    )
+                    .onAppear { noteText = profile.stickyNote ?? "" }
+                    .onChange(of: noteText) {
+                        appState.store.setStickyNote(profileId: profile.id, note: noteText)
+                    }
+
+                    Text("Shown when switching to this profile")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Divider()
+
+            // Session actions
+            HStack(spacing: 6) {
+                Image(systemName: "tray.and.arrow.down")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Session")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 8) {
+                        if appState.canRestoreSession(profileId: profile.id) {
+                            Button {
+                                appState.restoreSession(profileId: profile.id)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.counterclockwise")
+                                    Text("Restore")
+                                }
+                            }
+                            .controlSize(.small)
+                        }
+
+                        if SessionSnapshotService.hasRunningApps(profile) {
+                            Button {
+                                appState.saveAndCloseSession(profileId: profile.id)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "tray.and.arrow.down")
+                                    Text("Save & Close")
+                                }
+                            }
+                            .controlSize(.small)
+                        }
+
+                        if !appState.canRestoreSession(profileId: profile.id) &&
+                            !SessionSnapshotService.hasRunningApps(profile) {
+                            Text("No saved session")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            // Layout summary
+            HStack(spacing: 6) {
+                Image(systemName: "rectangle.3.group")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+
+                if let binding = profile.layoutBinding,
+                   let template = appState.store.allTemplates.first(where: { $0.id == binding.templateId }) {
+                    Text(template.name)
+                        .font(.system(size: 12))
+                    Text("(\(binding.zoneAssignments.count) zone\(binding.zoneAssignments.count == 1 ? "" : "s"))")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("No layout")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                }
+
+                Spacer()
+
+                Text("Configure in Layouts tab")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
             }
 
             Divider()
@@ -715,9 +838,12 @@ private struct ShortcutTab: View {
 // MARK: - About Tab
 
 private struct AboutTab: View {
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var updateService = UpdateService.shared
+
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "pin.circle.fill")
+            Image(systemName: "arrow.2.squarepath")
                 .font(.system(size: 64))
                 .foregroundStyle(.tint)
 
@@ -732,6 +858,65 @@ private struct AboutTab: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
+
+            Divider().padding(.vertical, 4)
+
+            Button {
+                UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+                NSApp.sendAction(#selector(AppDelegate.showOnboarding(_:)), to: nil, from: nil)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "book.pages")
+                    Text("Show Onboarding")
+                }
+            }
+            .controlSize(.small)
+
+            // Update section
+            GroupBox {
+                VStack(spacing: 8) {
+                    HStack {
+                        Toggle("Check for updates automatically", isOn: $updateService.autoCheckEnabled)
+                            .font(.system(size: 12))
+                        Spacer()
+                    }
+
+                    HStack {
+                        Button {
+                            Task { await updateService.checkForUpdates(silent: false) }
+                        } label: {
+                            HStack(spacing: 4) {
+                                if updateService.isChecking {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .scaleEffect(0.7)
+                                } else {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                }
+                                Text("Check for Updates")
+                            }
+                        }
+                        .controlSize(.small)
+                        .disabled(updateService.isChecking)
+
+                        Spacer()
+
+                        if let update = updateService.availableUpdate {
+                            Button {
+                                updateService.downloadUpdate(update)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                    Text("v\(update.version) Available")
+                                }
+                            }
+                            .controlSize(.small)
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                }
+                .padding(4)
+            }
 
             Spacer()
         }

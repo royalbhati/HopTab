@@ -1,20 +1,31 @@
 import SwiftUI
 
 struct OverlayView: View {
-    let apps: [PinnedApp]
-    let selectedIndex: Int
-    var onAppClicked: ((Int) -> Void)? = nil
+    @ObservedObject var viewModel: OverlayViewModel
 
     var body: some View {
-        HStack(spacing: 12) {
-            ForEach(Array(apps.enumerated()), id: \.element.id) { index, app in
-                AppIconView(app: app, isSelected: index == selectedIndex)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onAppClicked?(index) }
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                ForEach(Array(viewModel.apps.enumerated()), id: \.element.id) { index, app in
+                    AppIconView(app: app, isSelected: index == viewModel.selectedIndex)
+                        .contentShape(Rectangle())
+                        .onTapGesture { viewModel.onAppClicked?(index) }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, viewModel.showHints ? 8 : 16)
+
+            if viewModel.showHints {
+                HStack(spacing: 16) {
+                    HintLabel(text: "Tab to cycle")
+                    HintLabel(text: "Release to switch")
+                    HintLabel(text: "Esc to cancel")
+                }
+                .padding(.bottom, 12)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
         .background {
             VisualEffectBlur(cornerRadius: 18)
         }
@@ -23,16 +34,25 @@ struct OverlayView: View {
     }
 }
 
+private struct HintLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10))
+            .foregroundStyle(.white.opacity(0.5))
+    }
+}
+
 // MARK: - Profile Overlay View
 
 struct ProfileOverlayView: View {
-    let profiles: [Profile]
-    let selectedIndex: Int
+    @ObservedObject var viewModel: ProfileOverlayViewModel
 
     var body: some View {
         HStack(spacing: 8) {
-            ForEach(Array(profiles.enumerated()), id: \.element.id) { index, profile in
-                let isSelected = index == selectedIndex
+            ForEach(Array(viewModel.profiles.enumerated()), id: \.element.id) { index, profile in
+                let isSelected = index == viewModel.selectedIndex
                 VStack(spacing: 4) {
                     Image(systemName: "person.crop.circle.fill")
                         .font(.system(size: 32))
@@ -68,19 +88,16 @@ struct ProfileOverlayView: View {
 // MARK: - Window Picker View
 
 struct WindowPickerView: View {
-    let appName: String
-    let appIcon: NSImage
-    let windows: [WindowInfo]
-    let selectedIndex: Int
+    @ObservedObject var viewModel: WindowPickerViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header: app icon + name
             HStack(spacing: 10) {
-                Image(nsImage: appIcon)
+                Image(nsImage: viewModel.appIcon)
                     .resizable()
                     .frame(width: 32, height: 32)
-                Text(appName)
+                Text(viewModel.appName)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.primary)
             }
@@ -93,8 +110,8 @@ struct WindowPickerView: View {
 
             // Window list
             VStack(spacing: 2) {
-                ForEach(Array(windows.enumerated()), id: \.element.id) { index, window in
-                    let isSelected = index == selectedIndex
+                ForEach(Array(viewModel.windows.enumerated()), id: \.element.id) { index, window in
+                    let isSelected = index == viewModel.selectedIndex
                     HStack(spacing: 8) {
                         Image(systemName: window.isMinimized ? "minus.circle" : "macwindow")
                             .font(.system(size: 13))
@@ -129,32 +146,93 @@ struct WindowPickerView: View {
     }
 }
 
+// MARK: - Sticky Note Overlay View
+
+struct StickyNoteOverlayView: View {
+    let profileName: String
+    let note: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "note.text")
+                    .foregroundStyle(.secondary)
+                Text(profileName)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+
+            Text(note)
+                .font(.system(size: 12))
+                .foregroundStyle(.primary)
+                .lineLimit(5)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: 320, alignment: .leading)
+        .background {
+            VisualEffectBlur(cornerRadius: 14)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+    }
+}
+
+// MARK: - Toast Overlay View
+
+struct ToastOverlayView: View {
+    let icon: String
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(.white)
+            Text(message)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background {
+            VisualEffectBlur(cornerRadius: 12)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+    }
+}
+
 // MARK: - Visual Effect (NSVisualEffectView wrapper)
 
 struct VisualEffectBlur: NSViewRepresentable {
     var cornerRadius: CGFloat = 0
+
+    private static var maskCache: [CGFloat: NSImage] = [:]
 
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .hudWindow
         view.blendingMode = .behindWindow
         view.state = .active
-        view.maskImage = maskImage(cornerRadius: cornerRadius)
+        view.maskImage = Self.cachedMaskImage(cornerRadius: cornerRadius)
         return view
     }
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 
-    private func maskImage(cornerRadius: CGFloat) -> NSImage {
+    private static func cachedMaskImage(cornerRadius: CGFloat) -> NSImage {
+        if let cached = maskCache[cornerRadius] { return cached }
+
         let edgeLength = 2.0 * cornerRadius + 1.0
-        let maskImage = NSImage(size: NSSize(width: edgeLength, height: edgeLength), flipped: false) { rect in
+        let image = NSImage(size: NSSize(width: edgeLength, height: edgeLength), flipped: false) { rect in
             let bezierPath = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
             NSColor.black.set()
             bezierPath.fill()
             return true
         }
-        maskImage.capInsets = NSEdgeInsets(top: cornerRadius, left: cornerRadius, bottom: cornerRadius, right: cornerRadius)
-        maskImage.resizingMode = .stretch
-        return maskImage
+        image.capInsets = NSEdgeInsets(top: cornerRadius, left: cornerRadius, bottom: cornerRadius, right: cornerRadius)
+        image.resizingMode = .stretch
+        maskCache[cornerRadius] = image
+        return image
     }
 }

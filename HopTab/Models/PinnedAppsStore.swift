@@ -6,9 +6,18 @@ final class PinnedAppsStore: ObservableObject {
     private static let activeProfileKey = "activeProfileId"
     private static let spaceMappingKey = "spaceToProfile"
     private static let legacyKey = "pinnedApps"
+    private static let snapshotsKey = "sessionSnapshots"
+    private static let customTemplatesKey = "customLayoutTemplates"
 
     @Published private(set) var profiles: [Profile] = []
     @Published private(set) var activeProfileId: UUID?
+    @Published private(set) var snapshots: [UUID: SessionSnapshot] = [:]
+    @Published private(set) var customTemplates: [LayoutTemplate] = []
+
+    /// All available templates (built-in + custom).
+    var allTemplates: [LayoutTemplate] {
+        LayoutTemplate.builtInTemplates + customTemplates
+    }
 
     /// Maps Space ID (Int) → Profile ID (UUID string). Persisted in UserDefaults.
     @Published var spaceMapping: [Int: UUID] = [:]
@@ -86,6 +95,94 @@ final class PinnedAppsStore: ObservableObject {
     /// Returns the Space ID currently assigned to a profile, if any.
     func spaceForProfile(_ profileId: UUID) -> Int? {
         spaceMapping.first { $0.value == profileId }?.key
+    }
+
+    // MARK: - Session Snapshots
+
+    func saveSnapshot(_ snapshot: SessionSnapshot) {
+        snapshots[snapshot.profileId] = snapshot
+        persistSnapshots()
+    }
+
+    func snapshot(for profileId: UUID) -> SessionSnapshot? {
+        snapshots[profileId]
+    }
+
+    private func persistSnapshots() {
+        if let data = try? JSONEncoder().encode(snapshots) {
+            UserDefaults.standard.set(data, forKey: Self.snapshotsKey)
+        }
+    }
+
+    private func loadSnapshots() {
+        if let data = UserDefaults.standard.data(forKey: Self.snapshotsKey),
+           let decoded = try? JSONDecoder().decode([UUID: SessionSnapshot].self, from: data) {
+            snapshots = decoded
+        }
+    }
+
+    // MARK: - Sticky Note
+
+    func setStickyNote(profileId: UUID, note: String?) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
+        let isEmpty = note?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+        profiles[idx].stickyNote = isEmpty ? nil : note
+        save()
+    }
+
+    // MARK: - Layout Binding
+
+    func setLayoutBinding(profileId: UUID, binding: LayoutBinding?) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
+        profiles[idx].layoutBinding = binding
+        save()
+    }
+
+    func assignZone(profileId: UUID, templateId: UUID, zoneId: UUID, bundleIdentifier: String) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
+        if profiles[idx].layoutBinding == nil || profiles[idx].layoutBinding?.templateId != templateId {
+            profiles[idx].layoutBinding = LayoutBinding(templateId: templateId, zoneAssignments: [:])
+        }
+        profiles[idx].layoutBinding?.zoneAssignments[zoneId] = bundleIdentifier
+        save()
+    }
+
+    func unassignZone(profileId: UUID, zoneId: UUID) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
+        profiles[idx].layoutBinding?.zoneAssignments.removeValue(forKey: zoneId)
+        save()
+    }
+
+    // MARK: - Custom Templates
+
+    func addCustomTemplate(_ template: LayoutTemplate) {
+        customTemplates.append(template)
+        saveCustomTemplates()
+    }
+
+    func deleteCustomTemplate(id: UUID) {
+        customTemplates.removeAll { $0.id == id }
+        // Clear any profile bindings that reference this template
+        for i in profiles.indices {
+            if profiles[i].layoutBinding?.templateId == id {
+                profiles[i].layoutBinding = nil
+            }
+        }
+        saveCustomTemplates()
+        save()
+    }
+
+    private func saveCustomTemplates() {
+        if let data = try? JSONEncoder().encode(customTemplates) {
+            UserDefaults.standard.set(data, forKey: Self.customTemplatesKey)
+        }
+    }
+
+    private func loadCustomTemplates() {
+        if let data = UserDefaults.standard.data(forKey: Self.customTemplatesKey),
+           let decoded = try? JSONDecoder().decode([LayoutTemplate].self, from: data) {
+            customTemplates = decoded
+        }
     }
 
     // MARK: - Profile Hotkeys
@@ -166,6 +263,10 @@ final class PinnedAppsStore: ObservableObject {
     }
 
     private func load() {
+        // Load session snapshots and custom templates
+        loadSnapshots()
+        loadCustomTemplates()
+
         // Load space mapping
         if let stringMap = UserDefaults.standard.dictionary(forKey: Self.spaceMappingKey) as? [String: String] {
             spaceMapping = [:]
