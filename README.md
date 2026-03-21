@@ -42,7 +42,7 @@ curl -sL "$(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/late
   | grep -o '"browser_download_url": *"[^"]*"' \
   | head -1 | cut -d '"' -f 4)" -o /tmp/HopTab.zip \
   && unzip -o /tmp/HopTab.zip -d /Applications \
-  && xattr -d com.apple.quarantine /Applications/HopTab.app
+  && xattr -c /Applications/HopTab.app
 ```
 
 Or download from [Releases](../../releases/latest), unzip, drag to `/Applications`, and run:
