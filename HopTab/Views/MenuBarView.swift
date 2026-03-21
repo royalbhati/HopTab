@@ -34,6 +34,39 @@ struct MenuBarView: View {
                 Divider()
             }
 
+            // Accessibility permission banner
+            if !appState.permissions.isTrusted {
+                VStack(spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.shield.fill")
+                            .foregroundStyle(.white)
+                        Text("HopTab needs Accessibility permission to work")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white)
+                    }
+
+                    Button {
+                        appState.permissions.requestAccessibility()
+                    } label: {
+                        Text("Grant Accessibility Access")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(8)
+                .background(Color.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+
+                Divider()
+            }
+
             // Hotkey hint
             HStack(spacing: 6) {
                 Image(systemName: "keyboard")
@@ -180,8 +213,7 @@ struct MenuBarView: View {
             }
 
             Button("Settings...") {
-                NSApp.activate(ignoringOtherApps: true)
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                NSApp.sendAction(#selector(AppDelegate.openSettings(_:)), to: nil, from: nil)
             }
             .keyboardShortcut(",", modifiers: .command)
 

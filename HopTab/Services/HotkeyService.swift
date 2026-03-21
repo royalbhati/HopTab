@@ -38,6 +38,11 @@ final class HotkeyService {
     var onSnapLeft: (() -> Void)?
     var onSnapRight: (() -> Void)?
     var onSnapFull: (() -> Void)?
+    var onSnapBottom: (() -> Void)?
+
+    // Global Snap Shortcuts (work without switcher)
+    var snapShortcuts: [(modifiers: CGEventFlags, keyCode: Int64, direction: SnapDirection)] = []
+    var onGlobalSnap: ((SnapDirection) -> Void)?
 
     // App Switcher shortcut (configurable)
     private(set) var modifierFlag: CGEventFlags = .maskAlternate
@@ -88,6 +93,12 @@ final class HotkeyService {
         profileModifierFlag = modifierFlag
         profileTriggerKeyCode = keyCode
         if wasRunning { start() }
+    }
+
+    func configureSnapShortcuts(_ config: SnapShortcutConfig) {
+        snapShortcuts = config.bindings.map { (direction, shortcut) in
+            (modifiers: shortcut.modifierFlags, keyCode: shortcut.keyCode, direction: direction)
+        }
     }
 
     func configureProfileHotkeys(_ hotkeys: [(UUID, CustomShortcut)]) {
@@ -191,6 +202,15 @@ final class HotkeyService {
                 CGEvent.tapEnable(tap: tap, enable: true)
                 NSLog("[HotkeyService] Re-enabled event tap after timeout — reset modifier state")
             }
+            return event
+        }
+
+        // Let events through when HopTab's own windows are focused (e.g. settings)
+        // so text fields, TextEditors, etc. work normally.
+        // Skip this bypass when a switcher is actively being used.
+        if NSApp.isActive
+            && !isSwitcherActive && !isProfileSwitcherActive
+            && !isWindowPickerActive && activeProfileHotkeyId == nil {
             return event
         }
 
@@ -323,6 +343,9 @@ final class HotkeyService {
                 case Int64(kVK_UpArrow):
                     onSnapFull?()
                     return nil
+                case Int64(kVK_DownArrow):
+                    onSnapBottom?()
+                    return nil
                 default:
                     break
                 }
@@ -394,6 +417,20 @@ final class HotkeyService {
                 return nil
             }
 
+            // Global snap shortcuts — only when no switcher is active
+            if !isSwitcherActive && !isProfileSwitcherActive
+                && activeProfileHotkeyId == nil && !isWindowPickerActive {
+                let nonShiftMods = CGEventFlags([.maskControl, .maskAlternate, .maskCommand])
+                let eventMods = flags.intersection(nonShiftMods)
+                for snap in snapShortcuts {
+                    let requiredMods = snap.modifiers.intersection(nonShiftMods)
+                    if eventMods == requiredMods && keyCode == snap.keyCode {
+                        onGlobalSnap?(snap.direction)
+                        return nil
+                    }
+                }
+            }
+
             // Escape — cancel any active switcher
             if keyCode == kVK_Escape {
                 if isSwitcherActive {
@@ -415,6 +452,26 @@ final class HotkeyService {
                     onSwitcherCancelled?()
                     return nil
                 }
+            }
+        }
+
+        // MARK: Key Up — swallow trigger key releases while a switcher is active
+        // so the foreground app never sees a stray keyUp for a keyDown we already consumed.
+        if type == .keyUp {
+            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+
+            if isWindowPickerActive {
+                return nil
+            }
+            if isSwitcherActive && keyCode == triggerKeyCode {
+                return nil
+            }
+            if isProfileSwitcherActive && keyCode == profileTriggerKeyCode {
+                return nil
+            }
+            if let activeId = activeProfileHotkeyId,
+               profileHotkeys.contains(where: { $0.profileId == activeId && $0.keyCode == keyCode }) {
+                return nil
             }
         }
 

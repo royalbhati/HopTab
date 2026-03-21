@@ -9,10 +9,5 @@ struct HopTabApp: App {
             MenuBarView()
                 .environmentObject(delegate.appState)
         }
-
-        Settings {
-            SettingsView()
-                .environmentObject(delegate.appState)
-        }
     }
 }

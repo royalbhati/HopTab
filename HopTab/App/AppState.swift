@@ -199,6 +199,14 @@ final class AppState: ObservableObject {
     func startHotkey() {
         hotkeyService.start()
         hotkeyStatus = hotkeyService.isRunning ? .running : .failed
+
+        NotificationCenter.default.addObserver(
+            forName: .snapShortcutsChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.hotkeyService.configureSnapShortcuts(SnapShortcutConfig.current)
+        }
     }
 
     private func setupHotkeyCallbacks() {
@@ -288,6 +296,25 @@ final class AppState: ObservableObject {
 
         hotkeyService.onSnapFull = { [weak self] in
             self?.snapSelectedApp(direction: .full)
+        }
+
+        hotkeyService.onSnapBottom = { [weak self] in
+            self?.snapSelectedApp(direction: .bottomHalf)
+        }
+
+        // Global snap shortcuts (work without switcher)
+        hotkeyService.configureSnapShortcuts(SnapShortcutConfig.current)
+        hotkeyService.onGlobalSnap = { direction in
+            switch direction {
+            case .nextMonitor:
+                LayoutService.moveFrontmostToNextMonitor()
+            case .previousMonitor:
+                LayoutService.moveFrontmostToPreviousMonitor()
+            case .undo:
+                LayoutService.undoSnap()
+            default:
+                LayoutService.snapFrontmost(to: direction)
+            }
         }
 
         // Window picker callbacks

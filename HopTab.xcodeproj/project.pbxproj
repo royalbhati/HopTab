@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		202A3B2F2717FE0BEA3F530B /* SnapShortcutConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A4E841454545134FAE3339 /* SnapShortcutConfig.swift */; };
 		A10001 /* HopTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10001 /* HopTabApp.swift */; };
 		A10002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10002 /* AppDelegate.swift */; };
 		A10003 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10003 /* AppState.swift */; };
@@ -66,6 +67,7 @@
 		B10027 /* LayoutPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutPickerView.swift; sourceTree = "<group>"; };
 		B10028 /* UpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateService.swift; sourceTree = "<group>"; };
 		B10099 /* HopTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0A4E841454545134FAE3339 /* SnapShortcutConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapShortcutConfig.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +122,7 @@
 				B10018 /* KeyCodeMapping.swift */,
 				B10022 /* SessionSnapshot.swift */,
 				B10025 /* LayoutTemplate.swift */,
+				F0A4E841454545134FAE3339 /* SnapShortcutConfig.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -252,6 +255,7 @@
 				A10026 /* LayoutService.swift in Sources */,
 				A10027 /* LayoutPickerView.swift in Sources */,
 				A10028 /* UpdateService.swift in Sources */,
+				202A3B2F2717FE0BEA3F530B /* SnapShortcutConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

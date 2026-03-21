@@ -1,36 +1,63 @@
 import SwiftUI
 
-struct SettingsView: View {
-    @EnvironmentObject private var appState: AppState
+// MARK: - Settings Window Controller
 
-    var body: some View {
-        TabView {
-            PinnedAppsTab()
-                .tabItem {
-                    Label("Pinned Apps", systemImage: "pin.fill")
-                }
+final class SettingsWindowController {
+    private var window: NSWindow?
 
-            ProfilesTab()
-                .tabItem {
-                    Label("Profiles", systemImage: "person.2.fill")
-                }
+    private struct Tab {
+        let title: String
+        let icon: String
+        let view: (AppState) -> NSView
+    }
 
-            LayoutsTab()
-                .tabItem {
-                    Label("Layouts", systemImage: "rectangle.3.group")
-                }
+    private let tabs: [Tab] = [
+        Tab(title: "Pinned Apps", icon: "pin.fill") { appState in
+            NSHostingView(rootView: PinnedAppsTab().environmentObject(appState))
+        },
+        Tab(title: "Profiles", icon: "person.2.fill") { appState in
+            NSHostingView(rootView: ProfilesTab().environmentObject(appState))
+        },
+        Tab(title: "Layouts", icon: "rectangle.3.group") { appState in
+            NSHostingView(rootView: LayoutsTab().environmentObject(appState))
+        },
+        Tab(title: "Shortcut", icon: "keyboard") { appState in
+            NSHostingView(rootView: ShortcutTab().environmentObject(appState))
+        },
+        Tab(title: "Windows", icon: "rectangle.split.2x1") { appState in
+            NSHostingView(rootView: WindowSnapTab().environmentObject(appState))
+        },
+        Tab(title: "About", icon: "info.circle") { appState in
+            NSHostingView(rootView: AboutTab().environmentObject(appState))
+        },
+    ]
 
-            ShortcutTab()
-                .tabItem {
-                    Label("Shortcut", systemImage: "keyboard")
-                }
-
-            AboutTab()
-                .tabItem {
-                    Label("About", systemImage: "info.circle")
-                }
+    func show(appState: AppState) {
+        if let window {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
         }
-        .frame(width: 520, height: 560)
+
+        let tabVC = NSTabViewController()
+        tabVC.tabStyle = .toolbar
+
+        for tab in tabs {
+            let item = NSTabViewItem(viewController: NSViewController())
+            item.label = tab.title
+            item.image = NSImage(systemSymbolName: tab.icon, accessibilityDescription: tab.title)
+            item.viewController!.view = tab.view(appState)
+            item.viewController!.preferredContentSize = NSSize(width: 520, height: 580)
+            tabVC.addTabViewItem(item)
+        }
+
+        let w = NSWindow(contentViewController: tabVC)
+        w.title = "HopTab Settings"
+        w.center()
+        w.isReleasedWhenClosed = false
+        w.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        self.window = w
     }
 }
 
@@ -923,4 +950,146 @@ private struct AboutTab: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+// MARK: - Window Snap Tab
+
+private struct WindowSnapTab: View {
+    @State private var gapSize: Double = UserDefaults.standard.double(forKey: "windowGap")
+    @State private var snapConfig: SnapShortcutConfig = SnapShortcutConfig.current
+
+    private let shortcutGroups: [(title: String, directions: [SnapDirection])] = [
+        ("Halves", [.left, .right, .topHalf, .bottomHalf]),
+        ("Quarters", [.topLeft, .topRight, .bottomLeft, .bottomRight]),
+        ("Thirds", [.firstThird, .centerThird, .lastThird, .firstTwoThirds, .lastTwoThirds]),
+        ("Other", [.full, .center]),
+        ("Monitors", [.nextMonitor, .previousMonitor]),
+        ("Actions", [.undo]),
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                gapSection
+                snapShortcutsSection
+            }
+            .padding()
+        }
+    }
+
+    // MARK: Gap
+
+    private var gapSection: some View {
+        GroupBox("Window Gap") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Gap between windows:")
+                        .font(.system(size: 12))
+                    Spacer()
+                    Text("\(Int(gapSize)) pt")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+
+                Slider(value: $gapSize, in: 0...20, step: 1)
+                    .onChange(of: gapSize) {
+                        UserDefaults.standard.set(gapSize, forKey: "windowGap")
+                    }
+
+                // Preview
+                HStack(spacing: gapSize > 0 ? gapSize / 2 : 0) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.accentColor.opacity(0.3))
+                        .frame(height: 40)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.accentColor.opacity(0.3))
+                        .frame(height: 40)
+                }
+                .padding(gapSize > 0 ? gapSize / 2 : 0)
+                .background(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.3)))
+                .animation(.easeInOut(duration: 0.15), value: gapSize)
+            }
+            .padding(8)
+        }
+    }
+
+    // MARK: Shortcuts
+
+    private var snapShortcutsSection: some View {
+        GroupBox("Snap Shortcuts") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Global keyboard shortcuts for window snapping. Works anytime, no switcher needed.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                ForEach(shortcutGroups, id: \.title) { group in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(group.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+
+                        ForEach(group.directions, id: \.self) { direction in
+                            snapShortcutRow(direction: direction)
+                        }
+                    }
+                }
+
+                HStack {
+                    Spacer()
+                    Button("Reset to Defaults") {
+                        snapConfig = .defaults
+                        saveConfig()
+                    }
+                    .controlSize(.small)
+                }
+            }
+            .padding(8)
+        }
+    }
+
+    private func snapShortcutRow(direction: SnapDirection) -> some View {
+        HStack(spacing: 8) {
+            Text(direction.displayName)
+                .font(.system(size: 12))
+                .frame(width: 130, alignment: .leading)
+
+            ShortcutRecorderView(shortcut: binding(for: direction))
+
+            if snapConfig.bindings[direction] != nil {
+                Button {
+                    snapConfig.bindings.removeValue(forKey: direction)
+                    saveConfig()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func binding(for direction: SnapDirection) -> Binding<CustomShortcut?> {
+        Binding(
+            get: { snapConfig.bindings[direction] },
+            set: { newValue in
+                if let shortcut = newValue {
+                    snapConfig.bindings[direction] = shortcut
+                } else {
+                    snapConfig.bindings.removeValue(forKey: direction)
+                }
+                saveConfig()
+            }
+        )
+    }
+
+    private func saveConfig() {
+        SnapShortcutConfig.current = snapConfig
+        // Notify the app to reconfigure the hotkey service
+        NotificationCenter.default.post(name: .snapShortcutsChanged, object: nil)
+    }
+}
+
+extension Notification.Name {
+    static let snapShortcutsChanged = Notification.Name("snapShortcutsChanged")
 }

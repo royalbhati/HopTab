@@ -6,9 +6,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     let appState = AppState()
     private var cancellables = Set<AnyCancellable>()
     private let onboardingController = OnboardingWindowController()
+    let settingsController = SettingsWindowController()
 
     @objc func showOnboarding(_ sender: Any?) {
         onboardingController.show(appState: appState)
+    }
+
+    @objc func openSettings(_ sender: Any?) {
+        settingsController.show(appState: appState)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

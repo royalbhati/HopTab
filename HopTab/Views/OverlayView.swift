@@ -53,19 +53,14 @@ struct ProfileOverlayView: View {
         HStack(spacing: 8) {
             ForEach(Array(viewModel.profiles.enumerated()), id: \.element.id) { index, profile in
                 let isSelected = index == viewModel.selectedIndex
-                VStack(spacing: 4) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(isSelected ? .white : .secondary)
+                VStack(spacing: 6) {
+                    // App icon grid instead of person avatar
+                    ProfileAppIcons(apps: profile.pinnedApps, isSelected: isSelected)
 
                     Text(profile.name)
                         .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
                         .foregroundStyle(isSelected ? .white : .primary)
                         .lineLimit(1)
-
-                    Text("\(profile.pinnedApps.count) app\(profile.pinnedApps.count == 1 ? "" : "s")")
-                        .font(.system(size: 10))
-                        .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -82,6 +77,54 @@ struct ProfileOverlayView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+    }
+}
+
+// MARK: - Profile App Icons
+
+/// Shows a small grid of pinned app icons for a profile (up to 4 in a 2x2 grid).
+private struct ProfileAppIcons: View {
+    let apps: [PinnedApp]
+    let isSelected: Bool
+
+    private let iconSize: CGFloat = 16
+    private let gridSpacing: CGFloat = 3
+
+    var body: some View {
+        let visible = Array(apps.prefix(4))
+        let remaining = apps.count - visible.count
+
+        ZStack {
+            if visible.isEmpty {
+                Image(systemName: "square.dashed")
+                    .font(.system(size: 24))
+                    .foregroundStyle(isSelected ? .white.opacity(0.5) : .secondary)
+            } else {
+                let columns = visible.count <= 1 ? 1 : 2
+                let gridCols = Array(repeating: GridItem(.fixed(iconSize), spacing: gridSpacing), count: columns)
+
+                LazyVGrid(columns: gridCols, spacing: gridSpacing) {
+                    ForEach(visible) { app in
+                        Image(nsImage: app.icon)
+                            .resizable()
+                            .frame(width: iconSize, height: iconSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                    }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if remaining > 0 {
+                        Text("+\(remaining)")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 3)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Color.black.opacity(0.6)))
+                            .offset(x: 4, y: 4)
+                    }
+                }
+            }
+        }
+        .frame(width: 40, height: 40)
     }
 }
 

@@ -1,8 +1,72 @@
 import AppKit
 import ApplicationServices
 
-enum SnapDirection {
-    case left, right, topLeft, topRight, bottomLeft, bottomRight, full
+enum SnapDirection: String, CaseIterable, Codable {
+    // Halves
+    case left, right, topHalf, bottomHalf
+    // Quarters
+    case topLeft, topRight, bottomLeft, bottomRight
+    // Thirds
+    case firstThird, centerThird, lastThird
+    case firstTwoThirds, lastTwoThirds
+    // Full / center
+    case full, center
+    // Monitor movement
+    case nextMonitor, previousMonitor
+    // Undo
+    case undo
+
+    var displayName: String {
+        switch self {
+        case .left: return "Left Half"
+        case .right: return "Right Half"
+        case .topHalf: return "Top Half"
+        case .bottomHalf: return "Bottom Half"
+        case .topLeft: return "Top Left"
+        case .topRight: return "Top Right"
+        case .bottomLeft: return "Bottom Left"
+        case .bottomRight: return "Bottom Right"
+        case .firstThird: return "First Third"
+        case .centerThird: return "Center Third"
+        case .lastThird: return "Last Third"
+        case .firstTwoThirds: return "First Two Thirds"
+        case .lastTwoThirds: return "Last Two Thirds"
+        case .full: return "Maximize"
+        case .center: return "Center"
+        case .nextMonitor: return "Next Monitor"
+        case .previousMonitor: return "Previous Monitor"
+        case .undo: return "Undo Snap"
+        }
+    }
+
+    /// Directions that produce a snap frame (excludes meta-actions).
+    static var snappableDirections: [SnapDirection] {
+        allCases.filter { $0 != .nextMonitor && $0 != .previousMonitor && $0 != .undo }
+    }
+
+    /// Fractional rect (x, y, w, h) relative to screen visible frame.
+    var fractions: (x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {
+        switch self {
+        case .left:           return (0,     0,     0.5,   1)
+        case .right:          return (0.5,   0,     0.5,   1)
+        case .topHalf:        return (0,     0,     1,     0.5)
+        case .bottomHalf:     return (0,     0.5,   1,     0.5)
+        case .topLeft:        return (0,     0,     0.5,   0.5)
+        case .topRight:       return (0.5,   0,     0.5,   0.5)
+        case .bottomLeft:     return (0,     0.5,   0.5,   0.5)
+        case .bottomRight:    return (0.5,   0.5,   0.5,   0.5)
+        case .firstThird:     return (0,     0,     1/3,   1)
+        case .centerThird:    return (1/3,   0,     1/3,   1)
+        case .lastThird:      return (2/3,   0,     1/3,   1)
+        case .firstTwoThirds: return (0,     0,     2/3,   1)
+        case .lastTwoThirds:  return (1/3,   0,     2/3,   1)
+        case .full:           return (0,     0,     1,     1)
+        case .center:         return (1/6,   1/6,   2/3,   2/3)
+        // Meta-actions — no frame
+        case .nextMonitor, .previousMonitor, .undo:
+            return (0, 0, 1, 1)
+        }
+    }
 }
 
 enum LayoutService {
@@ -21,6 +85,75 @@ enum LayoutService {
 
     /// Tolerance in points — if actual position is within this of target, accept it.
     private static let tolerance: CGFloat = 5
+
+    // MARK: - Undo Storage
+
+    /// Stores the previous frame before each snap, keyed by "pid-windowTitle".
+    private static var previousFrames: [String: CGRect] = [:]
+
+    private static func undoKey(pid: pid_t, window: AXUIElement) -> String {
+        var titleRef: CFTypeRef?
+        let title: String
+        if AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleRef) == .success,
+           let t = titleRef as? String {
+            title = t
+        } else {
+            title = "untitled"
+        }
+        return "\(pid)-\(title)"
+    }
+
+    private static func saveFrameForUndo(_ window: AXUIElement, pid: pid_t) {
+        let frame = getWindowFrame(window)
+        guard !frame.isEmpty else { return }
+        let key = undoKey(pid: pid, window: window)
+        previousFrames[key] = frame
+    }
+
+    /// Restore the frontmost window to its position before the last snap.
+    static func undoSnap() {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
+        let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
+        guard let axWindow = focusedOrBestWindow(of: axApp) else { return }
+
+        let key = undoKey(pid: frontApp.processIdentifier, window: axWindow)
+        guard let savedFrame = previousFrames[key] else { return }
+        moveWindow(axWindow, to: savedFrame)
+        previousFrames.removeValue(forKey: key)
+    }
+
+    // MARK: - Cycle Through Sizes
+
+    private static var lastSnap: (pid: pid_t, direction: SnapDirection, cycleIndex: Int, timestamp: Date)?
+
+    /// Cycle sequences: pressing the same direction repeatedly cycles through these sizes.
+    private static let cycleSequences: [SnapDirection: [SnapDirection]] = [
+        .left:  [.left, .firstThird, .firstTwoThirds],
+        .right: [.right, .lastThird, .lastTwoThirds],
+        .topHalf: [.topHalf],
+        .bottomHalf: [.bottomHalf],
+        .full: [.full],
+        .center: [.center],
+    ]
+
+    /// Resolve the actual snap direction, advancing the cycle if the same key is repeated.
+    private static func resolvedDirection(for direction: SnapDirection, pid: pid_t) -> SnapDirection {
+        let now = Date()
+        let sequence = cycleSequences[direction] ?? [direction]
+        guard sequence.count > 1 else { return direction }
+
+        if let last = lastSnap,
+           last.pid == pid,
+           last.direction == direction,
+           now.timeIntervalSince(last.timestamp) < 1.5 {
+            let nextIndex = (last.cycleIndex + 1) % sequence.count
+            lastSnap = (pid: pid, direction: direction, cycleIndex: nextIndex, timestamp: now)
+            return sequence[nextIndex]
+        }
+
+        lastSnap = (pid: pid, direction: direction, cycleIndex: 0, timestamp: now)
+        return sequence[0]
+    }
 
     // MARK: - Apply Full Layout
 
@@ -49,7 +182,29 @@ enum LayoutService {
             running.activate()
 
             let axApp = AXUIElementCreateApplication(running.processIdentifier)
-            guard let window = bestWindow(of: axApp) else { continue }
+
+            // Enable enhanced AX BEFORE trying to find windows —
+            // Chrome, Zed, Electron apps won't expose their window list without this.
+            AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, true as CFBoolean)
+        }
+
+        // Brief pause to let apps activate and expose their AX trees.
+        // Without this, apps like Chrome/Zed/Wezterm silently return no windows.
+        usleep(150_000) // 150ms
+
+        for zone in template.zones {
+            guard let bundleId = binding.zoneAssignments[zone.id] else { continue }
+            guard let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { continue }
+
+            let axApp = AXUIElementCreateApplication(running.processIdentifier)
+
+            // Retry window lookup — stubborn apps sometimes need a second attempt
+            var window = bestWindow(of: axApp)
+            if window == nil {
+                usleep(100_000) // 100ms extra
+                window = bestWindow(of: axApp)
+            }
+            guard let window else { continue }
             appWindows.append((zone: zone, app: axApp, window: window))
         }
 
@@ -83,8 +238,14 @@ enum LayoutService {
         let screenFrame = screenForWindow(axWindow) ?? bestScreen()
         guard !screenFrame.isEmpty else { return }
 
+        // Save for undo before snapping
+        saveFrameForUndo(axWindow, pid: frontApp.processIdentifier)
+
+        // Resolve cycling
+        let resolved = resolvedDirection(for: direction, pid: frontApp.processIdentifier)
+
         prepareWindow(axWindow, app: axApp)
-        let targetFrame = snapFrame(for: direction, in: screenFrame)
+        let targetFrame = snapFrame(for: resolved, in: screenFrame)
         moveWindow(axWindow, to: targetFrame)
     }
 
@@ -98,11 +259,73 @@ enum LayoutService {
         let screenFrame = screenForWindow(axWindow) ?? bestScreen()
         guard !screenFrame.isEmpty else { return }
 
+        // Save for undo before snapping
+        saveFrameForUndo(axWindow, pid: running.processIdentifier)
+
+        // Resolve cycling
+        let resolved = resolvedDirection(for: direction, pid: running.processIdentifier)
+
         prepareWindow(axWindow, app: axApp)
-        let targetFrame = snapFrame(for: direction, in: screenFrame)
+        let targetFrame = snapFrame(for: resolved, in: screenFrame)
         moveWindow(axWindow, to: targetFrame)
         AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
         running.activate()
+    }
+
+    // MARK: - Move Between Monitors
+
+    /// Move the frontmost window to the next monitor (left-to-right order, wrapping).
+    static func moveFrontmostToNextMonitor() {
+        moveFrontmostToMonitor(offset: 1)
+    }
+
+    /// Move the frontmost window to the previous monitor (left-to-right order, wrapping).
+    static func moveFrontmostToPreviousMonitor() {
+        moveFrontmostToMonitor(offset: -1)
+    }
+
+    private static func moveFrontmostToMonitor(offset: Int) {
+        let screens = NSScreen.screens.sorted { $0.frame.origin.x < $1.frame.origin.x }
+        guard screens.count > 1 else { return }
+
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
+        let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
+        guard let axWindow = focusedOrBestWindow(of: axApp) else { return }
+
+        let windowFrame = getWindowFrame(axWindow)
+        guard !windowFrame.isEmpty else { return }
+
+        // Find which screen the window is currently on
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        let cocoaY = primaryHeight - windowFrame.origin.y
+        let cocoaPoint = NSPoint(x: windowFrame.midX, y: cocoaY)
+
+        guard let currentScreenIndex = screens.firstIndex(where: { NSMouseInRect(cocoaPoint, $0.frame, false) }) else { return }
+
+        // Calculate target screen
+        let targetIndex = ((currentScreenIndex + offset) % screens.count + screens.count) % screens.count
+        let targetScreen = screens[targetIndex]
+        let currentScreen = screens[currentScreenIndex]
+
+        let currentVisible = quartzVisibleFrame(for: currentScreen)
+        let targetVisible = quartzVisibleFrame(for: targetScreen)
+
+        // Proportional placement: preserve relative position
+        let relX = (windowFrame.origin.x - currentVisible.origin.x) / currentVisible.width
+        let relY = (windowFrame.origin.y - currentVisible.origin.y) / currentVisible.height
+        let relW = windowFrame.width / currentVisible.width
+        let relH = windowFrame.height / currentVisible.height
+
+        let newFrame = CGRect(
+            x: targetVisible.origin.x + relX * targetVisible.width,
+            y: targetVisible.origin.y + relY * targetVisible.height,
+            width: relW * targetVisible.width,
+            height: relH * targetVisible.height
+        )
+
+        saveFrameForUndo(axWindow, pid: frontApp.processIdentifier)
+        prepareWindow(axWindow, app: axApp)
+        moveWindow(axWindow, to: newFrame)
     }
 
     // MARK: - Window Preparation
@@ -183,21 +406,33 @@ enum LayoutService {
         let clampedTarget = clampToMinimumSize(target, window: window)
 
         for attempt in 0..<maxRetries {
-            // Set position first (move to target origin before resizing)
             var position = clampedTarget.origin
-            if let posValue = AXValueCreate(.cgPoint, &position) {
-                AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, posValue)
-            }
-
-            // Set size
             var size = clampedTarget.size
-            if let sizeValue = AXValueCreate(.cgSize, &size) {
-                AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue)
-            }
 
-            // Re-set position (some apps shift origin when resized)
-            if let posValue = AXValueCreate(.cgPoint, &position) {
-                AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, posValue)
+            if attempt < 2 {
+                // Strategy A (attempts 0-1): position → size → position
+                if let v = AXValueCreate(.cgPoint, &position) {
+                    AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, v)
+                }
+                if let v = AXValueCreate(.cgSize, &size) {
+                    AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, v)
+                }
+                // Re-set position (some apps shift origin when resized)
+                if let v = AXValueCreate(.cgPoint, &position) {
+                    AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, v)
+                }
+            } else {
+                // Strategy B (attempts 2+): size → position → size
+                // Some apps (Zed, Wezterm, GPU-rendered) respond better in this order
+                if let v = AXValueCreate(.cgSize, &size) {
+                    AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, v)
+                }
+                if let v = AXValueCreate(.cgPoint, &position) {
+                    AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, v)
+                }
+                if let v = AXValueCreate(.cgSize, &size) {
+                    AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, v)
+                }
             }
 
             // Verify the window actually moved
@@ -206,9 +441,9 @@ enum LayoutService {
                 return // success
             }
 
-            // Brief pause before retry — give the app time to process
+            // Increasing pause between retries — stubborn apps need more time
             if attempt < maxRetries - 1 {
-                usleep(50_000) // 50ms
+                usleep(UInt32((attempt + 1) * 80_000)) // 80ms, 160ms, 240ms
             }
         }
     }
@@ -325,50 +560,23 @@ enum LayoutService {
         return quartzVisibleFrame(for: screen)
     }
 
-    /// In Quartz coordinates: y=0 is top of screen, y increases downward.
+    /// Compute the snap frame for a direction within a screen rect (Quartz coords).
     private static func snapFrame(for direction: SnapDirection, in screen: CGRect) -> CGRect {
+        let f = direction.fractions
         let gap = gapSize
-        let w = screen.width
-        let h = screen.height
-        let x = screen.origin.x
-        let y = screen.origin.y
 
-        if gap > 0 {
-            let halfGap = gap / 2
-            switch direction {
-            case .left:
-                return CGRect(x: x + gap, y: y + gap, width: w / 2 - gap - halfGap, height: h - gap * 2)
-            case .right:
-                return CGRect(x: x + w / 2 + halfGap, y: y + gap, width: w / 2 - gap - halfGap, height: h - gap * 2)
-            case .topLeft:
-                return CGRect(x: x + gap, y: y + gap, width: w / 2 - gap - halfGap, height: h / 2 - gap - halfGap)
-            case .topRight:
-                return CGRect(x: x + w / 2 + halfGap, y: y + gap, width: w / 2 - gap - halfGap, height: h / 2 - gap - halfGap)
-            case .bottomLeft:
-                return CGRect(x: x + gap, y: y + h / 2 + halfGap, width: w / 2 - gap - halfGap, height: h / 2 - gap - halfGap)
-            case .bottomRight:
-                return CGRect(x: x + w / 2 + halfGap, y: y + h / 2 + halfGap, width: w / 2 - gap - halfGap, height: h / 2 - gap - halfGap)
-            case .full:
-                return CGRect(x: x + gap, y: y + gap, width: w - gap * 2, height: h - gap * 2)
-            }
-        }
+        let rawFrame = CGRect(
+            x: screen.origin.x + f.x * screen.width,
+            y: screen.origin.y + f.y * screen.height,
+            width: f.w * screen.width,
+            height: f.h * screen.height
+        )
 
-        switch direction {
-        case .left:
-            return CGRect(x: x, y: y, width: w / 2, height: h)
-        case .right:
-            return CGRect(x: x + w / 2, y: y, width: w / 2, height: h)
-        case .topLeft:
-            return CGRect(x: x, y: y, width: w / 2, height: h / 2)
-        case .topRight:
-            return CGRect(x: x + w / 2, y: y, width: w / 2, height: h / 2)
-        case .bottomLeft:
-            return CGRect(x: x, y: y + h / 2, width: w / 2, height: h / 2)
-        case .bottomRight:
-            return CGRect(x: x + w / 2, y: y + h / 2, width: w / 2, height: h / 2)
-        case .full:
-            return screen
-        }
+        guard gap > 0 else { return rawFrame }
+
+        // Use the applyGaps method via a temporary LayoutZone
+        let zone = LayoutZone(id: UUID(), name: "", x: f.x, y: f.y, width: f.w, height: f.h)
+        return applyGaps(to: rawFrame, in: screen, zone: zone)
     }
 
     /// Find the Quartz visible frame of the screen a window is currently on.
