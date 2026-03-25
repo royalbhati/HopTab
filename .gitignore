@@ -31,3 +31,5 @@ Package.resolved
 # Provisioning
 *.mobileprovision
 *.provisionprofile
+
+scripts/
