@@ -15,6 +15,8 @@ enum SnapDirection: String, CaseIterable, Codable {
     case nextMonitor, previousMonitor
     // Undo
     case undo
+    // Universal cycle
+    case cycleNext, cyclePrevious
 
     var displayName: String {
         switch self {
@@ -36,12 +38,14 @@ enum SnapDirection: String, CaseIterable, Codable {
         case .nextMonitor: return "Next Monitor"
         case .previousMonitor: return "Previous Monitor"
         case .undo: return "Undo Snap"
+        case .cycleNext: return "Cycle Next"
+        case .cyclePrevious: return "Cycle Previous"
         }
     }
 
     /// Directions that produce a snap frame (excludes meta-actions).
     static var snappableDirections: [SnapDirection] {
-        allCases.filter { $0 != .nextMonitor && $0 != .previousMonitor && $0 != .undo }
+        allCases.filter { ![.nextMonitor, .previousMonitor, .undo, .cycleNext, .cyclePrevious].contains($0) }
     }
 
     /// Fractional rect (x, y, w, h) relative to screen visible frame.
@@ -63,7 +67,7 @@ enum SnapDirection: String, CaseIterable, Codable {
         case .full:           return (0,     0,     1,     1)
         case .center:         return (1/6,   1/6,   2/3,   2/3)
         // Meta-actions — no frame
-        case .nextMonitor, .previousMonitor, .undo:
+        case .nextMonitor, .previousMonitor, .undo, .cycleNext, .cyclePrevious:
             return (0, 0, 1, 1)
         }
     }
@@ -155,6 +159,79 @@ enum LayoutService {
         return sequence[0]
     }
 
+    // MARK: - Universal Snap Cycle
+
+    /// Ordered list of snap positions for universal cycling.
+    private static let universalCycleOrder: [SnapDirection] = [
+        .left, .right,
+        .topHalf, .bottomHalf,
+        .topLeft, .topRight, .bottomLeft, .bottomRight,
+        .firstThird, .centerThird, .lastThird,
+        .firstTwoThirds, .lastTwoThirds,
+        .full, .center,
+    ]
+
+    private static var lastUniversalCycle: (pid: pid_t, index: Int, timestamp: Date)?
+
+    /// Detect which snap position the window currently matches, if any.
+    private static func detectCurrentSnapIndex(window: AXUIElement, screen: CGRect) -> Int? {
+        let currentFrame = getWindowFrame(window)
+        guard !currentFrame.isEmpty else { return nil }
+
+        for (i, direction) in universalCycleOrder.enumerated() {
+            let target = snapFrame(for: direction, in: screen)
+            if frameMatches(currentFrame, target) {
+                return i
+            }
+        }
+        return nil
+    }
+
+    /// Cycle the frontmost window forward or backward through all snap positions.
+    static func snapFrontmostCycle(forward: Bool) {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
+
+        let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
+        guard let axWindow = focusedOrBestWindow(of: axApp) else { return }
+
+        let screenFrame = screenForWindow(axWindow) ?? bestScreen()
+        guard !screenFrame.isEmpty else { return }
+
+        saveFrameForUndo(axWindow, pid: frontApp.processIdentifier)
+
+        let count = universalCycleOrder.count
+        let now = Date()
+        let pid = frontApp.processIdentifier
+
+        let nextIndex: Int
+
+        // If continuing a recent cycle (same app, within 1.5s), just advance
+        if let last = lastUniversalCycle,
+           last.pid == pid,
+           now.timeIntervalSince(last.timestamp) < 1.5 {
+            nextIndex = forward
+                ? (last.index + 1) % count
+                : (last.index - 1 + count) % count
+        } else {
+            // Detect current position and step from there
+            if let currentIndex = detectCurrentSnapIndex(window: axWindow, screen: screenFrame) {
+                nextIndex = forward
+                    ? (currentIndex + 1) % count
+                    : (currentIndex - 1 + count) % count
+            } else {
+                // Not snapped — start at beginning or end
+                nextIndex = forward ? 0 : count - 1
+            }
+        }
+
+        lastUniversalCycle = (pid: pid, index: nextIndex, timestamp: now)
+
+        let direction = universalCycleOrder[nextIndex]
+        prepareWindow(axWindow, app: axApp)
+        let targetFrame = snapFrame(for: direction, in: screenFrame)
+        moveWindow(axWindow, to: targetFrame)
+    }
+
     // MARK: - Apply Full Layout
 
     /// Apply a layout template to the active profile's pinned apps.
@@ -230,6 +307,12 @@ enum LayoutService {
 
     /// Snap the frontmost window of the frontmost app to a predefined region.
     static func snapFrontmost(to direction: SnapDirection) {
+        switch direction {
+        case .cycleNext: snapFrontmostCycle(forward: true); return
+        case .cyclePrevious: snapFrontmostCycle(forward: false); return
+        default: break
+        }
+
         guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
 
         let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)

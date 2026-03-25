@@ -58,7 +58,12 @@ enum SessionSnapshotService {
             }
         }
 
-        return SessionSnapshot(profileId: profile.id, capturedAt: Date(), windows: windows)
+        return SessionSnapshot(
+            profileId: profile.id,
+            capturedAt: Date(),
+            windows: windows,
+            displayConfigKey: SessionSnapshot.currentDisplayConfigKey
+        )
     }
 
     // MARK: - Restore

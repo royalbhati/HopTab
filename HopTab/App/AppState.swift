@@ -312,6 +312,10 @@ final class AppState: ObservableObject {
                 LayoutService.moveFrontmostToPreviousMonitor()
             case .undo:
                 LayoutService.undoSnap()
+            case .cycleNext:
+                LayoutService.snapFrontmostCycle(forward: true)
+            case .cyclePrevious:
+                LayoutService.snapFrontmostCycle(forward: false)
             default:
                 LayoutService.snapFrontmost(to: direction)
             }
@@ -397,9 +401,10 @@ final class AppState: ObservableObject {
             store.moveToFront(bundleIdentifier: selectedApp.bundleIdentifier)
         }
 
-        // If the app has 2+ windows, show the window picker
+        // If the app has 2+ windows on the current Space, show the window picker
         if let running = selectedApp.runningApplication {
-            let windows = AppSwitcherService.enumerateWindows(of: running)
+            let allWindows = AppSwitcherService.enumerateWindows(of: running)
+            let windows = AppSwitcherService.windowsOnCurrentSpace(allWindows)
             if windows.count >= 2 {
                 showWindowPicker(app: selectedApp, windows: windows)
             }
@@ -448,7 +453,7 @@ final class AppState: ObservableObject {
 
         let window = windowPickerWindows[windowPickerSelectedIndex]
         dismissWindowPicker()
-        AppSwitcherService.raiseWindow(of: app, atIndex: window.id)
+        AppSwitcherService.raiseWindow(of: app, windowID: window.id)
     }
 
     private func windowPickerCancel() {

@@ -7,6 +7,7 @@ enum ShortcutPreset: String, Codable, CaseIterable, Identifiable {
     case optionTab
     case controlTab
     case optionBacktick
+    case commandTab
 
     var id: String { rawValue }
 
@@ -15,6 +16,7 @@ enum ShortcutPreset: String, Codable, CaseIterable, Identifiable {
         case .optionTab: return "\u{2325} Option + Tab"
         case .controlTab: return "\u{2303} Control + Tab"
         case .optionBacktick: return "\u{2325} Option + `"
+        case .commandTab: return "\u{2318} Command + Tab (replaces macOS)"
         }
     }
 
@@ -22,19 +24,20 @@ enum ShortcutPreset: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .optionTab, .optionBacktick: return .maskAlternate
         case .controlTab: return .maskControl
+        case .commandTab: return .maskCommand
         }
     }
 
     var keyCode: Int64 {
         switch self {
-        case .optionTab, .controlTab: return Int64(kVK_Tab)
+        case .optionTab, .controlTab, .commandTab: return Int64(kVK_Tab)
         case .optionBacktick: return Int64(kVK_ANSI_Grave)
         }
     }
 
     var keyName: String {
         switch self {
-        case .optionTab, .controlTab: return "Tab"
+        case .optionTab, .controlTab, .commandTab: return "Tab"
         case .optionBacktick: return "`"
         }
     }
@@ -43,6 +46,7 @@ enum ShortcutPreset: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .optionTab, .optionBacktick: return "Option"
         case .controlTab: return "Control"
+        case .commandTab: return "Command"
         }
     }
 

@@ -39,6 +39,9 @@ struct SnapShortcutConfig: Codable {
             .previousMonitor: shortcut(ctrlOptCmd, kVK_LeftArrow),
             // Undo
             .undo:           shortcut(ctrlOpt, kVK_ANSI_Z),
+            // Universal cycle
+            .cycleNext:      shortcut(ctrlOpt, kVK_ANSI_Period),
+            .cyclePrevious:  shortcut(ctrlOpt, kVK_ANSI_Comma),
         ])
     }()
 

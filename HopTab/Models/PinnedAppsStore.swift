@@ -11,7 +11,8 @@ final class PinnedAppsStore: ObservableObject {
 
     @Published private(set) var profiles: [Profile] = []
     @Published private(set) var activeProfileId: UUID?
-    @Published private(set) var snapshots: [UUID: SessionSnapshot] = [:]
+    /// Multiple snapshots per profile — one per display configuration.
+    @Published private(set) var snapshots: [UUID: [SessionSnapshot]] = [:]
     @Published private(set) var customTemplates: [LayoutTemplate] = []
 
     /// All available templates (built-in + custom).
@@ -100,12 +101,32 @@ final class PinnedAppsStore: ObservableObject {
     // MARK: - Session Snapshots
 
     func saveSnapshot(_ snapshot: SessionSnapshot) {
-        snapshots[snapshot.profileId] = snapshot
+        var list = snapshots[snapshot.profileId] ?? []
+        // Replace existing snapshot for the same display config, or append
+        if let idx = list.firstIndex(where: { $0.displayConfigKey == snapshot.displayConfigKey }) {
+            list[idx] = snapshot
+        } else {
+            list.append(snapshot)
+        }
+        snapshots[snapshot.profileId] = list
         persistSnapshots()
     }
 
+    /// Returns the snapshot matching the current display configuration,
+    /// falling back to a legacy snapshot (nil config key), or nil.
     func snapshot(for profileId: UUID) -> SessionSnapshot? {
-        snapshots[profileId]
+        guard let list = snapshots[profileId], !list.isEmpty else { return nil }
+        let currentConfig = SessionSnapshot.currentDisplayConfigKey
+        // Prefer exact display config match
+        if let match = list.first(where: { $0.displayConfigKey == currentConfig }) {
+            return match
+        }
+        // Fall back to legacy snapshot (no display config)
+        if let legacy = list.first(where: { $0.displayConfigKey == nil }) {
+            return legacy
+        }
+        // Fall back to most recent snapshot
+        return list.max(by: { $0.capturedAt < $1.capturedAt })
     }
 
     private func persistSnapshots() {
@@ -115,9 +136,17 @@ final class PinnedAppsStore: ObservableObject {
     }
 
     private func loadSnapshots() {
+        // Try new format: [UUID: [SessionSnapshot]]
         if let data = UserDefaults.standard.data(forKey: Self.snapshotsKey),
-           let decoded = try? JSONDecoder().decode([UUID: SessionSnapshot].self, from: data) {
+           let decoded = try? JSONDecoder().decode([UUID: [SessionSnapshot]].self, from: data) {
             snapshots = decoded
+            return
+        }
+        // Migrate old format: [UUID: SessionSnapshot] → [UUID: [SessionSnapshot]]
+        if let data = UserDefaults.standard.data(forKey: Self.snapshotsKey),
+           let legacy = try? JSONDecoder().decode([UUID: SessionSnapshot].self, from: data) {
+            snapshots = legacy.mapValues { [$0] }
+            persistSnapshots()
         }
     }
 
@@ -157,6 +186,12 @@ final class PinnedAppsStore: ObservableObject {
 
     func addCustomTemplate(_ template: LayoutTemplate) {
         customTemplates.append(template)
+        saveCustomTemplates()
+    }
+
+    func updateCustomTemplate(_ template: LayoutTemplate) {
+        guard let idx = customTemplates.firstIndex(where: { $0.id == template.id }) else { return }
+        customTemplates[idx] = template
         saveCustomTemplates()
     }
 

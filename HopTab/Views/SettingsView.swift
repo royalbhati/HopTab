@@ -963,6 +963,7 @@ private struct WindowSnapTab: View {
         ("Quarters", [.topLeft, .topRight, .bottomLeft, .bottomRight]),
         ("Thirds", [.firstThird, .centerThird, .lastThird, .firstTwoThirds, .lastTwoThirds]),
         ("Other", [.full, .center]),
+        ("Cycle", [.cycleNext, .cyclePrevious]),
         ("Monitors", [.nextMonitor, .previousMonitor]),
         ("Actions", [.undo]),
     ]

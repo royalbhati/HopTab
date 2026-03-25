@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import CoreGraphics
 
@@ -31,4 +32,15 @@ struct SessionSnapshot: Codable, Equatable {
     let profileId: UUID
     let capturedAt: Date
     var windows: [WindowSnapshot]
+    /// Display configuration when this snapshot was taken. nil = legacy (pre-display-awareness).
+    var displayConfigKey: String?
+
+    /// Compute a key representing the current display configuration.
+    /// Example: "1440x900" (laptop only), "1440x900+2560x1440" (laptop + external).
+    static var currentDisplayConfigKey: String {
+        let screens = NSScreen.screens
+            .sorted { $0.frame.origin.x < $1.frame.origin.x }
+            .map { "\(Int($0.frame.width))x\(Int($0.frame.height))" }
+        return screens.joined(separator: "+")
+    }
 }

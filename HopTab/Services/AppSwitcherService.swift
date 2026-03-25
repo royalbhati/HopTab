@@ -2,9 +2,10 @@ import AppKit
 import ApplicationServices
 
 struct WindowInfo: Identifiable {
-    let id: Int       // index in the AX window list
+    let id: CGWindowID   // stable CGWindowID (kCGWindowNumber)
     let title: String
     let isMinimized: Bool
+    let spaceID: Int?    // nil for minimized windows (they live in the Dock, not on a Space)
 }
 
 enum AppSwitcherService {
@@ -95,7 +96,27 @@ enum AppSwitcherService {
 
     // MARK: - Window Enumeration
 
-    /// List windows of a running app via AX API, filtering out untitled utility windows.
+    /// Query CGWindowList for all windows of a given PID.
+    /// Returns a lookup of [CGWindowID: spaceID] for cross-referencing with AX windows.
+    private static func cgWindowSpaces(for pid: pid_t) -> [CGWindowID: Int] {
+        guard let infoList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else { return [:] }
+
+        var result: [CGWindowID: Int] = [:]
+        for info in infoList {
+            guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int,
+                  ownerPID == pid,
+                  let windowID = info[kCGWindowNumber as String] as? CGWindowID,
+                  let spaceID = info["kCGWindowWorkspace" as String] as? Int
+            else { continue }
+            result[windowID] = spaceID
+        }
+        return result
+    }
+
+    /// List windows of a running app via AX API, enriched with stable CGWindowID and Space info.
     static func enumerateWindows(of app: NSRunningApplication) -> [WindowInfo] {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
 
@@ -103,8 +124,10 @@ enum AppSwitcherService {
         let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value)
         guard result == .success, let windows = value as? [AXUIElement] else { return [] }
 
+        let spaceMap = cgWindowSpaces(for: app.processIdentifier)
+
         var infos: [WindowInfo] = []
-        for (index, window) in windows.enumerated() {
+        for window in windows {
             // Get title
             var titleValue: CFTypeRef?
             AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
@@ -124,29 +147,56 @@ enum AppSwitcherService {
             let minResult = AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minValue)
             let isMinimized = (minResult == .success) && (minValue as? Bool == true)
 
-            infos.append(WindowInfo(id: index, title: title, isMinimized: isMinimized))
+            // Bridge AX window → stable CGWindowID
+            var windowID: CGWindowID = 0
+            guard _AXUIElementGetWindow(window, &windowID) == .success, windowID != 0 else { continue }
+
+            let spaceID = isMinimized ? nil : spaceMap[windowID]
+
+            infos.append(WindowInfo(id: windowID, title: title, isMinimized: isMinimized, spaceID: spaceID))
         }
         return infos
     }
 
-    /// Raise a specific window by its index in the AX window list.
-    /// Re-queries AX at selection time so indices stay fresh.
-    static func raiseWindow(of app: NSRunningApplication, atIndex index: Int) {
+    /// Filter windows to only those on the current Space.
+    /// Minimized windows and windows with unknown Space are included (fail-open).
+    static func windowsOnCurrentSpace(_ windows: [WindowInfo]) -> [WindowInfo] {
+        guard let currentSpace = SpaceService.currentSpaceId else {
+            return windows
+        }
+        return windows.filter { window in
+            window.isMinimized || window.spaceID == nil || window.spaceID == currentSpace
+        }
+    }
+
+    /// Raise a specific window by its stable CGWindowID.
+    /// Re-queries AX at selection time to find the matching element.
+    static func raiseWindow(of app: NSRunningApplication, windowID: CGWindowID) {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
 
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value)
-        guard result == .success, let windows = value as? [AXUIElement], index < windows.count else { return }
+        guard result == .success, let windows = value as? [AXUIElement] else { return }
 
-        let window = windows[index]
+        for window in windows {
+            var wid: CGWindowID = 0
+            guard _AXUIElementGetWindow(window, &wid) == .success, wid == windowID else { continue }
 
-        // Unminimize if needed
-        var minValue: CFTypeRef?
-        let minResult = AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minValue)
-        if minResult == .success, let isMin = minValue as? Bool, isMin {
-            AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, false as CFBoolean)
+            // Unminimize if needed
+            var minValue: CFTypeRef?
+            let minResult = AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minValue)
+            if minResult == .success, let isMin = minValue as? Bool, isMin {
+                AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, false as CFBoolean)
+            }
+
+            AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+            return
         }
-
-        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
     }
 }
+
+// MARK: - Private AX bridge
+
+/// Extracts the CGWindowID from an AXUIElement window.
+@_silgen_name("_AXUIElementGetWindow")
+private func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGWindowID) -> AXError

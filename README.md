@@ -8,13 +8,23 @@ Pin apps. Tile windows to halves, thirds, quarters. Switch profiles per desktop.
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-<video src="https://github.com/user-attachments/assets/hoptab-working.mp4" autoplay loop muted playsinline width="100%"></video>
+![HopTab Demo GIF](demo/hoptab_highlight.gif)
 
-https://github.com/royalbhati/HopTab/assets/demo/hoptab_working.mp4
 
-![HopTab Demo](demo/hoptab_highlight.gif)
+[![HopTab Demo](https://img.youtube.com/vi/t5P1jjjytaY/maxresdefault.jpg)](https://www.youtube.com/watch?v=t5P1jjjytaY)
 
-## Quick Start
+> Click the image to watch the full demo on YouTube
+
+## Install
+
+### Homebrew (recommended)
+
+```bash
+brew tap royalbhati/tap
+brew install --cask --no-quarantine hoptab
+```
+
+### Manual
 
 ```bash
 curl -sL "$(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/latest \
@@ -29,7 +39,7 @@ Or download from [Releases](../../releases/latest), unzip, drag to `/Application
 xattr -c /Applications/HopTab.app
 ```
 
-> **Why xattr?** HopTab is ad-hoc signed (not notarized). The command clears macOS's quarantine flag so it opens normally.
+> **Why xattr?** HopTab is ad-hoc signed (not notarized). The command clears macOS's quarantine flag so it opens normally. Homebrew's `--no-quarantine` flag handles this automatically.
 
 ### First Launch
 
