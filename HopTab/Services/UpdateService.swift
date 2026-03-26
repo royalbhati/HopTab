@@ -17,7 +17,7 @@ final class UpdateService: ObservableObject {
 
     /// The URL to check for updates. Set this to your hosted JSON endpoint.
     /// e.g. a GitHub Pages URL, raw GitHub gist, or any static host.
-    private static let defaultFeedURL = "https://hoptab.app/update.json"
+    private static let defaultFeedURL = "https://www.royalbhati.com/hoptab/update.json"
     private static let feedURLKey = "updateFeedURL"
     private static let lastCheckKey = "lastUpdateCheck"
     private static let checkInterval: TimeInterval = 4 * 3600 // every 4 hours
