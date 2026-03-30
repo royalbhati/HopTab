@@ -12,7 +12,7 @@ Pin apps. Tile windows to halves, thirds, quarters. Switch profiles per desktop.
 ![HopTab Demo GIF](demo/hoptab_highlight.gif)
 
 
-[![HopTab Demo](https://img.youtube.com/vi/t5P1jjjytaY/maxresdefault.jpg)](https://www.youtube.com/watch?v=t5P1jjjytaY)
+[![HopTab Demo](https://img.youtube.com/vi/m5ZpmPWk_kM/maxresdefault.jpg)](https://www.youtube.com/watch?v=m5ZpmPWk_kM)
 
 > Click the image to watch the full demo on YouTube
 
@@ -56,7 +56,7 @@ Pin 2-5 apps per workflow (up to 3 profiles free, unlimited with Pro). `Option+T
 
 `Cmd+Q` / `Cmd+H` / `Cmd+M` while the switcher is open to quit, hide, or minimize the highlighted app.
 
-![Pinned Apps](demo/hoptab_pinned_apps.png)
+![Pinned Apps](demo/pinned_apps.png)
 
 ### Window Tiling
 
@@ -64,7 +64,7 @@ Global keyboard shortcuts snap any window to halves, thirds, quarters, or fullsc
 
 Press the same direction again to cycle sizes: **1/2 → 1/3 → 2/3**. Undo any snap with one shortcut.
 
-![Window Snapping](demo/hoptab_window_snapping.png)
+![Window Snapping](demo/window_snapping.png)
 
 ### Drag-to-Snap
 
@@ -80,7 +80,7 @@ Five built-in layouts: 50/50 split, IDE 60/40, three columns, 2×2 grid, and ful
 
 Works with stubborn apps — Chrome, Zed, Wezterm, Electron. Multi-retry positioning with dual strategies for GPU-rendered windows.
 
-![Layouts](demo/hoptab_layouts.png)
+![Layouts](demo/layouts.png)
 
 ### Profiles
 
@@ -88,7 +88,7 @@ Create profiles for different workflows — Coding, Design, Research. Each has i
 
 Assign profiles to macOS Spaces. Swipe between desktops and HopTab auto-switches the active profile. Profile switcher shows each profile's actual app icons.
 
-![Profiles](demo/hoptap_profiles.png)
+![Profiles](demo/profiles.png)
 
 ### Session Management
 
@@ -98,15 +98,19 @@ Save every window's position, size, and z-order per profile. Restore it instantl
 
 Define rules like "Chrome always snaps to left half on launch." Free tier includes 2 window rules; Pro unlocks unlimited.
 
+![Window Rules](demo/window_rules.png)
+
 ### Fully Customizable
 
 Every shortcut is configurable. The app switcher hotkey, profile switcher, all 17 snap directions, per-profile hotkeys — record whatever combo you want.
 
-![Shortcut Customization](demo/hoptab_shortuct_customisation.png)
+![Shortcut Customization](demo/shortcuts.png)
 
 ## HopTab Pro
 
 Everything above is free. **HopTab Pro** ($5 one-time via [Polar](https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7)) adds automation features that let HopTab manage your workspace without you thinking about it. You can also purchase via [GitHub Sponsors](https://github.com/sponsors/royalbhati).
+
+![HopTab Pro](demo/calendar_time_focusmode_switch.png)
 
 ### Time Tracking
 
