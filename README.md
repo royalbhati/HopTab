@@ -22,7 +22,7 @@ Pin apps. Tile windows to halves, thirds, quarters. Switch profiles per desktop.
 
 ```bash
 brew tap royalbhati/tap
-brew install --cask --no-quarantine hoptab
+brew install --cask hoptab
 ```
 
 ### Manual
