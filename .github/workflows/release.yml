@@ -15,11 +15,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Checkout HopTabPro
-        uses: actions/checkout@v4
-        with:
-          repository: royalbhati/HopTabPro
-          token: ${{ secrets.PRO_PAT }}
-          path: HopTabPro
+        run: |
+          git clone https://x-access-token:${{ secrets.PRO_PAT }}@github.com/royalbhati/HopTabPro.git HopTabPro
 
       - name: Extract version from tag
         id: version
