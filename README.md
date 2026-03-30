@@ -40,7 +40,7 @@ Or download from [Releases](../../releases/latest), unzip, drag to `/Application
 xattr -c /Applications/HopTab.app
 ```
 
-> **Why xattr?** HopTab is ad-hoc signed (not notarized). The command clears macOS's quarantine flag so it opens normally. Homebrew's `--no-quarantine` flag handles this automatically.
+> **Why xattr?** HopTab is ad-hoc signed (not notarized). The command clears macOS's quarantine flag so it opens normally.
 
 ### First Launch
 
