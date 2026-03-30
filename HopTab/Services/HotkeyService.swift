@@ -44,6 +44,9 @@ final class HotkeyService {
     var snapShortcuts: [(modifiers: CGEventFlags, keyCode: Int64, direction: SnapDirection)] = []
     var onGlobalSnap: ((SnapDirection) -> Void)?
 
+    // Mouse events for drag-to-snap
+    var onMouseEvent: ((CGEventType, CGEvent) -> Void)?
+
     // App Switcher shortcut (configurable)
     private(set) var modifierFlag: CGEventFlags = .maskAlternate
     private(set) var triggerKeyCode: Int64 = Int64(kVK_Tab)
@@ -121,6 +124,9 @@ final class HotkeyService {
         let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
             | (1 << CGEventType.keyDown.rawValue)
             | (1 << CGEventType.keyUp.rawValue)
+            | (1 << CGEventType.leftMouseDown.rawValue)
+            | (1 << CGEventType.leftMouseDragged.rawValue)
+            | (1 << CGEventType.leftMouseUp.rawValue)
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -196,12 +202,24 @@ final class HotkeyService {
                     isProfileSwitcherActive = false
                     onProfileSwitcherCancelled?()
                 }
+                if let profileId = activeProfileHotkeyId {
+                    activeProfileHotkeyId = nil
+                    profileHotkeyModifierHeld = false
+                    profileHotkeyModifier = nil
+                    onProfileHotkeyDismissed?(profileId)
+                }
                 isModifierHeld = false
                 isProfileModifierHeld = false
 
                 CGEvent.tapEnable(tap: tap, enable: true)
-                NSLog("[HotkeyService] Re-enabled event tap after timeout — reset modifier state")
+                NSLog("[HotkeyService] Re-enabled event tap after timeout — reset all state")
             }
+            return event
+        }
+
+        // Route mouse events for drag-to-snap (always pass through, never consume)
+        if type == .leftMouseDown || type == .leftMouseDragged || type == .leftMouseUp {
+            onMouseEvent?(type, event)
             return event
         }
 

@@ -92,6 +92,9 @@ enum LayoutService {
 
     // MARK: - Undo Storage
 
+    /// Serial queue protecting mutable static state (previousFrames, lastSnap, lastUniversalCycle).
+    private static let stateQueue = DispatchQueue(label: "com.hoptab.LayoutService.state")
+
     /// Stores the previous frame before each snap, keyed by "pid-windowTitle".
     private static var previousFrames: [String: CGRect] = [:]
 
@@ -111,7 +114,7 @@ enum LayoutService {
         let frame = getWindowFrame(window)
         guard !frame.isEmpty else { return }
         let key = undoKey(pid: pid, window: window)
-        previousFrames[key] = frame
+        stateQueue.sync { previousFrames[key] = frame }
     }
 
     /// Restore the frontmost window to its position before the last snap.
@@ -121,9 +124,8 @@ enum LayoutService {
         guard let axWindow = focusedOrBestWindow(of: axApp) else { return }
 
         let key = undoKey(pid: frontApp.processIdentifier, window: axWindow)
-        guard let savedFrame = previousFrames[key] else { return }
+        guard let savedFrame = stateQueue.sync(execute: { previousFrames.removeValue(forKey: key) }) else { return }
         moveWindow(axWindow, to: savedFrame)
-        previousFrames.removeValue(forKey: key)
     }
 
     // MARK: - Cycle Through Sizes
@@ -146,17 +148,19 @@ enum LayoutService {
         let sequence = cycleSequences[direction] ?? [direction]
         guard sequence.count > 1 else { return direction }
 
-        if let last = lastSnap,
-           last.pid == pid,
-           last.direction == direction,
-           now.timeIntervalSince(last.timestamp) < 1.5 {
-            let nextIndex = (last.cycleIndex + 1) % sequence.count
-            lastSnap = (pid: pid, direction: direction, cycleIndex: nextIndex, timestamp: now)
-            return sequence[nextIndex]
-        }
+        return stateQueue.sync {
+            if let last = lastSnap,
+               last.pid == pid,
+               last.direction == direction,
+               now.timeIntervalSince(last.timestamp) < 1.5 {
+                let nextIndex = (last.cycleIndex + 1) % sequence.count
+                lastSnap = (pid: pid, direction: direction, cycleIndex: nextIndex, timestamp: now)
+                return sequence[nextIndex]
+            }
 
-        lastSnap = (pid: pid, direction: direction, cycleIndex: 0, timestamp: now)
-        return sequence[0]
+            lastSnap = (pid: pid, direction: direction, cycleIndex: 0, timestamp: now)
+            return sequence[0]
+        }
     }
 
     // MARK: - Universal Snap Cycle
@@ -203,28 +207,31 @@ enum LayoutService {
         let now = Date()
         let pid = frontApp.processIdentifier
 
-        let nextIndex: Int
+        let nextIndex: Int = stateQueue.sync {
+            let result: Int
 
-        // If continuing a recent cycle (same app, within 1.5s), just advance
-        if let last = lastUniversalCycle,
-           last.pid == pid,
-           now.timeIntervalSince(last.timestamp) < 1.5 {
-            nextIndex = forward
-                ? (last.index + 1) % count
-                : (last.index - 1 + count) % count
-        } else {
-            // Detect current position and step from there
-            if let currentIndex = detectCurrentSnapIndex(window: axWindow, screen: screenFrame) {
-                nextIndex = forward
-                    ? (currentIndex + 1) % count
-                    : (currentIndex - 1 + count) % count
+            // If continuing a recent cycle (same app, within 1.5s), just advance
+            if let last = lastUniversalCycle,
+               last.pid == pid,
+               now.timeIntervalSince(last.timestamp) < 1.5 {
+                result = forward
+                    ? (last.index + 1) % count
+                    : (last.index - 1 + count) % count
             } else {
-                // Not snapped — start at beginning or end
-                nextIndex = forward ? 0 : count - 1
+                // Detect current position and step from there
+                if let currentIndex = detectCurrentSnapIndex(window: axWindow, screen: screenFrame) {
+                    result = forward
+                        ? (currentIndex + 1) % count
+                        : (currentIndex - 1 + count) % count
+                } else {
+                    // Not snapped — start at beginning or end
+                    result = forward ? 0 : count - 1
+                }
             }
-        }
 
-        lastUniversalCycle = (pid: pid, index: nextIndex, timestamp: now)
+            lastUniversalCycle = (pid: pid, index: result, timestamp: now)
+            return result
+        }
 
         let direction = universalCycleOrder[nextIndex]
         prepareWindow(axWindow, app: axApp)
@@ -682,5 +689,26 @@ enum LayoutService {
             return nil
         }
         return quartzVisibleFrame(for: screen)
+    }
+
+    // MARK: - Drag-to-Snap Public API
+
+    /// Read the current frame of a window (Quartz coordinates).
+    static func windowFrame(_ window: AXUIElement) -> CGRect {
+        getWindowFrame(window)
+    }
+
+    /// Compute the snap frame for a direction on a screen (Quartz coordinates).
+    static func computeSnapFrame(for direction: SnapDirection, in screen: CGRect) -> CGRect {
+        snapFrame(for: direction, in: screen)
+    }
+
+    /// Snap a specific AX window to a direction on a given screen. Used by drag-to-snap.
+    static func snapWindow(_ window: AXUIElement, pid: pid_t, to direction: SnapDirection, on screen: CGRect) {
+        saveFrameForUndo(window, pid: pid)
+        let app = AXUIElementCreateApplication(pid)
+        prepareWindow(window, app: app)
+        let targetFrame = snapFrame(for: direction, in: screen)
+        moveWindow(window, to: targetFrame)
     }
 }

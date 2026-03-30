@@ -33,3 +33,9 @@ Package.resolved
 *.provisionprofile
 
 scripts/
+
+# Pro module (separate private repo)
+HopTabPro/
+
+# License worker (separate deployment)
+hoptab-license-worker/node_modules/

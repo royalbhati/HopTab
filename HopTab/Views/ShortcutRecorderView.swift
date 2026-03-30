@@ -6,6 +6,7 @@ struct ShortcutRecorderView: View {
     @Binding var shortcut: CustomShortcut?
     @State private var isRecording = false
     @State private var liveModifiers: String = ""
+    @State private var rejectionHint: String = ""
     @State private var flagsMonitor: Any?
     @State private var keyMonitor: Any?
 
@@ -16,8 +17,13 @@ struct ShortcutRecorderView: View {
                     Circle()
                         .fill(Color.red)
                         .frame(width: 6, height: 6)
-                    Text(liveModifiers.isEmpty ? "Press a key combo\u{2026}" : "\(liveModifiers) + \u{2026}")
-                        .foregroundStyle(.primary)
+                    if !rejectionHint.isEmpty {
+                        Text(rejectionHint)
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text(liveModifiers.isEmpty ? "Press a key combo\u{2026}" : "\(liveModifiers) + \u{2026}")
+                            .foregroundStyle(.primary)
+                    }
                 } else if let s = shortcut {
                     Text(s.displayName)
                         .foregroundStyle(.primary)
@@ -51,6 +57,10 @@ struct ShortcutRecorderView: View {
     }
 
     private func startRecording() {
+        // Clean up any existing monitors to prevent leaks on rapid toggle
+        if let m = flagsMonitor { NSEvent.removeMonitor(m); flagsMonitor = nil }
+        if let m = keyMonitor { NSEvent.removeMonitor(m); keyMonitor = nil }
+
         isRecording = true
         liveModifiers = ""
 
@@ -75,6 +85,7 @@ struct ShortcutRecorderView: View {
                 return nil
             }
             if KeyCodeMapping.forbiddenKeyCodes.contains(keyCode) {
+                showRejection("That key can't be used")
                 return nil
             }
 
@@ -85,6 +96,7 @@ struct ShortcutRecorderView: View {
             let hasOption = cgFlags.contains(.maskAlternate)
             let hasCommand = cgFlags.contains(.maskCommand)
             if !hasControl && !hasOption && !hasCommand {
+                showRejection("Add a modifier (Ctrl/Opt/Cmd)")
                 return nil
             }
 
@@ -101,9 +113,17 @@ struct ShortcutRecorderView: View {
         }
     }
 
+    private func showRejection(_ hint: String) {
+        rejectionHint = hint
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            if rejectionHint == hint { rejectionHint = "" }
+        }
+    }
+
     private func stopRecording() {
         isRecording = false
         liveModifiers = ""
+        rejectionHint = ""
         if let m = flagsMonitor { NSEvent.removeMonitor(m); flagsMonitor = nil }
         if let m = keyMonitor { NSEvent.removeMonitor(m); keyMonitor = nil }
     }

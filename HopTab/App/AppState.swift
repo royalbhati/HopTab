@@ -9,6 +9,7 @@ final class AppState: ObservableObject {
     let permissions = PermissionsService()
 
     private let hotkeyService = HotkeyService()
+    private let dragSnapService = DragSnapService()
     private let overlayController = OverlayWindowController()
     private let profileOverlayController = ProfileOverlayWindowController()
     private let windowPickerController = WindowPickerOverlayController()
@@ -22,6 +23,12 @@ final class AppState: ObservableObject {
     @Published var recentAppFirst: Bool = UserDefaults.standard.bool(forKey: "recentAppFirst") {
         didSet {
             UserDefaults.standard.set(recentAppFirst, forKey: "recentAppFirst")
+        }
+    }
+    @Published var dragSnapEnabled: Bool = UserDefaults.standard.object(forKey: "dragSnapEnabled") == nil ? true : UserDefaults.standard.bool(forKey: "dragSnapEnabled") {
+        didSet {
+            UserDefaults.standard.set(dragSnapEnabled, forKey: "dragSnapEnabled")
+            dragSnapService.isEnabled = dragSnapEnabled
         }
     }
 
@@ -86,6 +93,7 @@ final class AppState: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var workspaceObservers: [NSObjectProtocol] = []
+    private var profileSwitchWorkItems: [DispatchWorkItem] = []
 
     init() {
         // Forward store's changes so SwiftUI views update
@@ -118,6 +126,12 @@ final class AppState: ObservableObject {
         refreshInstalledApps()
         observeWorkspace()
         setupHotkeyCallbacks()
+
+        // Wire drag-to-snap
+        dragSnapService.isEnabled = dragSnapEnabled
+        hotkeyService.onMouseEvent = { [weak self] type, event in
+            self?.dragSnapService.handleMouseEvent(type: type, event: event)
+        }
 
         // Re-sync profile hotkeys whenever profiles change
         store.objectWillChange
@@ -356,7 +370,6 @@ final class AppState: ObservableObject {
 
     private func showSwitcher() {
         let apps = store.apps
-        guard !apps.isEmpty else { return }
 
         selectedIndex = 0
         if apps.count > 1 {
@@ -618,10 +631,25 @@ final class AppState: ObservableObject {
         switchToProfile(id: id)
     }
 
+    /// Cancel any in-flight delayed profile switch work (layout/snapshot restores).
+    private func cancelPendingProfileWork() {
+        for item in profileSwitchWorkItems { item.cancel() }
+        profileSwitchWorkItems.removeAll()
+    }
+
+    private func scheduleProfileWork(delay: TimeInterval, block: @escaping () -> Void) {
+        let item = DispatchWorkItem { block() }
+        profileSwitchWorkItems.append(item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+    }
+
     /// Core profile switch: snapshot outgoing, hide, switch, unhide, restore incoming, show sticky note.
     private func switchToProfile(id: UUID) {
         let outgoingId = store.activeProfileId
         guard outgoingId != id else { return }
+
+        // Cancel any pending layout/snapshot work from a previous rapid switch
+        cancelPendingProfileWork()
 
         // 1. Snapshot outgoing profile
         if let outgoingId, let outgoing = store.profiles.first(where: { $0.id == outgoingId }) {
@@ -640,6 +668,11 @@ final class AppState: ObservableObject {
         // 4. Switch the active profile
         store.setActiveProfile(id: id)
 
+        // 4b. Record for time tracking (Pro)
+        if let provider = ProServiceRegistry.shared.provider as? ProBridgeTimeTracking {
+            provider.recordProfileSwitch(profileId: id, profileName: incoming.name)
+        }
+
         // 5. Unhide incoming apps
         SessionSnapshotService.unhideProfileApps(incoming)
 
@@ -647,11 +680,11 @@ final class AppState: ObservableObject {
         if let binding = incoming.layoutBinding,
            let template = store.allTemplates.first(where: { $0.id == binding.templateId }),
            !binding.zoneAssignments.isEmpty {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            scheduleProfileWork(delay: 0.15) {
                 LayoutService.applyLayout(binding: binding, template: template, profile: incoming)
             }
         } else if let snapshot = store.snapshot(for: id) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            scheduleProfileWork(delay: 0.15) {
                 SessionSnapshotService.restoreSnapshot(snapshot, for: incoming)
             }
         }
@@ -680,6 +713,9 @@ final class AppState: ObservableObject {
     func restoreSession(profileId: UUID) {
         guard let profile = store.profiles.first(where: { $0.id == profileId }) else { return }
 
+        // Cancel any pending work from a previous restore
+        cancelPendingProfileWork()
+
         // Launch all apps
         SessionSnapshotService.launchProfileApps(profile)
 
@@ -688,20 +724,20 @@ final class AppState: ObservableObject {
            let template = store.allTemplates.first(where: { $0.id == binding.templateId }),
            !binding.zoneAssignments.isEmpty {
             // Apply layout after apps have had time to launch
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            scheduleProfileWork(delay: 2.5) {
                 LayoutService.applyLayout(binding: binding, template: template, profile: profile)
             }
             // Second attempt for slow-launching apps
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            scheduleProfileWork(delay: 5.0) {
                 LayoutService.applyLayout(binding: binding, template: template, profile: profile)
             }
         } else if let snapshot = store.snapshot(for: profileId) {
             // Restore saved window positions
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            scheduleProfileWork(delay: 2.5) {
                 SessionSnapshotService.restoreSnapshot(snapshot, for: profile)
             }
             // Second attempt for slow-launching apps
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            scheduleProfileWork(delay: 5.0) {
                 SessionSnapshotService.restoreSnapshot(snapshot, for: profile)
             }
         }

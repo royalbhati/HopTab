@@ -1,74 +1,8 @@
 import SwiftUI
 
-// MARK: - Layouts Tab (full Settings tab)
-
-struct LayoutsTab: View {
-    @EnvironmentObject private var appState: AppState
-
-    private var profile: Profile? {
-        appState.store.activeProfile
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Profile selector
-            HStack {
-                Text("Profile:")
-                    .foregroundStyle(.secondary)
-                Text(profile?.name ?? "None")
-                    .fontWeight(.medium)
-                Spacer()
-                profilePicker
-            }
-            .font(.system(size: 12))
-
-            if let profile {
-                LayoutPickerContent(profile: profile)
-            } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "rectangle.3.group")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.tertiary)
-                    Text("Create a profile first to configure layouts")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .padding()
-    }
-
-    private var profilePicker: some View {
-        Menu {
-            ForEach(appState.store.profiles) { p in
-                Button {
-                    appState.activateProfile(id: p.id)
-                } label: {
-                    HStack {
-                        Text(p.name)
-                        if p.id == appState.store.activeProfileId {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text("Switch")
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9))
-            }
-            .font(.system(size: 11))
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-    }
-}
-
 // MARK: - Layout Picker Content
 
-private struct LayoutPickerContent: View {
+struct LayoutPickerContent: View {
     @EnvironmentObject private var appState: AppState
     let profile: Profile
 
@@ -85,93 +19,142 @@ private struct LayoutPickerContent: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Template grid — 3 columns with bigger cards
-                GroupBox("Choose a Template") {
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 10) {
-                        ForEach(templates) { template in
-                            TemplateCard(
-                                template: template,
-                                isSelected: selectedTemplateId == template.id,
-                                hasBinding: currentBinding?.templateId == template.id
-                            )
-                            .overlay(alignment: .topTrailing) {
-                                if !template.isBuiltIn {
-                                    HStack(spacing: 2) {
-                                        Button {
-                                            editingTemplate = template
-                                            showingEditor = true
-                                        } label: {
-                                            Image(systemName: "pencil.circle.fill")
-                                                .font(.system(size: 14))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        .buttonStyle(.plain)
+        VStack(alignment: .leading, spacing: 20) {
+            // Template grid
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Choose a Template")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Pick a layout template and assign apps to zones. When you apply the layout, each app snaps to its assigned position.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
 
-                                        Button {
-                                            appState.store.deleteCustomTemplate(id: template.id)
-                                            if selectedTemplateId == template.id {
-                                                selectedTemplateId = nil
-                                            }
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 14))
-                                                .foregroundStyle(.secondary)
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 10) {
+                    ForEach(templates) { template in
+                        TemplateCard(
+                            template: template,
+                            isSelected: selectedTemplateId == template.id,
+                            hasBinding: currentBinding?.templateId == template.id
+                        )
+                        .overlay(alignment: .topTrailing) {
+                            if !template.isBuiltIn {
+                                HStack(spacing: 2) {
+                                    Button {
+                                        editingTemplate = template
+                                        showingEditor = true
+                                    } label: {
+                                        Image(systemName: "pencil.circle.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button {
+                                        appState.store.deleteCustomTemplate(id: template.id)
+                                        if selectedTemplateId == template.id {
+                                            selectedTemplateId = nil
                                         }
-                                        .buttonStyle(.plain)
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(.secondary)
                                     }
-                                    .padding(4)
+                                    .buttonStyle(.plain)
                                 }
+                                .padding(4)
                             }
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.3)) {
-                                    if selectedTemplateId == template.id {
-                                        selectedTemplateId = nil
-                                    } else {
-                                        selectedTemplateId = template.id
-                                    }
+                        }
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3)) {
+                                if selectedTemplateId == template.id {
+                                    selectedTemplateId = nil
+                                } else {
+                                    selectedTemplateId = template.id
                                 }
                             }
                         }
+                    }
 
-                        // "New Layout" card
-                        Button {
+                    // "Custom Layout" card — Pro feature
+                    Button {
+                        if ProFeatureGate.isLicensed {
                             editingTemplate = nil
                             showingEditor = true
-                        } label: {
-                            VStack(spacing: 6) {
+                        }
+                    } label: {
+                        VStack(spacing: 6) {
+                            ZStack {
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(Color.primary.opacity(0.04))
-                                    .overlay(
-                                        Image(systemName: "plus")
-                                            .font(.system(size: 20))
-                                            .foregroundStyle(.secondary)
-                                    )
+                                    .fill(ProFeatureGate.isLicensed
+                                          ? Color.primary.opacity(0.04)
+                                          : Color.yellow.opacity(0.06))
                                     .frame(height: 56)
+
+                                if ProFeatureGate.isLicensed {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "rectangle.3.group.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(.yellow.opacity(0.7))
+                                        HStack(spacing: 3) {
+                                            Image(systemName: "star.fill")
+                                                .font(.system(size: 7))
+                                            Text("PRO")
+                                                .font(.system(size: 8, weight: .bold))
+                                        }
+                                        .foregroundStyle(.yellow)
+                                    }
+                                }
+                            }
+
+                            if ProFeatureGate.isLicensed {
                                 Text("New Layout")
                                     .font(.system(size: 11))
                                     .foregroundStyle(.secondary)
+                            } else {
+                                Text("Custom Layout")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.yellow)
                             }
-                            .padding(8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color.primary.opacity(0.02))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-                                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                            )
                         }
-                        .buttonStyle(.plain)
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(ProFeatureGate.isLicensed
+                                      ? Color.primary.opacity(0.02)
+                                      : Color.yellow.opacity(0.03))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(ProFeatureGate.isLicensed
+                                        ? Color.primary.opacity(0.06)
+                                        : Color.yellow.opacity(0.2),
+                                        lineWidth: 1)
+                        )
                     }
-                    .padding(6)
+                    .buttonStyle(.plain)
                 }
+            }
+            if !ProFeatureGate.isLicensed {
+                HStack(spacing: 6) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.yellow)
+                    Text("Custom layouts with exact percentages")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Link("Unlock", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
+                        .font(.system(size: 11))
+                }
+            }
+
+            Color.clear.frame(height: 0)
                 .sheet(isPresented: $showingEditor) {
                     CustomLayoutEditorView(
                         existingTemplate: editingTemplate,
@@ -189,58 +172,55 @@ private struct LayoutPickerContent: View {
                     )
                 }
 
-                // Zone assignments
-                if let templateId = selectedTemplateId,
-                   let template = templates.first(where: { $0.id == templateId }) {
-                    // Show assignments for the selected template
-                    // (may differ from the stored binding if user is browsing)
-                    let isActiveTemplate = currentBinding?.templateId == templateId
+            // Zone assignments
+            if let templateId = selectedTemplateId,
+               let template = templates.first(where: { $0.id == templateId }) {
+                let isActiveTemplate = currentBinding?.templateId == templateId
 
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(template.zones) { zone in
-                                ZoneAssignmentRow(
-                                    zone: zone,
-                                    templateId: templateId,
-                                    profile: profile
-                                )
-                            }
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Assign Apps to Zones")
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        if profile.pinnedApps.isEmpty {
+                            Text("Pin some apps first")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.orange)
+                        } else if !isActiveTemplate {
+                            Text("Assign apps to use this template")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
                         }
-                        .padding(4)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(template.zones) { zone in
+                            ZoneAssignmentRow(
+                                zone: zone,
+                                templateId: templateId,
+                                profile: profile
+                            )
+                        }
+                    }
+                }
+
+                // Apply button
+                if isActiveTemplate,
+                   let binding = currentBinding,
+                   !binding.zoneAssignments.isEmpty {
+                    Button {
+                        appState.applyLayoutForActiveProfile()
                     } label: {
                         HStack {
-                            Text("Assign Apps to Zones")
                             Spacer()
-                            if !isActiveTemplate {
-                                Text("Assign apps to use this template")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                            } else if profile.pinnedApps.isEmpty {
-                                Text("Pin some apps first")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.orange)
-                            }
+                            Image(systemName: "rectangle.3.group")
+                            Text("Apply Layout Now")
+                                .fontWeight(.medium)
+                            Spacer()
                         }
+                        .padding(.vertical, 8)
                     }
-
-                    // Apply button — only show when this template has assignments
-                    if isActiveTemplate,
-                       let binding = currentBinding,
-                       !binding.zoneAssignments.isEmpty {
-                        Button {
-                            appState.applyLayoutForActiveProfile()
-                        } label: {
-                            HStack {
-                                Spacer()
-                                Image(systemName: "rectangle.3.group")
-                                Text("Apply Layout Now")
-                                    .fontWeight(.medium)
-                                Spacer()
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
         }
@@ -356,20 +336,24 @@ private struct ZoneAssignmentRow: View {
                 .buttonStyle(.plain)
             } else {
                 Menu {
-                    ForEach(profile.pinnedApps) { app in
-                        Button {
-                            appState.store.assignZone(
-                                profileId: profile.id,
-                                templateId: templateId,
-                                zoneId: zone.id,
-                                bundleIdentifier: app.bundleIdentifier
-                            )
-                        } label: {
-                            HStack {
-                                Image(nsImage: app.icon)
-                                    .resizable()
-                                    .frame(width: 16, height: 16)
-                                Text(app.displayName)
+                    if profile.pinnedApps.isEmpty {
+                        Text("No pinned apps \u{2014} pin apps first")
+                    } else {
+                        ForEach(profile.pinnedApps) { app in
+                            Button {
+                                appState.store.assignZone(
+                                    profileId: profile.id,
+                                    templateId: templateId,
+                                    zoneId: zone.id,
+                                    bundleIdentifier: app.bundleIdentifier
+                                )
+                            } label: {
+                                HStack {
+                                    Image(nsImage: app.icon)
+                                        .resizable()
+                                        .frame(width: 16, height: 16)
+                                    Text(app.displayName)
+                                }
                             }
                         }
                     }
@@ -447,7 +431,11 @@ private struct CustomLayoutEditorView: View {
                 }
 
                 // Visual canvas
-                GroupBox("Preview") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Preview")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+
                     GeometryReader { geo in
                         ZStack {
                             ForEach(zones) { zone in
@@ -481,12 +469,15 @@ private struct CustomLayoutEditorView: View {
                         }
                     }
                     .frame(height: 140)
-                    .padding(4)
                 }
 
                 // Zone controls
-                if let zone = selectedZone {
-                    GroupBox("Selected Zone") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Selected Zone")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    if let zone = selectedZone {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text("Name:")
@@ -530,10 +521,7 @@ private struct CustomLayoutEditorView: View {
                                 }
                             }
                         }
-                        .padding(4)
-                    }
-                } else {
-                    GroupBox("Selected Zone") {
+                    } else {
                         Text("Tap a zone in the preview to select it")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
@@ -543,7 +531,11 @@ private struct CustomLayoutEditorView: View {
                 }
 
                 // Presets
-                GroupBox("Start From Preset") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Start From Preset")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+
                     HStack(spacing: 8) {
                         Button("2 Columns") { applyPreset(columns: 2) }
                         Button("3 Columns") { applyPreset(columns: 3) }
@@ -551,7 +543,6 @@ private struct CustomLayoutEditorView: View {
                         Button("Top + Bottom") { applyTopBottomPreset() }
                     }
                     .font(.system(size: 11))
-                    .padding(4)
                 }
             }
             .padding(.horizontal, 20)
@@ -583,13 +574,11 @@ private struct CustomLayoutEditorView: View {
         zones.remove(at: idx)
 
         if horizontal {
-            // Split into left and right
             let left = LayoutZone(id: UUID(), name: "\(z.name) L", x: z.x, y: z.y, width: z.width / 2, height: z.height)
             let right = LayoutZone(id: UUID(), name: "\(z.name) R", x: z.x + z.width / 2, y: z.y, width: z.width / 2, height: z.height)
             zones.insert(contentsOf: [left, right], at: idx)
             selectedZoneId = left.id
         } else {
-            // Split into top and bottom
             let top = LayoutZone(id: UUID(), name: "\(z.name) T", x: z.x, y: z.y, width: z.width, height: z.height / 2)
             let bottom = LayoutZone(id: UUID(), name: "\(z.name) B", x: z.x, y: z.y + z.height / 2, width: z.width, height: z.height / 2)
             zones.insert(contentsOf: [top, bottom], at: idx)

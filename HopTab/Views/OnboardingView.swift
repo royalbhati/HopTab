@@ -113,6 +113,17 @@ struct OnboardingView: View {
 
                 Spacer()
 
+                // Skip button (pages 0-3 only, not near the end)
+                if currentPage < totalPages - 2 {
+                    Button("Skip") {
+                        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+                        onComplete()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 12))
+                }
+
                 if currentPage > 0 {
                     Button("Back") {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -302,21 +313,38 @@ private struct PinAppsPage: View {
 
             ScrollView {
                 LazyVStack(spacing: 2) {
-                    ForEach(appState.runningApps, id: \.bundleIdentifier) { app in
-                        if let bundleID = app.bundleIdentifier,
-                           let name = app.localizedName,
-                           app.activationPolicy == .regular {
-                            OnboardingAppRow(
-                                bundleID: bundleID,
-                                name: name,
-                                icon: app.icon ?? NSImage(),
-                                isPinned: appState.store.isPinned(bundleID),
-                                onToggle: {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        appState.store.togglePin(bundleIdentifier: bundleID, displayName: name)
+                    let regularApps = appState.runningApps.filter { $0.bundleIdentifier != nil && $0.localizedName != nil && $0.activationPolicy == .regular }
+                    if regularApps.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "app.dashed")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.tertiary)
+                            Text("No running apps found")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.secondary)
+                            Text("Open some apps and come back, or skip and pin them later in Settings.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.tertiary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                    } else {
+                        ForEach(regularApps, id: \.bundleIdentifier) { app in
+                            if let bundleID = app.bundleIdentifier,
+                               let name = app.localizedName {
+                                OnboardingAppRow(
+                                    bundleID: bundleID,
+                                    name: name,
+                                    icon: app.icon ?? NSImage(),
+                                    isPinned: appState.store.isPinned(bundleID),
+                                    onToggle: {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            appState.store.togglePin(bundleIdentifier: bundleID, displayName: name)
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }

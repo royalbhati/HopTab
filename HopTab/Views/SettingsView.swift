@@ -2,35 +2,9 @@ import SwiftUI
 
 // MARK: - Settings Window Controller
 
+@MainActor
 final class SettingsWindowController {
     private var window: NSWindow?
-
-    private struct Tab {
-        let title: String
-        let icon: String
-        let view: (AppState) -> NSView
-    }
-
-    private let tabs: [Tab] = [
-        Tab(title: "Pinned Apps", icon: "pin.fill") { appState in
-            NSHostingView(rootView: PinnedAppsTab().environmentObject(appState))
-        },
-        Tab(title: "Profiles", icon: "person.2.fill") { appState in
-            NSHostingView(rootView: ProfilesTab().environmentObject(appState))
-        },
-        Tab(title: "Layouts", icon: "rectangle.3.group") { appState in
-            NSHostingView(rootView: LayoutsTab().environmentObject(appState))
-        },
-        Tab(title: "Shortcut", icon: "keyboard") { appState in
-            NSHostingView(rootView: ShortcutTab().environmentObject(appState))
-        },
-        Tab(title: "Windows", icon: "rectangle.split.2x1") { appState in
-            NSHostingView(rootView: WindowSnapTab().environmentObject(appState))
-        },
-        Tab(title: "About", icon: "info.circle") { appState in
-            NSHostingView(rootView: AboutTab().environmentObject(appState))
-        },
-    ]
 
     func show(appState: AppState) {
         if let window {
@@ -39,25 +13,125 @@ final class SettingsWindowController {
             return
         }
 
-        let tabVC = NSTabViewController()
-        tabVC.tabStyle = .toolbar
+        let rootView = SettingsRootView().environmentObject(appState)
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 720, height: 580)
 
-        for tab in tabs {
-            let item = NSTabViewItem(viewController: NSViewController())
-            item.label = tab.title
-            item.image = NSImage(systemSymbolName: tab.icon, accessibilityDescription: tab.title)
-            item.viewController!.view = tab.view(appState)
-            item.viewController!.preferredContentSize = NSSize(width: 520, height: 580)
-            tabVC.addTabViewItem(item)
-        }
-
-        let w = NSWindow(contentViewController: tabVC)
-        w.title = "HopTab Settings"
+        let w = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 580),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        w.title = "HopTab"
+        w.contentView = hostingView
         w.center()
         w.isReleasedWhenClosed = false
         w.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         self.window = w
+    }
+}
+
+// MARK: - Sidebar Navigation
+
+private enum SettingsSection: String, CaseIterable, Identifiable {
+    case apps = "Apps"
+    case profiles = "Profiles"
+    case layouts = "Layouts"
+    case shortcuts = "Shortcuts"
+    case snapping = "Snapping"
+    case windowRules = "Window Rules"
+    case displays = "Displays"
+    case pro = "Pro"
+    case about = "About"
+
+    var id: String { rawValue }
+}
+
+// MARK: - Settings Root View
+
+private struct SettingsRootView: View {
+    @EnvironmentObject private var appState: AppState
+    @State private var selection: SettingsSection = .apps
+
+    private var sections: [SettingsSection] {
+        var result: [SettingsSection] = [.apps, .profiles, .layouts, .shortcuts, .snapping, .windowRules]
+        if ProServiceRegistry.shared.isProAvailable {
+            result.append(.displays)
+        }
+        result.append(.pro)
+        result.append(.about)
+        return result
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Sidebar
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(sections) { section in
+                    sidebarItem(section)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 8)
+            .frame(width: 180)
+            .background(Color(NSColor.windowBackgroundColor))
+
+            Divider()
+
+            // Content
+            ScrollView {
+                contentView
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(NSColor.controlBackgroundColor))
+        }
+    }
+
+    private func sidebarItem(_ section: SettingsSection) -> some View {
+        Button {
+            selection = section
+        } label: {
+            Text(section.rawValue)
+                .font(.system(size: 13))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(selection == section ? Color.primary.opacity(0.06) : Color.clear)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var contentView: some View {
+        switch selection {
+        case .apps:
+            PinnedAppsSection()
+        case .profiles:
+            ProfilesSection()
+        case .layouts:
+            LayoutsSection()
+        case .shortcuts:
+            ShortcutsSection()
+        case .snapping:
+            SnappingSection()
+        case .windowRules:
+            WindowRulesSection()
+        case .displays:
+            DisplaysSection()
+        case .pro:
+            ProSection()
+        case .about:
+            AboutSection()
+        }
     }
 }
 
@@ -77,9 +151,9 @@ private func fuzzyMatch(query: String, target: String) -> Bool {
     return queryIndex == lowerQuery.endIndex
 }
 
-// MARK: - Pinned Apps Tab
+// MARK: - Pinned Apps Section
 
-private struct PinnedAppsTab: View {
+private struct PinnedAppsSection: View {
     @EnvironmentObject private var appState: AppState
     @State private var searchText = ""
     @State private var appSource: AppSource = .running
@@ -90,7 +164,7 @@ private struct PinnedAppsTab: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             // Active profile indicator
             if let profile = appState.store.activeProfile {
                 HStack {
@@ -105,7 +179,13 @@ private struct PinnedAppsTab: View {
             }
 
             // Pinned apps section
-            GroupBox("Pinned Apps") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Pinned Apps")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Pin the apps you use most. Use Option+Tab to cycle through only these apps instead of everything running.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+
                 if appState.store.apps.isEmpty {
                     VStack(spacing: 6) {
                         Image(systemName: "pin")
@@ -149,7 +229,13 @@ private struct PinnedAppsTab: View {
             }
 
             // Source picker + search
-            GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(appSource == .running
+                     ? "Running Apps \u{2014} click to pin / unpin"
+                     : "All Apps \u{2014} click to pin / unpin")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+
                 VStack(spacing: 8) {
                     Picker("", selection: $appSource) {
                         ForEach(AppSource.allCases, id: \.self) { source in
@@ -185,13 +271,8 @@ private struct PinnedAppsTab: View {
                     }
                     .frame(minHeight: 80, maxHeight: 150)
                 }
-            } label: {
-                Text(appSource == .running
-                     ? "Running Apps \u{2014} click to pin / unpin"
-                     : "All Apps \u{2014} click to pin / unpin")
             }
         }
-        .padding()
     }
 
     private var filteredRunningApps: [NSRunningApplication] {
@@ -262,54 +343,73 @@ private struct PinnedAppsTab: View {
     }
 }
 
-// MARK: - Profiles Tab
+// MARK: - Profiles Section
 
-private struct ProfilesTab: View {
+private struct ProfilesSection: View {
     @EnvironmentObject private var appState: AppState
     @State private var newProfileName = ""
     @State private var settingsProfileId: UUID?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            GroupBox("Profiles") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Create profiles for different workflows. Click the gear icon to configure desktop assignment and hotkey.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .padding(.bottom, 4)
+        VStack(alignment: .leading, spacing: 20) {
+            // Profiles list
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Profiles")
+                    .font(.system(size: 13, weight: .semibold))
 
-                    List {
-                        ForEach(appState.store.profiles) { profile in
-                            ProfileRow(
-                                profile: profile,
-                                isSettingsOpen: Binding(
-                                    get: { settingsProfileId == profile.id },
-                                    set: { settingsProfileId = $0 ? profile.id : nil }
-                                )
+                Text("Create profiles for different workflows. Click the gear icon to configure desktop assignment and hotkey.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+
+                List {
+                    ForEach(appState.store.profiles) { profile in
+                        ProfileRow(
+                            profile: profile,
+                            isSettingsOpen: Binding(
+                                get: { settingsProfileId == profile.id },
+                                set: { settingsProfileId = $0 ? profile.id : nil }
                             )
-                            .padding(.vertical, 2)
-                        }
+                        )
+                        .padding(.vertical, 2)
                     }
-                    .frame(minHeight: 120, maxHeight: 300)
                 }
-                .padding(4)
+                .frame(height: min(CGFloat(appState.store.profiles.count) * 48 + 8, 350))
             }
 
-            GroupBox("New Profile") {
-                HStack {
-                    TextField("Profile name", text: $newProfileName)
+            // New profile — always visible, compact
+            if appState.store.canAddProfile {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.accentColor)
+                    TextField("New profile name", text: $newProfileName)
                         .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 12))
                         .onSubmit { addProfile() }
-
                     Button("Add") { addProfile() }
+                        .controlSize(.small)
                         .disabled(newProfileName.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-                .padding(4)
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.yellow)
+                    Text("Free plan: \(ProFeatureGate.freeProfileLimit) profiles")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Link("Unlock unlimited", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
+                        .font(.system(size: 11))
+                }
+            }
+
+            // Pro automation features
+            if let provider = ProServiceRegistry.shared.provider {
+                provider.profileSectionViews(profiles: appState.store.profiles.map { ProProfileInfo(id: $0.id, name: $0.name) })
             }
 
             Spacer()
         }
-        .padding()
     }
 
     private func addProfile() {
@@ -329,6 +429,7 @@ private struct ProfileRow: View {
 
     @State private var isEditing = false
     @State private var editingName = ""
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -401,12 +502,20 @@ private struct ProfileRow: View {
 
                     if appState.store.profiles.count > 1 {
                         Button(role: .destructive) {
-                            appState.store.deleteProfile(id: profile.id)
+                            showDeleteConfirmation = true
                         } label: {
                             Image(systemName: "trash")
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(.red.opacity(0.7))
+                        .alert("Delete Profile", isPresented: $showDeleteConfirmation) {
+                            Button("Cancel", role: .cancel) {}
+                            Button("Delete", role: .destructive) {
+                                appState.store.deleteProfile(id: profile.id)
+                            }
+                        } message: {
+                            Text("Delete \"\(profile.name)\"? This will remove all its pinned apps, layout assignments, and saved sessions.")
+                        }
                     }
                 }
             }
@@ -585,7 +694,7 @@ private struct ProfileSettingsPopover: View {
 
                 Spacer()
 
-                Text("Configure in Layouts tab")
+                Text("Configure in Layouts section")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -666,148 +775,246 @@ private struct ProfileHotkeyRow: View {
     }
 }
 
-// MARK: - Shortcut Tab
+// MARK: - Layouts Section
 
-private struct ShortcutTab: View {
+private struct LayoutsSection: View {
+    @EnvironmentObject private var appState: AppState
+
+    private var profile: Profile? {
+        appState.store.activeProfile
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Profile selector
+            HStack {
+                Text("Profile:")
+                    .foregroundStyle(.secondary)
+                Text(profile?.name ?? "None")
+                    .fontWeight(.medium)
+                Spacer()
+                profilePicker
+            }
+            .font(.system(size: 12))
+
+            if let profile {
+                LayoutPickerContent(profile: profile)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "rectangle.3.group")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.tertiary)
+                    Text("Create a profile first to configure layouts")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    private var profilePicker: some View {
+        Menu {
+            ForEach(appState.store.profiles) { p in
+                Button {
+                    appState.activateProfile(id: p.id)
+                } label: {
+                    HStack {
+                        Text(p.name)
+                        if p.id == appState.store.activeProfileId {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text("Switch")
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9))
+            }
+            .font(.system(size: 11))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+}
+
+// MARK: - Shortcuts Section
+
+private struct ShortcutsSection: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                switcherShortcutSection
-                profileShortcutSection
-                behaviorSection
-                howItWorksSection
+        VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Shortcuts")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("Configure the hotkeys for the app switcher and profile switcher. Hold the modifier, tap the trigger key to cycle, release to switch.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
             }
-            .padding()
+            switcherShortcutSection
+            profileShortcutSection
+            behaviorSection
+            howItWorksSection
         }
     }
 
     private var switcherShortcutSection: some View {
-        GroupBox("Switcher Shortcut") {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(ShortcutPreset.allCases) { preset in
-                    HStack(spacing: 8) {
-                        Image(systemName: appState.selectedPreset == preset ? "circle.inset.filled" : "circle")
-                            .foregroundStyle(appState.selectedPreset == preset ? Color.accentColor : .secondary)
-                            .font(.system(size: 14))
-                        Text(preset.displayName)
-                            .font(.system(size: 13))
-                        Spacer()
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture { appState.selectPreset(preset) }
-                }
-
-                HStack(spacing: 8) {
-                    Image(systemName: appState.isCustomAppShortcut ? "circle.inset.filled" : "circle")
-                        .foregroundStyle(appState.isCustomAppShortcut ? Color.accentColor : .secondary)
-                        .font(.system(size: 14))
-                    Text("Custom")
-                        .font(.system(size: 13))
-
-                    if appState.isCustomAppShortcut {
-                        ShortcutRecorderView(shortcut: $appState.customAppShortcut)
-                    }
-
-                    Spacer()
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { appState.selectCustomMode() }
-
-                if appState.shortcutsConflict {
-                    conflictBanner
-                }
-
-                Divider()
-
-                hotkeyStatusRow
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("App Switcher")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                hotkeyStatusBadge
             }
-            .padding(8)
+
+            // Preset grid — 2 columns
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                ForEach(ShortcutPreset.allCases) { preset in
+                    presetCard(preset)
+                }
+                customCard
+            }
+
+            if appState.shortcutsConflict {
+                conflictBanner
+            }
         }
     }
 
-    private var profileShortcutSection: some View {
-        GroupBox("Profile Switcher Shortcut") {
-            VStack(alignment: .leading, spacing: 8) {
-                Toggle("Custom shortcut", isOn: $appState.isCustomProfileShortcut)
-                    .font(.system(size: 12))
-
-                if appState.isCustomProfileShortcut {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.2.fill")
-                            .foregroundStyle(.secondary)
-                        ShortcutRecorderView(shortcut: $appState.customProfileShortcut)
-                    }
-                    .font(.system(size: 12))
-                } else {
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.2.fill")
-                            .foregroundStyle(.secondary)
-                        Text("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName)")
-                            .fontWeight(.medium)
-                        Text("(auto-configured)")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .font(.system(size: 12))
-                }
-
-                if appState.shortcutsConflict {
-                    conflictBanner
-                }
+    private func presetCard(_ preset: ShortcutPreset) -> some View {
+        let isSelected = appState.selectedPreset == preset
+        return Button { appState.selectPreset(preset) } label: {
+            HStack {
+                Text(preset.displayName)
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                Spacer()
             }
-            .padding(8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(isSelected ? Color.accentColor.opacity(0.4) : Color.clear, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var customCard: some View {
+        let isSelected = appState.isCustomAppShortcut
+        return Button { appState.selectCustomMode() } label: {
+            HStack(spacing: 6) {
+                Text("Custom")
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                if isSelected {
+                    ShortcutRecorderView(shortcut: $appState.customAppShortcut)
+                        .frame(maxWidth: 80)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(isSelected ? Color.accentColor.opacity(0.4) : Color.clear, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var profileShortcutSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Profile Switcher")
+                .font(.system(size: 13, weight: .semibold))
+
+            HStack(spacing: 12) {
+                if appState.isCustomProfileShortcut {
+                    ShortcutRecorderView(shortcut: $appState.customProfileShortcut)
+                } else {
+                    Text("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName)")
+                        .font(.system(size: 12, weight: .medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
+                }
+                Toggle("Custom", isOn: $appState.isCustomProfileShortcut)
+                    .font(.system(size: 11))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                Spacer()
+            }
+
+            if appState.shortcutsConflict {
+                conflictBanner
+            }
         }
     }
 
     private var behaviorSection: some View {
-        GroupBox("Behavior") {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Behavior")
+                .font(.system(size: 13, weight: .semibold))
+
             Toggle("Move recently switched app to front", isOn: $appState.recentAppFirst)
                 .font(.system(size: 12))
-                .padding(8)
         }
     }
 
     private var howItWorksSection: some View {
-        GroupBox("How It Works") {
-            VStack(alignment: .leading, spacing: 6) {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 4) {
                 let sel = appState.appShortcutSelection
-                Text("App Switcher")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                Label("\(sel.modifierName) + \(sel.keyName) \u{2014} show switcher & cycle forward",
-                      systemImage: "arrow.right")
-                Label("Shift + \(sel.modifierName) + \(sel.keyName) \u{2014} cycle backward",
-                      systemImage: "arrow.left")
-                Label("Release \(sel.modifierName) \u{2014} activate selected app",
-                      systemImage: "checkmark")
-                Label("Escape \u{2014} cancel",
-                      systemImage: "xmark")
-                Label("\u{2318}Q \u{2014} quit highlighted app",
-                      systemImage: "xmark.circle")
-                Label("\u{2318}H \u{2014} hide highlighted app",
-                      systemImage: "eye.slash")
-                Label("\u{2318}M \u{2014} minimize highlighted app",
-                      systemImage: "minus.rectangle")
-
+                shortcutHint("\(sel.modifierName)+\(sel.keyName)", "Show switcher & cycle forward")
+                shortcutHint("Shift+\(sel.modifierName)+\(sel.keyName)", "Cycle backward")
+                shortcutHint("Release \(sel.modifierName)", "Activate selected")
+                shortcutHint("Esc", "Cancel")
+                shortcutHint("\u{2318}Q / \u{2318}H / \u{2318}M", "Quit / Hide / Minimize")
                 Divider().padding(.vertical, 2)
-
-                Text("Profile Switcher")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.primary)
-                Label("\(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} show profiles & cycle forward",
-                      systemImage: "arrow.right")
-                Label("Shift + \(appState.profileShortcutModifierName) + \(appState.profileShortcutKeyName) \u{2014} cycle backward",
-                      systemImage: "arrow.left")
-                Label("Release \(appState.profileShortcutModifierName) \u{2014} activate selected profile",
-                      systemImage: "checkmark")
-                Label("Escape \u{2014} cancel",
-                      systemImage: "xmark")
+                shortcutHint("\(appState.profileShortcutModifierName)+\(appState.profileShortcutKeyName)", "Show profile switcher")
             }
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .padding(8)
+            .padding(.top, 6)
+        } label: {
+            Text("Quick Reference")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func shortcutHint(_ keys: String, _ description: String) -> some View {
+        HStack(spacing: 8) {
+            Text(keys)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.primary)
+                .frame(width: 160, alignment: .leading)
+            Text(description)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var hotkeyStatusBadge: some View {
+        HStack(spacing: 4) {
+            switch appState.hotkeyStatus {
+            case .running:
+                Circle().fill(Color.green).frame(width: 6, height: 6)
+                Text("Active").font(.system(size: 10)).foregroundStyle(.green)
+            case .failed:
+                Circle().fill(Color.orange).frame(width: 6, height: 6)
+                Text("No access").font(.system(size: 10)).foregroundStyle(.orange)
+            case .stopped:
+                Circle().fill(Color.gray).frame(width: 6, height: 6)
+                Text("Stopped").font(.system(size: 10)).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -862,32 +1069,369 @@ private struct ShortcutTab: View {
     }
 }
 
-// MARK: - About Tab
+// MARK: - Snapping Section
 
-private struct AboutTab: View {
+private struct SnappingSection: View {
+    @State private var gapSize: Double = UserDefaults.standard.double(forKey: "windowGap")
+    @State private var snapConfig: SnapShortcutConfig = SnapShortcutConfig.current
+
+    private let shortcutGroups: [(title: String, directions: [SnapDirection])] = [
+        ("Halves", [.left, .right, .topHalf, .bottomHalf]),
+        ("Quarters", [.topLeft, .topRight, .bottomLeft, .bottomRight]),
+        ("Thirds", [.firstThird, .centerThird, .lastThird, .firstTwoThirds, .lastTwoThirds]),
+        ("Other", [.full, .center]),
+        ("Cycle", [.cycleNext, .cyclePrevious]),
+        ("Monitors", [.nextMonitor, .previousMonitor]),
+        ("Actions", [.undo]),
+    ]
+
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            // Drag to Snap toggle
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle("Drag to Snap", isOn: $appState.dragSnapEnabled)
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Drag any window to a screen edge or corner to snap it into position.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            // Gap — compact inline
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Window Gap")
+                    .font(.system(size: 13, weight: .semibold))
+
+                HStack(spacing: 12) {
+                    // Preview
+                    HStack(spacing: gapSize > 0 ? gapSize / 2 : 0) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.accentColor.opacity(0.4))
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.accentColor.opacity(0.25))
+                    }
+                    .padding(gapSize > 0 ? gapSize / 3 : 0)
+                    .frame(width: 80, height: 40)
+                    .background(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2)))
+                    .animation(.easeInOut(duration: 0.15), value: gapSize)
+
+                    Slider(value: $gapSize, in: 0...20, step: 1)
+                        .onChange(of: gapSize) {
+                            UserDefaults.standard.set(gapSize, forKey: "windowGap")
+                        }
+
+                    Text("\(Int(gapSize)) pt")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 35)
+                }
+            }
+
+            // Snap shortcuts
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Snap Shortcuts")
+                        .font(.system(size: 13, weight: .semibold))
+                    Spacer()
+                    Button("Reset") {
+                        snapConfig = .defaults
+                        saveConfig()
+                    }
+                    .controlSize(.mini)
+                    .foregroundStyle(.secondary)
+                }
+                Text("Global hotkeys to snap windows. Press the same key twice to cycle sizes.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                ForEach(shortcutGroups, id: \.title) { group in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(group.title.uppercased())
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                            .tracking(0.5)
+                            .padding(.top, 6)
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
+                            ForEach(group.directions, id: \.self) { direction in
+                                snapShortcutRow(direction: direction)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func snapShortcutRow(direction: SnapDirection) -> some View {
+        HStack(spacing: 4) {
+            Text(direction.displayName)
+                .font(.system(size: 11))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(1)
+
+            ShortcutRecorderView(shortcut: binding(for: direction))
+                .frame(width: 80)
+
+            if snapConfig.bindings[direction] != nil {
+                Button {
+                    snapConfig.bindings.removeValue(forKey: direction)
+                    saveConfig()
+                } label: {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Color.clear.frame(width: 14)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func binding(for direction: SnapDirection) -> Binding<CustomShortcut?> {
+        Binding(
+            get: { snapConfig.bindings[direction] },
+            set: { newValue in
+                if let shortcut = newValue {
+                    snapConfig.bindings[direction] = shortcut
+                } else {
+                    snapConfig.bindings.removeValue(forKey: direction)
+                }
+                saveConfig()
+            }
+        )
+    }
+
+    private func saveConfig() {
+        SnapShortcutConfig.current = snapConfig
+        NotificationCenter.default.post(name: .snapShortcutsChanged, object: nil)
+    }
+}
+
+// MARK: - Window Rules Section
+
+private struct WindowRulesSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Window Rules")
+                .font(.system(size: 15, weight: .semibold))
+            Text("Set a rule like \"Chrome → Left Half on launch\" and it will always open there. Great for keeping your workspace consistent without manually snapping every time.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            if let provider = ProServiceRegistry.shared.provider,
+               let view = provider.windowsSectionView() {
+                view
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.yellow)
+                    Text("Available with HopTab Pro")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    Link("Learn more", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
+                        .font(.system(size: 12))
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Pro Section
+
+private struct ProSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Image(systemName: "star.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.yellow)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("HopTab Pro")
+                            .font(.system(size: 18, weight: .bold))
+                        Text("Automate your workspace — let HopTab work for you.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if ProServiceRegistry.shared.isLicensed {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                        Text("Pro Active")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.green)
+                    }
+                    .padding(.top, 4)
+                } else {
+                    Link(destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!) {
+                        Text("Unlock Pro — $5 one-time")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.accentColor))
+                    }
+                    .padding(.top, 4)
+
+                    Link(destination: URL(string: "https://github.com/sponsors/royalbhati")!) {
+                        Text("or sponsor on GitHub")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Divider()
+
+            // Feature list
+            proFeature(
+                icon: "clock.fill", color: .blue,
+                title: "Time Tracking",
+                description: "See exactly how long you spend in each profile. Zero effort — works automatically from profile switches."
+            )
+
+            proFeature(
+                icon: "calendar", color: .red,
+                title: "Calendar Auto-Switch",
+                description: "\"Daily Standup\" starts → switches to Meeting profile. Detects Zoom, Teams, Meet links. Fullscreen reminder with Join button."
+            )
+
+            proFeature(
+                icon: "clock.badge", color: .orange,
+                title: "Time Schedule",
+                description: "\"At 7 PM switch to Entertainment\" — set it once, works every day. Filter by weekday."
+            )
+
+            proFeature(
+                icon: "moon.fill", color: .purple,
+                title: "Focus Mode Integration",
+                description: "Enable \"Work\" Focus → auto-switches to your Work profile. Assign multiple profiles per Focus mode."
+            )
+
+            proFeature(
+                icon: "display", color: .cyan,
+                title: "Display Auto-Profiles",
+                description: "Plug in your external monitor → auto-switches to \"Docked\" profile. Unplug → switches to \"Laptop\"."
+            )
+
+            proFeature(
+                icon: "rectangle.badge.plus", color: .green,
+                title: "Window Rules",
+                description: "\"VS Code always left 60%\" — set once, auto-snaps on every launch or focus. Free tier gets 2 rules."
+            )
+
+            proFeature(
+                icon: "rectangle.3.group.fill", color: .yellow,
+                title: "Custom Layouts",
+                description: "Create layouts with exact width and height percentages. Build any arrangement you want."
+            )
+
+            proFeature(
+                icon: "person.2.fill", color: .indigo,
+                title: "Unlimited Profiles",
+                description: "Free tier allows 3 profiles. Pro unlocks unlimited."
+            )
+
+            // License entry
+            if let provider = ProServiceRegistry.shared.provider {
+                Divider()
+                provider.licenseSectionView()
+            }
+
+            // Student/affordability note
+            if !ProServiceRegistry.shared.isLicensed {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Can't afford it?")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("If you're a student or really think these features can make your life better but can't afford $5 — send me an email and I'll give you Pro for free. No questions asked.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Link("rawyelll@gmail.com", destination: URL(string: "mailto:rawyelll@gmail.com?subject=HopTab%20Pro%20Request")!)
+                        .font(.system(size: 11))
+                }
+            }
+        }
+    }
+
+    private func proFeature(icon: String, color: Color, title: String, description: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundStyle(color)
+                .frame(width: 28, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(color.opacity(0.12))
+                )
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(description)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+// MARK: - Displays Section (Pro only)
+
+private struct DisplaysSection: View {
+    @EnvironmentObject private var appState: AppState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Displays")
+                .font(.system(size: 13, weight: .semibold))
+
+            if let provider = ProServiceRegistry.shared.provider {
+                provider.displaysSectionView(profiles: appState.store.profiles.map { ProProfileInfo(id: $0.id, name: $0.name) })
+            }
+        }
+    }
+}
+
+// MARK: - About Section
+
+private struct AboutSection: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var updateService = UpdateService.shared
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "arrow.2.squarepath")
-                .font(.system(size: 64))
-                .foregroundStyle(.tint)
+        VStack(alignment: .leading, spacing: 24) {
+            // App identity
+            VStack(spacing: 12) {
+                Image(systemName: "arrow.2.squarepath")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.tint)
 
-            Text("HopTab")
-                .font(.title)
-                .fontWeight(.bold)
+                Text("HopTab")
+                    .font(.title)
+                    .fontWeight(.bold)
 
-            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
-                .foregroundStyle(.secondary)
+                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
+                    .foregroundStyle(.secondary)
 
-            Text("A supercharged macOS app switcher.\nPin your favorite apps and switch between them instantly.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
+                Text("A supercharged macOS app switcher.\nPin your favorite apps and switch between them instantly.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            }
+            .frame(maxWidth: .infinity)
 
-            Divider().padding(.vertical, 4)
+            Divider()
 
+            // Onboarding
             Button {
                 UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
                 NSApp.sendAction(#selector(AppDelegate.showOnboarding(_:)), to: nil, from: nil)
@@ -900,7 +1444,10 @@ private struct AboutTab: View {
             .controlSize(.small)
 
             // Update section
-            GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Updates")
+                    .font(.system(size: 13, weight: .semibold))
+
                 VStack(spacing: 8) {
                     HStack {
                         Toggle("Check for updates automatically", isOn: $updateService.autoCheckEnabled)
@@ -942,154 +1489,20 @@ private struct AboutTab: View {
                         }
                     }
                 }
-                .padding(4)
+                .padding(6)
+            }
+
+            // Pro license section
+            if let provider = ProServiceRegistry.shared.provider {
+                provider.licenseSectionView()
             }
 
             Spacer()
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-// MARK: - Window Snap Tab
-
-private struct WindowSnapTab: View {
-    @State private var gapSize: Double = UserDefaults.standard.double(forKey: "windowGap")
-    @State private var snapConfig: SnapShortcutConfig = SnapShortcutConfig.current
-
-    private let shortcutGroups: [(title: String, directions: [SnapDirection])] = [
-        ("Halves", [.left, .right, .topHalf, .bottomHalf]),
-        ("Quarters", [.topLeft, .topRight, .bottomLeft, .bottomRight]),
-        ("Thirds", [.firstThird, .centerThird, .lastThird, .firstTwoThirds, .lastTwoThirds]),
-        ("Other", [.full, .center]),
-        ("Cycle", [.cycleNext, .cyclePrevious]),
-        ("Monitors", [.nextMonitor, .previousMonitor]),
-        ("Actions", [.undo]),
-    ]
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                gapSection
-                snapShortcutsSection
-            }
-            .padding()
-        }
-    }
-
-    // MARK: Gap
-
-    private var gapSection: some View {
-        GroupBox("Window Gap") {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Gap between windows:")
-                        .font(.system(size: 12))
-                    Spacer()
-                    Text("\(Int(gapSize)) pt")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                }
-
-                Slider(value: $gapSize, in: 0...20, step: 1)
-                    .onChange(of: gapSize) {
-                        UserDefaults.standard.set(gapSize, forKey: "windowGap")
-                    }
-
-                // Preview
-                HStack(spacing: gapSize > 0 ? gapSize / 2 : 0) {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.accentColor.opacity(0.3))
-                        .frame(height: 40)
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.accentColor.opacity(0.3))
-                        .frame(height: 40)
-                }
-                .padding(gapSize > 0 ? gapSize / 2 : 0)
-                .background(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.3)))
-                .animation(.easeInOut(duration: 0.15), value: gapSize)
-            }
-            .padding(8)
-        }
-    }
-
-    // MARK: Shortcuts
-
-    private var snapShortcutsSection: some View {
-        GroupBox("Snap Shortcuts") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Global keyboard shortcuts for window snapping. Works anytime, no switcher needed.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-
-                ForEach(shortcutGroups, id: \.title) { group in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(group.title)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 4)
-
-                        ForEach(group.directions, id: \.self) { direction in
-                            snapShortcutRow(direction: direction)
-                        }
-                    }
-                }
-
-                HStack {
-                    Spacer()
-                    Button("Reset to Defaults") {
-                        snapConfig = .defaults
-                        saveConfig()
-                    }
-                    .controlSize(.small)
-                }
-            }
-            .padding(8)
-        }
-    }
-
-    private func snapShortcutRow(direction: SnapDirection) -> some View {
-        HStack(spacing: 8) {
-            Text(direction.displayName)
-                .font(.system(size: 12))
-                .frame(width: 130, alignment: .leading)
-
-            ShortcutRecorderView(shortcut: binding(for: direction))
-
-            if snapConfig.bindings[direction] != nil {
-                Button {
-                    snapConfig.bindings.removeValue(forKey: direction)
-                    saveConfig()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func binding(for direction: SnapDirection) -> Binding<CustomShortcut?> {
-        Binding(
-            get: { snapConfig.bindings[direction] },
-            set: { newValue in
-                if let shortcut = newValue {
-                    snapConfig.bindings[direction] = shortcut
-                } else {
-                    snapConfig.bindings.removeValue(forKey: direction)
-                }
-                saveConfig()
-            }
-        )
-    }
-
-    private func saveConfig() {
-        SnapShortcutConfig.current = snapConfig
-        // Notify the app to reconfigure the hotkey service
-        NotificationCenter.default.post(name: .snapShortcutsChanged, object: nil)
-    }
-}
+// MARK: - Notification
 
 extension Notification.Name {
     static let snapShortcutsChanged = Notification.Name("snapShortcutsChanged")

@@ -47,6 +47,12 @@ final class PinnedAppsStore: ObservableObject {
         save()
     }
 
+    /// Whether the user can create another profile (respects Pro limit).
+    @MainActor
+    var canAddProfile: Bool {
+        ProFeatureGate.canCreateProfile(currentCount: profiles.count)
+    }
+
     func renameProfile(id: UUID, to name: String) {
         guard let idx = profiles.firstIndex(where: { $0.id == id }) else { return }
         profiles[idx].name = name

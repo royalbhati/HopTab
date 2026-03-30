@@ -5,25 +5,43 @@ struct OverlayView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                ForEach(Array(viewModel.apps.enumerated()), id: \.element.id) { index, app in
-                    AppIconView(app: app, isSelected: index == viewModel.selectedIndex)
-                        .contentShape(Rectangle())
-                        .onTapGesture { viewModel.onAppClicked?(index) }
+            if viewModel.apps.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "square.dashed")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.white.opacity(0.4))
+                    Text("No pinned apps")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text("Pin apps in Settings to switch between them")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.4))
                 }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, viewModel.showHints ? 8 : 16)
+                .padding(.horizontal, 32)
+                .padding(.vertical, 24)
+            } else {
+                HStack(spacing: 12) {
+                    ForEach(Array(viewModel.apps.enumerated()), id: \.element.id) { index, app in
+                        AppIconView(app: app, isSelected: index == viewModel.selectedIndex)
+                            .contentShape(Rectangle())
+                            .onTapGesture { viewModel.onAppClicked?(index) }
+                            .accessibilityAddTraits(index == viewModel.selectedIndex ? .isSelected : [])
+                    }
+                }
+                .accessibilityLabel("App Switcher")
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, viewModel.showHints ? 8 : 16)
 
-            if viewModel.showHints {
-                HStack(spacing: 16) {
-                    HintLabel(text: "Tab to cycle")
-                    HintLabel(text: "Release to switch")
-                    HintLabel(text: "Esc to cancel")
+                if viewModel.showHints {
+                    HStack(spacing: 16) {
+                        HintLabel(text: "Tab to cycle")
+                        HintLabel(text: "Release to switch")
+                        HintLabel(text: "Esc to cancel")
+                    }
+                    .padding(.bottom, 12)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
-                .padding(.bottom, 12)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
         .background {
@@ -167,6 +185,7 @@ struct WindowPickerView: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
+                    .accessibilityLabel("\(window.title)\(window.isMinimized ? ", minimized" : "")")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)

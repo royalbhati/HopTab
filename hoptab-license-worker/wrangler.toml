@@ -1,0 +1,13 @@
+name = "hoptab-license-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# KV namespace for one-time license retrieval tokens
+[[kv_namespaces]]
+binding = "LICENSE_KV"
+id = "5393ca708e8a4ac48586f865d40b2172"
+
+# Secrets (set via `wrangler secret put`):
+# - GITHUB_WEBHOOK_SECRET: GitHub webhook secret for signature verification
+# - ED25519_PRIVATE_KEY: Base64-encoded 32-byte Ed25519 private key
+# - RESEND_API_KEY: API key for Resend email service (optional)

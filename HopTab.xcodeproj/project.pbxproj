@@ -3,11 +3,15 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00677B5B2F792C9400FC5A9D /* HopTabPro in Frameworks */ = {isa = PBXBuildFile; productRef = 00677B5A2F792C9400FC5A9D /* HopTabPro */; };
 		202A3B2F2717FE0BEA3F530B /* SnapShortcutConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A4E841454545134FAE3339 /* SnapShortcutConfig.swift */; };
+		64CA62C22A78968E80DA5393 /* ProServiceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD7AE653D4E888BC4D838023 /* ProServiceRegistry.swift */; };
+		7A4AB6F5B66BCAAAC3D6D3B4 /* ProBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B17442F38E50AF2158BD34B /* ProBridge.swift */; };
+		8E449EF87FC2962FE86C4C5E /* ProFeatureGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6E742B24C5D97FB6BF1BDE /* ProFeatureGate.swift */; };
 		A10001 /* HopTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10001 /* HopTabApp.swift */; };
 		A10002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10002 /* AppDelegate.swift */; };
 		A10003 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10003 /* AppState.swift */; };
@@ -35,9 +39,14 @@
 		A10026 /* LayoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10026 /* LayoutService.swift */; };
 		A10027 /* LayoutPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10027 /* LayoutPickerView.swift */; };
 		A10028 /* UpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10028 /* UpdateService.swift */; };
+		B62FDCA03A63757AF4FD5FAA /* ProInterfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F1C33077834094398FDD13 /* ProInterfaces.swift */; };
+		BC2E4D65367C19EDC9B22B1D /* DragSnapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B61D2B25ADBF683674D4A6 /* DragSnapService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0B17442F38E50AF2158BD34B /* ProBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProBridge.swift; path = HopTab/Pro/ProBridge.swift; sourceTree = SOURCE_ROOT; };
+		43B61D2B25ADBF683674D4A6 /* DragSnapService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DragSnapService.swift; path = HopTab/Services/DragSnapService.swift; sourceTree = SOURCE_ROOT; };
+		83F1C33077834094398FDD13 /* ProInterfaces.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProInterfaces.swift; path = HopTab/Pro/ProInterfaces.swift; sourceTree = SOURCE_ROOT; };
 		B10001 /* HopTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HopTabApp.swift; sourceTree = "<group>"; };
 		B10002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B10003 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -67,7 +76,9 @@
 		B10027 /* LayoutPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutPickerView.swift; sourceTree = "<group>"; };
 		B10028 /* UpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateService.swift; sourceTree = "<group>"; };
 		B10099 /* HopTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CE6E742B24C5D97FB6BF1BDE /* ProFeatureGate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProFeatureGate.swift; path = HopTab/Pro/ProFeatureGate.swift; sourceTree = SOURCE_ROOT; };
 		F0A4E841454545134FAE3339 /* SnapShortcutConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapShortcutConfig.swift; sourceTree = "<group>"; };
+		FD7AE653D4E888BC4D838023 /* ProServiceRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProServiceRegistry.swift; path = HopTab/Pro/ProServiceRegistry.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +86,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00677B5B2F792C9400FC5A9D /* HopTabPro in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,6 +110,7 @@
 				D10005 /* Views */,
 				B10020 /* Assets.xcassets */,
 				B10014 /* Info.plist */,
+				FEAE4D23B8AFFBC1A6F47C6F /* Pro */,
 			);
 			path = HopTab;
 			sourceTree = "<group>";
@@ -138,6 +151,7 @@
 				B10023 /* SessionSnapshotService.swift */,
 				B10026 /* LayoutService.swift */,
 				B10028 /* UpdateService.swift */,
+				43B61D2B25ADBF683674D4A6 /* DragSnapService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -163,6 +177,17 @@
 				B10099 /* HopTab.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		FEAE4D23B8AFFBC1A6F47C6F /* Pro */ = {
+			isa = PBXGroup;
+			children = (
+				83F1C33077834094398FDD13 /* ProInterfaces.swift */,
+				FD7AE653D4E888BC4D838023 /* ProServiceRegistry.swift */,
+				CE6E742B24C5D97FB6BF1BDE /* ProFeatureGate.swift */,
+				0B17442F38E50AF2158BD34B /* ProBridge.swift */,
+			);
+			name = Pro;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -204,6 +229,9 @@
 				Base,
 			);
 			mainGroup = D10000;
+			packageReferences = (
+				00677B592F792C9400FC5A9D /* XCLocalSwiftPackageReference "HopTabPro" */,
+			);
 			productRefGroup = D10099 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -256,6 +284,11 @@
 				A10027 /* LayoutPickerView.swift in Sources */,
 				A10028 /* UpdateService.swift in Sources */,
 				202A3B2F2717FE0BEA3F530B /* SnapShortcutConfig.swift in Sources */,
+				B62FDCA03A63757AF4FD5FAA /* ProInterfaces.swift in Sources */,
+				64CA62C22A78968E80DA5393 /* ProServiceRegistry.swift in Sources */,
+				8E449EF87FC2962FE86C4C5E /* ProFeatureGate.swift in Sources */,
+				7A4AB6F5B66BCAAAC3D6D3B4 /* ProBridge.swift in Sources */,
+				BC2E4D65367C19EDC9B22B1D /* DragSnapService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -440,6 +473,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		00677B592F792C9400FC5A9D /* XCLocalSwiftPackageReference "HopTabPro" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = HopTabPro;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		00677B5A2F792C9400FC5A9D /* HopTabPro */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HopTabPro;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E10000 /* Project object */;
 }

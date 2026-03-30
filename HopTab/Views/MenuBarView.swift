@@ -67,6 +67,47 @@ struct MenuBarView: View {
                 Divider()
             }
 
+            // Active meeting banner (Pro)
+            if let meetingProvider = ProServiceRegistry.shared.provider as? ProActiveMeetingProvider,
+               let meetingTitle = meetingProvider.activeMeetingTitle {
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 7, height: 7)
+                        Text(meetingTitle)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                        Spacer()
+                        Text("In progress")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.green)
+                    }
+
+                    if let meetingURL = meetingProvider.activeMeetingURL {
+                        Button {
+                            NSWorkspace.shared.open(meetingURL)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "video.fill")
+                                    .font(.system(size: 10))
+                                Text("Join Meeting")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
+                            .background(Color.green.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+
+                Divider()
+            }
+
             // Hotkey hint
             HStack(spacing: 6) {
                 Image(systemName: "keyboard")

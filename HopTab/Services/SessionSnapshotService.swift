@@ -87,16 +87,25 @@ enum SessionSnapshotService {
             let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value)
             guard result == .success, let axWindows = value as? [AXUIElement] else { continue }
 
+            var windowIndex = 0
             for axWindow in axWindows {
                 guard !saved.isEmpty else { break }
 
-                // Match by title (exact first, then fallback to first remaining)
+                // Match by title first; fall back to positional order (not always index 0)
                 var titleRef: CFTypeRef?
                 AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef)
                 let title = (titleRef as? String) ?? ""
 
-                let matchIndex = saved.firstIndex(where: { $0.windowTitle == title }) ?? 0
+                let matchIndex: Int
+                if let exactMatch = saved.firstIndex(where: { $0.windowTitle == title }) {
+                    matchIndex = exactMatch
+                } else if windowIndex < saved.count {
+                    matchIndex = windowIndex
+                } else {
+                    matchIndex = 0
+                }
                 let match = saved.remove(at: matchIndex)
+                windowIndex += 1
 
                 // Set position
                 var position = match.frame.origin
