@@ -17,6 +17,8 @@ jobs:
       - name: Checkout HopTabPro
         run: |
           git clone https://x-access-token:${{ secrets.PRO_PAT }}@github.com/royalbhati/HopTabPro.git HopTabPro
+          ls -la HopTabPro/
+          ls -la HopTabPro/Package.swift
 
       - name: Extract version from tag
         id: version
