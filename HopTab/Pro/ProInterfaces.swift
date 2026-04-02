@@ -25,6 +25,18 @@ protocol HopTabProProvider: AnyObject {
     // Window rules
     var windowRulesService: WindowRulesServiceProtocol? { get }
 
+    // v2 Pro feature operations
+    func windowUndo()
+    func windowRedo()
+    var canWindowUndo: Bool { get }
+    var canWindowRedo: Bool { get }
+    func declutterNow() -> Int
+    func startPiP(windowID: CGWindowID, ownerPID: pid_t, ownerName: String, windowTitle: String)
+    func stopAllPiPs()
+
+    // v2 Pro settings views
+    func proFeaturesView() -> AnyView?
+
     // Per-section views for sidebar settings
     func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView?
     func windowsSectionView() -> AnyView?
@@ -52,6 +64,103 @@ protocol WindowRulesServiceProtocol: AnyObject {
     var rules: [WindowRule] { get set }
     func start()
     func stop()
+}
+
+// MARK: - Window Undo
+
+/// Tracks window position/size changes and supports multi-level undo.
+protocol WindowUndoServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    var maxHistorySize: Int { get set }
+    var historyCount: Int { get }
+    func start()
+    func stop()
+    func undo()
+    func redo()
+    var canUndo: Bool { get }
+    var canRedo: Bool { get }
+}
+
+// MARK: - Auto-Declutter
+
+/// Tracks window inactivity and auto-minimizes stale windows.
+protocol AutoDeclutterServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    /// Inactivity threshold in minutes before a window is considered stale.
+    var staleThresholdMinutes: Int { get set }
+    /// Bundle IDs excluded from decluttering.
+    var excludedApps: [String] { get set }
+    func start()
+    func stop()
+    /// Manually declutter all stale windows now.
+    func declutterNow() -> Int
+}
+
+// MARK: - PiP (Picture-in-Picture)
+
+/// Pins any window as a floating mini-preview.
+protocol WindowPiPServiceProtocol: AnyObject {
+    func startPiP(for windowInfo: PiPWindowInfo)
+    func stopPiP(id: UUID)
+    func stopAllPiPs()
+    var activePiPs: [PiPWindowInfo] { get }
+}
+
+/// Info about a PiP'd window.
+struct PiPWindowInfo: Identifiable {
+    let id: UUID
+    let windowID: CGWindowID
+    let ownerPID: pid_t
+    let ownerName: String
+    let windowTitle: String
+
+    init(id: UUID = UUID(), windowID: CGWindowID, ownerPID: pid_t, ownerName: String, windowTitle: String) {
+        self.id = id
+        self.windowID = windowID
+        self.ownerPID = ownerPID
+        self.ownerName = ownerName
+        self.windowTitle = windowTitle
+    }
+}
+
+// MARK: - Smart Window Placement
+
+/// Learns window placement patterns and auto-places new windows.
+protocol SmartPlacementServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    func start()
+    func stop()
+    /// Clear all learned patterns.
+    func resetPatterns()
+    var patternCount: Int { get }
+}
+
+// MARK: - Focus Dimming
+
+/// Dims background windows to reduce distraction.
+protocol FocusDimmingServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    /// Opacity for background windows (0.0 = invisible, 1.0 = fully visible).
+    var dimmingOpacity: Double { get set }
+    func start()
+    func stop()
+}
+
+// MARK: - Screen Breaks
+
+/// Workspace-aware screen break reminders.
+protocol ScreenBreakServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    /// Work interval in minutes before a break reminder.
+    var workIntervalMinutes: Int { get set }
+    /// Break duration in minutes.
+    var breakDurationMinutes: Int { get set }
+    func start()
+    func stop()
+    /// Skip the current break.
+    func skipBreak()
+    /// Start a break manually.
+    func takeBreakNow()
 }
 
 // MARK: - Active Meeting Bridge

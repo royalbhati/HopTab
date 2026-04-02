@@ -53,6 +53,37 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
     var displayAutoProfileService: DisplayAutoProfileServiceProtocol? { nil }
     var windowRulesService: WindowRulesServiceProtocol? { nil }
 
+    // MARK: - v2 Pro Feature Operations
+
+    func windowUndo() { module.windowUndo.undo() }
+    func windowRedo() { module.windowUndo.redo() }
+    var canWindowUndo: Bool { module.windowUndo.canUndo }
+    var canWindowRedo: Bool { module.windowUndo.canRedo }
+
+    func declutterNow() -> Int { module.autoDeclutter.declutterNow() }
+
+    func startPiP(windowID: CGWindowID, ownerPID: pid_t, ownerName: String, windowTitle: String) {
+        module.windowPiP.startPiP(windowID: windowID, ownerPID: ownerPID, ownerName: ownerName, windowTitle: windowTitle)
+    }
+
+    func stopAllPiPs() { module.windowPiP.stopAllPiPs() }
+
+    func proFeaturesView() -> AnyView? {
+        if module.isLicensed {
+            return AnyView(
+                VStack(alignment: .leading, spacing: 20) {
+                    WindowUndoConfigView(service: module.windowUndo)
+                    AutoDeclutterConfigView(service: module.autoDeclutter)
+                    FocusDimmingConfigView(service: module.focusDimming)
+                    SmartPlacementConfigView(service: module.smartPlacement)
+                    ScreenBreakConfigView(service: module.screenBreak)
+                }
+            )
+        } else {
+            return nil
+        }
+    }
+
     // MARK: - Per-Section Views
 
     func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView? {

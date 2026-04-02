@@ -325,7 +325,12 @@ final class AppState: ObservableObject {
             case .previousMonitor:
                 LayoutService.moveFrontmostToPreviousMonitor()
             case .undo:
-                LayoutService.undoSnap()
+                // Use Pro Window Undo if available (tracks all moves, not just snaps)
+                if let provider = ProServiceRegistry.shared.provider, provider.canWindowUndo {
+                    provider.windowUndo()
+                } else {
+                    LayoutService.undoSnap()
+                }
             case .cycleNext:
                 LayoutService.snapFrontmostCycle(forward: true)
             case .cyclePrevious:

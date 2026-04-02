@@ -1340,6 +1340,52 @@ private struct ProSection: View {
                 description: "Free tier allows 3 profiles. Pro unlocks unlimited."
             )
 
+            Divider()
+
+            // v2 Pro Features
+            proFeature(
+                icon: "arrow.uturn.backward.circle.fill", color: .blue,
+                title: "Window Undo",
+                description: "Undo any window move or resize. Full history — step back through your last 50 window operations."
+            )
+
+            proFeature(
+                icon: "wind", color: .green,
+                title: "Auto-Declutter",
+                description: "Windows you haven't touched in 30+ minutes get auto-minimized. One-click clean up or fully automatic."
+            )
+
+            proFeature(
+                icon: "pip.fill", color: .pink,
+                title: "PiP for Any Window",
+                description: "Pin any window as a floating mini-preview. Watch a video, monitor Slack, or keep a terminal visible while working."
+            )
+
+            proFeature(
+                icon: "brain.head.profile.fill", color: .purple,
+                title: "Smart Placement",
+                description: "Learns where you place windows and auto-positions new ones based on your habits. Zero configuration."
+            )
+
+            proFeature(
+                icon: "sun.min.fill", color: .orange,
+                title: "Focus Dimming",
+                description: "Dim background windows so you can focus on what matters. The active app stays bright, everything else fades."
+            )
+
+            proFeature(
+                icon: "eye.slash.fill", color: .teal,
+                title: "Screen Breaks",
+                description: "Workspace-aware break reminders. Saves your window state, shows a break screen, restores everything when you return."
+            )
+
+            // v2 Pro Config (shown when licensed)
+            if ProServiceRegistry.shared.isLicensed,
+               let provider = ProServiceRegistry.shared.provider {
+                Divider()
+                provider.proFeaturesView()
+            }
+
             // License entry
             if let provider = ProServiceRegistry.shared.provider {
                 Divider()
