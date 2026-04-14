@@ -25,10 +25,11 @@ final class AppState: ObservableObject {
             UserDefaults.standard.set(recentAppFirst, forKey: "recentAppFirst")
         }
     }
-    @Published var dragSnapEnabled: Bool = UserDefaults.standard.object(forKey: "dragSnapEnabled") == nil ? true : UserDefaults.standard.bool(forKey: "dragSnapEnabled") {
+    @Published var dragSnapEnabled: Bool = UserDefaults.standard.object(forKey: "dragSnapEnabled") == nil ? false : UserDefaults.standard.bool(forKey: "dragSnapEnabled") {
         didSet {
             UserDefaults.standard.set(dragSnapEnabled, forKey: "dragSnapEnabled")
             dragSnapService.isEnabled = dragSnapEnabled
+            hotkeyService.includeMouseEvents = dragSnapEnabled
         }
     }
 
@@ -127,8 +128,9 @@ final class AppState: ObservableObject {
         observeWorkspace()
         setupHotkeyCallbacks()
 
-        // Wire drag-to-snap
+        // Wire drag-to-snap (only tap mouse events when enabled to avoid idle CPU)
         dragSnapService.isEnabled = dragSnapEnabled
+        hotkeyService.includeMouseEvents = dragSnapEnabled
         hotkeyService.onMouseEvent = { [weak self] type, event in
             self?.dragSnapService.handleMouseEvent(type: type, event: event)
         }
@@ -325,7 +327,16 @@ final class AppState: ObservableObject {
             case .previousMonitor:
                 LayoutService.moveFrontmostToPreviousMonitor()
             case .undo:
-                LayoutService.undoSnap()
+                // Use Pro Window Undo if available (tracks all moves, not just snaps)
+                if let provider = ProServiceRegistry.shared.provider, provider.canWindowUndo {
+                    provider.windowUndo()
+                } else {
+                    LayoutService.undoSnap()
+                }
+            case .redo:
+                if let provider = ProServiceRegistry.shared.provider, provider.canWindowRedo {
+                    provider.windowRedo()
+                }
             case .cycleNext:
                 LayoutService.snapFrontmostCycle(forward: true)
             case .cyclePrevious:
@@ -689,7 +700,10 @@ final class AppState: ObservableObject {
             }
         }
 
-        // 7. Show sticky note if set
+        // 7. Move apps to their assigned displays (if multi-monitor)
+        applyDisplayAssignments(for: incoming)
+
+        // 8. Show sticky note if set
         if let note = incoming.stickyNote, !note.isEmpty {
             stickyNoteController.show(profileName: incoming.name, note: note)
         }
@@ -742,10 +756,31 @@ final class AppState: ObservableObject {
             }
         }
 
+        // Move apps to assigned displays
+        applyDisplayAssignments(for: profile, initialDelay: 3.0)
+
         // Show sticky note if set
         if let note = profile.stickyNote, !note.isEmpty {
             stickyNoteController.show(profileName: profile.name, note: note)
         }
+    }
+
+    /// Move apps with display assignments to their target screens.
+    private func applyDisplayAssignments(for profile: Profile, initialDelay: TimeInterval = 0.5) {
+        let appsWithDisplays = profile.pinnedApps.filter { $0.assignedDisplay != nil }
+        guard !appsWithDisplays.isEmpty, NSScreen.screens.count > 1 else { return }
+
+        let moveApps = {
+            for app in appsWithDisplays {
+                if let display = app.assignedDisplay {
+                    LayoutService.moveAppToDisplay(bundleIdentifier: app.bundleIdentifier, displayName: display)
+                }
+            }
+        }
+
+        // Try twice — first after layout settles, second for slow apps
+        scheduleProfileWork(delay: initialDelay) { moveApps() }
+        scheduleProfileWork(delay: initialDelay + 2.0) { moveApps() }
     }
 
     /// Whether a profile has a saved session (snapshot exists and no apps are running).

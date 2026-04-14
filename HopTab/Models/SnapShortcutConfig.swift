@@ -9,6 +9,7 @@ struct SnapShortcutConfig: Codable {
     static let defaults: SnapShortcutConfig = {
         let ctrlOpt = CGEventFlags.maskControl.rawValue | CGEventFlags.maskAlternate.rawValue
         let ctrlOptCmd = ctrlOpt | CGEventFlags.maskCommand.rawValue
+        let ctrlOptShift = ctrlOpt | CGEventFlags.maskShift.rawValue
 
         func shortcut(_ mods: UInt64, _ key: Int) -> CustomShortcut {
             CustomShortcut(modifierFlagsRawValue: mods, keyCode: Int64(key))
@@ -37,8 +38,9 @@ struct SnapShortcutConfig: Codable {
             // Monitor movement
             .nextMonitor:     shortcut(ctrlOptCmd, kVK_RightArrow),
             .previousMonitor: shortcut(ctrlOptCmd, kVK_LeftArrow),
-            // Undo
+            // Undo / Redo
             .undo:           shortcut(ctrlOpt, kVK_ANSI_Z),
+            .redo:           shortcut(ctrlOptShift, kVK_ANSI_Z),
             // Universal cycle
             .cycleNext:      shortcut(ctrlOpt, kVK_ANSI_Period),
             .cyclePrevious:  shortcut(ctrlOpt, kVK_ANSI_Comma),

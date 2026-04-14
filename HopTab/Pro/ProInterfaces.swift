@@ -25,11 +25,24 @@ protocol HopTabProProvider: AnyObject {
     // Window rules
     var windowRulesService: WindowRulesServiceProtocol? { get }
 
+    // v2 Pro feature operations
+    func windowUndo()
+    func windowRedo()
+    var canWindowUndo: Bool { get }
+    var canWindowRedo: Bool { get }
+    func declutterNow() -> Int
+
+    // v2 Pro per-feature views
+    func windowUndoSectionView() -> AnyView?
+    func focusDimmingSectionView() -> AnyView?
+    func screenBreaksSectionView() -> AnyView?
+
     // Per-section views for sidebar settings
     func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView?
     func windowsSectionView() -> AnyView?
     func displaysSectionView(profiles: [ProProfileInfo]) -> AnyView?
     func licenseSectionView() -> AnyView?
+
 }
 
 // MARK: - Feature Service Protocols
@@ -52,6 +65,53 @@ protocol WindowRulesServiceProtocol: AnyObject {
     var rules: [WindowRule] { get set }
     func start()
     func stop()
+}
+
+// MARK: - Window Undo
+
+/// Tracks window position/size changes and supports multi-level undo.
+protocol WindowUndoServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    var maxHistorySize: Int { get set }
+    var historyCount: Int { get }
+    func start()
+    func stop()
+    func undo()
+    func redo()
+    var canUndo: Bool { get }
+    var canRedo: Bool { get }
+}
+
+// MARK: - Auto-Declutter
+
+/// Tracks window inactivity and auto-minimizes stale windows.
+protocol AutoDeclutterServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    /// Inactivity threshold in minutes before a window is considered stale.
+    var staleThresholdMinutes: Int { get set }
+    /// Bundle IDs excluded from decluttering.
+    var excludedApps: [String] { get set }
+    func start()
+    func stop()
+    /// Manually declutter all stale windows now.
+    func declutterNow() -> Int
+}
+
+// MARK: - Screen Breaks
+
+/// Workspace-aware screen break reminders.
+protocol ScreenBreakServiceProtocol: AnyObject {
+    var isEnabled: Bool { get set }
+    /// Work interval in minutes before a break reminder.
+    var workIntervalMinutes: Int { get set }
+    /// Break duration in minutes.
+    var breakDurationMinutes: Int { get set }
+    func start()
+    func stop()
+    /// Skip the current break.
+    func skipBreak()
+    /// Start a break manually.
+    func takeBreakNow()
 }
 
 // MARK: - Active Meeting Bridge

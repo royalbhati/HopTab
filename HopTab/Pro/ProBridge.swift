@@ -27,6 +27,11 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
             guard let direction = SnapDirection(rawValue: directionRawValue) else { return }
             LayoutService.snapApp(bundleIdentifier: bundleId, to: direction)
         }
+        // Wire undo failure toast (T4)
+        module.windowUndo.onUndoFailed = { message in
+            let toast = ToastOverlayController()
+            toast.show(icon: "exclamationmark.circle", message: message)
+        }
         module.startServices(profileSwitcher: profileSwitcher)
     }
 
@@ -52,6 +57,29 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
     var focusModeService: FocusModeServiceProtocol? { nil }
     var displayAutoProfileService: DisplayAutoProfileServiceProtocol? { nil }
     var windowRulesService: WindowRulesServiceProtocol? { nil }
+
+    // MARK: - v2 Pro Feature Operations
+
+    func windowUndo() { module.windowUndo.undo() }
+    func windowRedo() { module.windowUndo.redo() }
+    var canWindowUndo: Bool { module.windowUndo.canUndo }
+    var canWindowRedo: Bool { module.windowUndo.canRedo }
+
+    func declutterNow() -> Int { module.autoDeclutter.declutterNow() }
+
+    func windowUndoSectionView() -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(WindowUndoConfigView(service: module.windowUndo))
+    }
+
+    func focusDimmingSectionView() -> AnyView? {
+        return nil
+    }
+
+    func screenBreaksSectionView() -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(ScreenBreakConfigView(service: module.screenBreak))
+    }
 
     // MARK: - Per-Section Views
 

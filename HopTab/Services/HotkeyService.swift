@@ -47,6 +47,16 @@ final class HotkeyService {
     // Mouse events for drag-to-snap
     var onMouseEvent: ((CGEventType, CGEvent) -> Void)?
 
+    /// When false, mouse events are excluded from the event tap entirely,
+    /// eliminating 60-120 Hz main-thread wake-ups from system mouse drags.
+    var includeMouseEvents: Bool = false {
+        didSet {
+            guard oldValue != includeMouseEvents, isRunning else { return }
+            stop()
+            start()
+        }
+    }
+
     // App Switcher shortcut (configurable)
     private(set) var modifierFlag: CGEventFlags = .maskAlternate
     private(set) var triggerKeyCode: Int64 = Int64(kVK_Tab)
@@ -121,12 +131,16 @@ final class HotkeyService {
     func start() {
         guard eventTap == nil else { return }
 
-        let mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
+        var mask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
             | (1 << CGEventType.keyDown.rawValue)
             | (1 << CGEventType.keyUp.rawValue)
-            | (1 << CGEventType.leftMouseDown.rawValue)
-            | (1 << CGEventType.leftMouseDragged.rawValue)
-            | (1 << CGEventType.leftMouseUp.rawValue)
+        // Only tap mouse events when drag-to-snap is enabled;
+        // otherwise we avoid 60-120 Hz main-thread wake-ups from system mouse drags.
+        if includeMouseEvents {
+            mask |= (1 << CGEventType.leftMouseDown.rawValue)
+                | (1 << CGEventType.leftMouseDragged.rawValue)
+                | (1 << CGEventType.leftMouseUp.rawValue)
+        }
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,

@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00677B5B2F792C9400FC5A9D /* HopTabPro in Frameworks */ = {isa = PBXBuildFile; productRef = 00677B5A2F792C9400FC5A9D /* HopTabPro */; };
+		00282ECA2F7ACEEE0059AAA8 /* HopTabPro in Frameworks */ = {isa = PBXBuildFile; productRef = 00282EC92F7ACEEE0059AAA8 /* HopTabPro */; };
 		202A3B2F2717FE0BEA3F530B /* SnapShortcutConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A4E841454545134FAE3339 /* SnapShortcutConfig.swift */; };
 		64CA62C22A78968E80DA5393 /* ProServiceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD7AE653D4E888BC4D838023 /* ProServiceRegistry.swift */; };
 		7A4AB6F5B66BCAAAC3D6D3B4 /* ProBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B17442F38E50AF2158BD34B /* ProBridge.swift */; };
@@ -86,7 +86,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				00677B5B2F792C9400FC5A9D /* HopTabPro in Frameworks */,
+				00282ECA2F7ACEEE0059AAA8 /* HopTabPro in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,7 +230,7 @@
 			);
 			mainGroup = D10000;
 			packageReferences = (
-				00677B592F792C9400FC5A9D /* XCLocalSwiftPackageReference "HopTabPro" */,
+				00282EC82F7ACEEE0059AAA8 /* XCLocalSwiftPackageReference "HopTabPro" */,
 			);
 			productRefGroup = D10099 /* Products */;
 			projectDirPath = "";
@@ -402,13 +402,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GP4Y23ZTR6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = YES;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HopTab/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -416,9 +424,15 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoptab.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = NO;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -429,13 +443,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GP4Y23ZTR6;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = YES;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HopTab/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -443,9 +465,15 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoptab.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = NO;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -475,14 +503,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		00677B592F792C9400FC5A9D /* XCLocalSwiftPackageReference "HopTabPro" */ = {
+		00282EC82F7ACEEE0059AAA8 /* XCLocalSwiftPackageReference "HopTabPro" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = HopTabPro;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		00677B5A2F792C9400FC5A9D /* HopTabPro */ = {
+		00282EC92F7ACEEE0059AAA8 /* HopTabPro */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HopTabPro;
 		};

@@ -13,8 +13,8 @@ enum SnapDirection: String, CaseIterable, Codable {
     case full, center
     // Monitor movement
     case nextMonitor, previousMonitor
-    // Undo
-    case undo
+    // Undo / Redo
+    case undo, redo
     // Universal cycle
     case cycleNext, cyclePrevious
 
@@ -38,6 +38,7 @@ enum SnapDirection: String, CaseIterable, Codable {
         case .nextMonitor: return "Next Monitor"
         case .previousMonitor: return "Previous Monitor"
         case .undo: return "Undo Snap"
+        case .redo: return "Redo Snap"
         case .cycleNext: return "Cycle Next"
         case .cyclePrevious: return "Cycle Previous"
         }
@@ -45,7 +46,7 @@ enum SnapDirection: String, CaseIterable, Codable {
 
     /// Directions that produce a snap frame (excludes meta-actions).
     static var snappableDirections: [SnapDirection] {
-        allCases.filter { ![.nextMonitor, .previousMonitor, .undo, .cycleNext, .cyclePrevious].contains($0) }
+        allCases.filter { ![.nextMonitor, .previousMonitor, .undo, .redo, .cycleNext, .cyclePrevious].contains($0) }
     }
 
     /// Fractional rect (x, y, w, h) relative to screen visible frame.
@@ -67,7 +68,7 @@ enum SnapDirection: String, CaseIterable, Codable {
         case .full:           return (0,     0,     1,     1)
         case .center:         return (1/6,   1/6,   2/3,   2/3)
         // Meta-actions — no frame
-        case .nextMonitor, .previousMonitor, .undo, .cycleNext, .cyclePrevious:
+        case .nextMonitor, .previousMonitor, .undo, .redo, .cycleNext, .cyclePrevious:
             return (0, 0, 1, 1)
         }
     }
@@ -689,6 +690,67 @@ enum LayoutService {
             return nil
         }
         return quartzVisibleFrame(for: screen)
+    }
+
+    // MARK: - Move App to Specific Display
+
+    /// Move an app's main window to a named display. Used for per-display app assignments.
+    static func moveAppToDisplay(bundleIdentifier: String, displayName: String) {
+        guard AXIsProcessTrusted() else {
+            NSLog("[LayoutService] moveAppToDisplay: AX not trusted")
+            return
+        }
+
+        let screens = NSScreen.screens.sorted { $0.frame.origin.x < $1.frame.origin.x }
+        guard let targetScreen = screens.first(where: { $0.localizedName == displayName }) else {
+            NSLog("[LayoutService] moveAppToDisplay: display '%@' not found (available: %@)", displayName, screens.map(\.localizedName).joined(separator: ", "))
+            return
+        }
+
+        guard let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first else {
+            NSLog("[LayoutService] moveAppToDisplay: app %@ not running", bundleIdentifier)
+            return
+        }
+
+        // Unhide if hidden
+        if running.isHidden { running.unhide() }
+
+        let axApp = AXUIElementCreateApplication(running.processIdentifier)
+        AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, true as CFBoolean)
+
+        // Brief pause after enabling enhanced AX (needed for Electron/Chrome)
+        usleep(50_000)
+
+        guard let axWindow = focusedOrBestWindow(of: axApp) ?? bestWindow(of: axApp) else {
+            NSLog("[LayoutService] moveAppToDisplay: no window found for %@", bundleIdentifier)
+            return
+        }
+
+        let currentFrame = getWindowFrame(axWindow)
+        guard !currentFrame.isEmpty else {
+            NSLog("[LayoutService] moveAppToDisplay: empty frame for %@", bundleIdentifier)
+            return
+        }
+
+        let targetVisible = quartzVisibleFrame(for: targetScreen)
+
+        // Skip if already on the target display
+        if let currentScreenFrame = screenForWindow(axWindow),
+           abs(currentScreenFrame.origin.x - targetVisible.origin.x) < 10,
+           abs(currentScreenFrame.width - targetVisible.width) < 10 {
+            return
+        }
+
+        // Center window on target display, clamping to fit
+        let w = min(currentFrame.width, targetVisible.width)
+        let h = min(currentFrame.height, targetVisible.height)
+        let x = targetVisible.origin.x + (targetVisible.width - w) / 2
+        let y = targetVisible.origin.y + (targetVisible.height - h) / 2
+        let newFrame = CGRect(x: x, y: y, width: w, height: h)
+
+        prepareWindow(axWindow, app: axApp)
+        moveWindow(axWindow, to: newFrame)
+        NSLog("[LayoutService] moveAppToDisplay: moved %@ to %@ at (%.0f,%.0f)", bundleIdentifier, displayName, newFrame.origin.x, newFrame.origin.y)
     }
 
     // MARK: - Drag-to-Snap Public API

@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import QuartzCore
 
 /// Detects window drags to screen edges/corners and snaps them.
 final class DragSnapService {
@@ -14,6 +15,11 @@ final class DragSnapService {
     private var draggedPID: pid_t = 0
     private var currentZone: SnapDirection?
     private var currentScreen: NSScreen?
+
+    // Throttle drag processing to avoid burning CPU at 60-120 Hz
+    private var lastDragProcessTime: CFTimeInterval = 0
+    private let detectThrottleInterval: CFTimeInterval = 0.064  // ~15 Hz during AX detection
+    private let draggingThrottleInterval: CFTimeInterval = 0.032 // ~30 Hz during zone checks
 
     private let previewController = SnapPreviewController()
     private let edgeThreshold: CGFloat = 3    // pixels from screen edge to trigger half snap
@@ -41,9 +47,11 @@ final class DragSnapService {
 
     private func handleMouseDown(_ event: CGEvent) {
         initialMousePos = event.location
+        initialWindowFrame = .zero  // Reset so detection starts fresh each click
         state = .detecting
         draggedWindow = nil
         currentZone = nil
+        lastDragProcessTime = 0
     }
 
     private func handleMouseDragged(_ event: CGEvent) {
@@ -59,6 +67,11 @@ final class DragSnapService {
             let dy = pos.y - initialMousePos.y
             guard (dx * dx + dy * dy) > (dragDetectThreshold * dragDetectThreshold) else { return }
 
+            // Throttle AX detection calls (~15 Hz instead of 60-120 Hz)
+            let now = CACurrentMediaTime()
+            guard now - lastDragProcessTime >= detectThrottleInterval else { return }
+            lastDragProcessTime = now
+
             // Check if a window is being dragged
             if detectWindowDrag() {
                 state = .dragging
@@ -68,6 +81,10 @@ final class DragSnapService {
             }
 
         case .dragging:
+            // Throttle zone checks (~30 Hz — plenty for smooth preview)
+            let now = CACurrentMediaTime()
+            guard now - lastDragProcessTime >= draggingThrottleInterval else { return }
+            lastDragProcessTime = now
             checkZone(at: pos)
         }
     }
