@@ -4,6 +4,8 @@ struct PinnedApp: Codable, Identifiable, Equatable, Hashable {
     let bundleIdentifier: String
     let displayName: String
     var sortOrder: Int
+    /// Display name (NSScreen.localizedName) to place this app's windows on, or nil for no preference.
+    var assignedDisplay: String?
 
     var id: String { bundleIdentifier }
 

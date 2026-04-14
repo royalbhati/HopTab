@@ -277,6 +277,15 @@ final class PinnedAppsStore: ObservableObject {
         save()
     }
 
+    /// Assign an app to a specific display (by display name), or nil to clear.
+    func setDisplayAssignment(bundleIdentifier: String, displayName: String?) {
+        guard let profileIdx = activeProfileIndex,
+              let appIdx = profiles[profileIdx].pinnedApps.firstIndex(where: { $0.bundleIdentifier == bundleIdentifier })
+        else { return }
+        profiles[profileIdx].pinnedApps[appIdx].assignedDisplay = displayName
+        save()
+    }
+
     func isPinned(_ bundleIdentifier: String) -> Bool {
         activeProfile?.pinnedApps.contains { $0.bundleIdentifier == bundleIdentifier } ?? false
     }

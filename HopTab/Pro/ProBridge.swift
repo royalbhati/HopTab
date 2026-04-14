@@ -27,6 +27,11 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
             guard let direction = SnapDirection(rawValue: directionRawValue) else { return }
             LayoutService.snapApp(bundleIdentifier: bundleId, to: direction)
         }
+        // Wire undo failure toast (T4)
+        module.windowUndo.onUndoFailed = { message in
+            let toast = ToastOverlayController()
+            toast.show(icon: "exclamationmark.circle", message: message)
+        }
         module.startServices(profileSwitcher: profileSwitcher)
     }
 
@@ -62,26 +67,18 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
 
     func declutterNow() -> Int { module.autoDeclutter.declutterNow() }
 
-    func startPiP(windowID: CGWindowID, ownerPID: pid_t, ownerName: String, windowTitle: String) {
-        module.windowPiP.startPiP(windowID: windowID, ownerPID: ownerPID, ownerName: ownerName, windowTitle: windowTitle)
+    func windowUndoSectionView() -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(WindowUndoConfigView(service: module.windowUndo))
     }
 
-    func stopAllPiPs() { module.windowPiP.stopAllPiPs() }
+    func focusDimmingSectionView() -> AnyView? {
+        return nil
+    }
 
-    func proFeaturesView() -> AnyView? {
-        if module.isLicensed {
-            return AnyView(
-                VStack(alignment: .leading, spacing: 20) {
-                    WindowUndoConfigView(service: module.windowUndo)
-                    AutoDeclutterConfigView(service: module.autoDeclutter)
-                    FocusDimmingConfigView(service: module.focusDimming)
-                    SmartPlacementConfigView(service: module.smartPlacement)
-                    ScreenBreakConfigView(service: module.screenBreak)
-                }
-            )
-        } else {
-            return nil
-        }
+    func screenBreaksSectionView() -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(ScreenBreakConfigView(service: module.screenBreak))
     }
 
     // MARK: - Per-Section Views

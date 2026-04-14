@@ -42,6 +42,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case shortcuts = "Shortcuts"
     case snapping = "Snapping"
     case windowRules = "Window Rules"
+    case windowUndo = "Window Undo"
+    case screenBreaks = "Screen Breaks"
     case displays = "Displays"
     case pro = "Pro"
     case about = "About"
@@ -56,7 +58,7 @@ private struct SettingsRootView: View {
     @State private var selection: SettingsSection = .apps
 
     private var sections: [SettingsSection] {
-        var result: [SettingsSection] = [.apps, .profiles, .layouts, .shortcuts, .snapping, .windowRules]
+        var result: [SettingsSection] = [.apps, .profiles, .layouts, .shortcuts, .snapping, .windowRules, .windowUndo, .screenBreaks]
         if ProServiceRegistry.shared.isProAvailable {
             result.append(.displays)
         }
@@ -125,6 +127,10 @@ private struct SettingsRootView: View {
             SnappingSection()
         case .windowRules:
             WindowRulesSection()
+        case .windowUndo:
+            WindowUndoSection()
+        case .screenBreaks:
+            ScreenBreaksSection()
         case .displays:
             DisplaysSection()
         case .pro:
@@ -207,6 +213,25 @@ private struct PinnedAppsSection: View {
                                     .resizable()
                                     .frame(width: 24, height: 24)
                                 Text(app.displayName)
+
+                                // Display assignment picker
+                                Picker("", selection: Binding(
+                                    get: { app.assignedDisplay },
+                                    set: { appState.store.setDisplayAssignment(bundleIdentifier: app.bundleIdentifier, displayName: $0) }
+                                )) {
+                                    Text("Any").tag(String?.none)
+                                    ForEach(NSScreen.screens.sorted(by: { $0.frame.origin.x < $1.frame.origin.x }), id: \.localizedName) { screen in
+                                        HStack {
+                                            Image(systemName: screen.localizedName.lowercased().contains("built-in") ? "laptopcomputer" : "display")
+                                            Text(screen.localizedName)
+                                        }
+                                        .tag(String?.some(screen.localizedName))
+                                    }
+                                }
+                                .labelsHidden()
+                                .controlSize(.mini)
+                                .frame(width: 140)
+
                                 Spacer()
                                 Circle()
                                     .fill(app.isRunning ? Color.green : Color.gray.opacity(0.3))
@@ -1096,6 +1121,11 @@ private struct SnappingSection: View {
                 Text("Drag any window to a screen edge or corner to snap it into position.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+                if appState.dragSnapEnabled {
+                    Label("May use slightly more CPU while enabled.", systemImage: "info.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                }
             }
 
             // Gap — compact inline
@@ -1161,6 +1191,7 @@ private struct SnappingSection: View {
                     }
                 }
             }
+
         }
     }
 
@@ -1340,52 +1371,6 @@ private struct ProSection: View {
                 description: "Free tier allows 3 profiles. Pro unlocks unlimited."
             )
 
-            Divider()
-
-            // v2 Pro Features
-            proFeature(
-                icon: "arrow.uturn.backward.circle.fill", color: .blue,
-                title: "Window Undo",
-                description: "Undo any window move or resize. Full history — step back through your last 50 window operations."
-            )
-
-            proFeature(
-                icon: "wind", color: .green,
-                title: "Auto-Declutter",
-                description: "Windows you haven't touched in 30+ minutes get auto-minimized. One-click clean up or fully automatic."
-            )
-
-            proFeature(
-                icon: "pip.fill", color: .pink,
-                title: "PiP for Any Window",
-                description: "Pin any window as a floating mini-preview. Watch a video, monitor Slack, or keep a terminal visible while working."
-            )
-
-            proFeature(
-                icon: "brain.head.profile.fill", color: .purple,
-                title: "Smart Placement",
-                description: "Learns where you place windows and auto-positions new ones based on your habits. Zero configuration."
-            )
-
-            proFeature(
-                icon: "sun.min.fill", color: .orange,
-                title: "Focus Dimming",
-                description: "Dim background windows so you can focus on what matters. The active app stays bright, everything else fades."
-            )
-
-            proFeature(
-                icon: "eye.slash.fill", color: .teal,
-                title: "Screen Breaks",
-                description: "Workspace-aware break reminders. Saves your window state, shows a break screen, restores everything when you return."
-            )
-
-            // v2 Pro Config (shown when licensed)
-            if ProServiceRegistry.shared.isLicensed,
-               let provider = ProServiceRegistry.shared.provider {
-                Divider()
-                provider.proFeaturesView()
-            }
-
             // License entry
             if let provider = ProServiceRegistry.shared.provider {
                 Divider()
@@ -1426,6 +1411,74 @@ private struct ProSection: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+}
+
+// MARK: - Window Undo Section
+
+private struct WindowUndoSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Window Undo")
+                .font(.system(size: 15, weight: .semibold))
+            Text("Undo any window move or resize. Full history — step back through your last 50 window operations.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            if let provider = ProServiceRegistry.shared.provider,
+               let view = provider.windowUndoSectionView() {
+                view
+            } else {
+                proUpsell
+            }
+        }
+    }
+
+    private var proUpsell: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(.yellow)
+            Text("Available with HopTab Pro")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Link("Learn more", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
+                .font(.system(size: 12))
+        }
+    }
+}
+
+// MARK: - Screen Breaks Section
+
+private struct ScreenBreaksSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Screen Breaks")
+                .font(.system(size: 15, weight: .semibold))
+            Text("Workspace-aware break reminders. Shows a break screen with countdown, then restores everything when you return.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+
+            if let provider = ProServiceRegistry.shared.provider,
+               let view = provider.screenBreaksSectionView() {
+                view
+            } else {
+                proUpsell
+            }
+        }
+    }
+
+    private var proUpsell: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(.yellow)
+            Text("Available with HopTab Pro")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Link("Learn more", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
+                .font(.system(size: 12))
         }
     }
 }

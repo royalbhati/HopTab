@@ -31,17 +31,18 @@ protocol HopTabProProvider: AnyObject {
     var canWindowUndo: Bool { get }
     var canWindowRedo: Bool { get }
     func declutterNow() -> Int
-    func startPiP(windowID: CGWindowID, ownerPID: pid_t, ownerName: String, windowTitle: String)
-    func stopAllPiPs()
 
-    // v2 Pro settings views
-    func proFeaturesView() -> AnyView?
+    // v2 Pro per-feature views
+    func windowUndoSectionView() -> AnyView?
+    func focusDimmingSectionView() -> AnyView?
+    func screenBreaksSectionView() -> AnyView?
 
     // Per-section views for sidebar settings
     func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView?
     func windowsSectionView() -> AnyView?
     func displaysSectionView(profiles: [ProProfileInfo]) -> AnyView?
     func licenseSectionView() -> AnyView?
+
 }
 
 // MARK: - Feature Service Protocols
@@ -94,56 +95,6 @@ protocol AutoDeclutterServiceProtocol: AnyObject {
     func stop()
     /// Manually declutter all stale windows now.
     func declutterNow() -> Int
-}
-
-// MARK: - PiP (Picture-in-Picture)
-
-/// Pins any window as a floating mini-preview.
-protocol WindowPiPServiceProtocol: AnyObject {
-    func startPiP(for windowInfo: PiPWindowInfo)
-    func stopPiP(id: UUID)
-    func stopAllPiPs()
-    var activePiPs: [PiPWindowInfo] { get }
-}
-
-/// Info about a PiP'd window.
-struct PiPWindowInfo: Identifiable {
-    let id: UUID
-    let windowID: CGWindowID
-    let ownerPID: pid_t
-    let ownerName: String
-    let windowTitle: String
-
-    init(id: UUID = UUID(), windowID: CGWindowID, ownerPID: pid_t, ownerName: String, windowTitle: String) {
-        self.id = id
-        self.windowID = windowID
-        self.ownerPID = ownerPID
-        self.ownerName = ownerName
-        self.windowTitle = windowTitle
-    }
-}
-
-// MARK: - Smart Window Placement
-
-/// Learns window placement patterns and auto-places new windows.
-protocol SmartPlacementServiceProtocol: AnyObject {
-    var isEnabled: Bool { get set }
-    func start()
-    func stop()
-    /// Clear all learned patterns.
-    func resetPatterns()
-    var patternCount: Int { get }
-}
-
-// MARK: - Focus Dimming
-
-/// Dims background windows to reduce distraction.
-protocol FocusDimmingServiceProtocol: AnyObject {
-    var isEnabled: Bool { get set }
-    /// Opacity for background windows (0.0 = invisible, 1.0 = fully visible).
-    var dimmingOpacity: Double { get set }
-    func start()
-    func stop()
 }
 
 // MARK: - Screen Breaks
