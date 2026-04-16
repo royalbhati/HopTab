@@ -22,7 +22,7 @@ Pin apps. Tile windows to halves, thirds, quarters. Switch profiles per desktop.
 
 ```bash
 brew tap royalbhati/tap
-brew install --cask --no-quarantine hoptab
+brew install --cask hoptab
 ```
 
 ### Manual
@@ -40,7 +40,7 @@ Or download from [Releases](../../releases/latest), unzip, drag to `/Application
 xattr -c /Applications/HopTab.app
 ```
 
-> **Why xattr?** HopTab is ad-hoc signed (not notarized). The command clears macOS's quarantine flag so it opens normally. Homebrew's `--no-quarantine` flag handles this automatically.
+> **Why xattr?** HopTab is ad-hoc signed (not notarized). The command clears macOS's quarantine flag so it opens normally.
 
 ### First Launch
 
