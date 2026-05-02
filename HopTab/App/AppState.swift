@@ -362,6 +362,10 @@ final class AppState: ObservableObject {
         hotkeyService.onWindowPickerCancel = { [weak self] in
             self?.windowPickerCancel()
         }
+
+        hotkeyService.onExpandWindows = { [weak self] in
+            self?.expandSelectedAppWindows()
+        }
     }
 
     // MARK: - App Switcher Logic
@@ -438,6 +442,31 @@ final class AppState: ObservableObject {
     private func cancelSwitcher() {
         overlayController.dismiss()
         isSwitcherVisible = false
+    }
+
+    /// Space pressed on a highlighted app while the switcher is open —
+    /// drill into that app's windows on the current Space.
+    private func expandSelectedAppWindows() {
+        guard isSwitcherVisible else { return }
+        let apps = store.apps
+        guard selectedIndex < apps.count else { return }
+
+        let selectedApp = apps[selectedIndex]
+        guard let running = selectedApp.runningApplication else { return }
+
+        let allWindows = AppSwitcherService.enumerateWindows(of: running)
+        let windows = AppSwitcherService.windowsOnCurrentSpace(allWindows)
+        guard !windows.isEmpty else { return }
+
+        AppSwitcherService.activate(selectedApp)
+        if recentAppFirst {
+            store.moveToFront(bundleIdentifier: selectedApp.bundleIdentifier)
+        }
+
+        overlayController.dismiss()
+        isSwitcherVisible = false
+
+        showWindowPicker(app: selectedApp, windows: windows)
     }
 
     // MARK: - Window Picker
@@ -659,53 +688,57 @@ final class AppState: ObservableObject {
         let outgoingId = store.activeProfileId
         guard outgoingId != id else { return }
 
-        // Cancel any pending layout/snapshot work from a previous rapid switch
-        cancelPendingProfileWork()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
 
-        // 1. Snapshot outgoing profile
-        if let outgoingId, let outgoing = store.profiles.first(where: { $0.id == outgoingId }) {
-            let snapshot = SessionSnapshotService.captureSnapshot(for: outgoing)
-            store.saveSnapshot(snapshot)
-        }
+            // Cancel any pending layout/snapshot work from a previous rapid switch
+            self.cancelPendingProfileWork()
 
-        // 2. Get incoming profile
-        guard let incoming = store.profiles.first(where: { $0.id == id }) else { return }
-
-        // 3. Hide outgoing apps (except shared ones)
-        if let outgoingId, let outgoing = store.profiles.first(where: { $0.id == outgoingId }) {
-            SessionSnapshotService.hideProfileApps(outgoing, excluding: incoming)
-        }
-
-        // 4. Switch the active profile
-        store.setActiveProfile(id: id)
-
-        // 4b. Record for time tracking (Pro)
-        if let provider = ProServiceRegistry.shared.provider as? ProBridgeTimeTracking {
-            provider.recordProfileSwitch(profileId: id, profileName: incoming.name)
-        }
-
-        // 5. Unhide incoming apps
-        SessionSnapshotService.unhideProfileApps(incoming)
-
-        // 6. Apply layout or restore window positions after a small delay (let unhide take effect)
-        if let binding = incoming.layoutBinding,
-           let template = store.allTemplates.first(where: { $0.id == binding.templateId }),
-           !binding.zoneAssignments.isEmpty {
-            scheduleProfileWork(delay: 0.15) {
-                LayoutService.applyLayout(binding: binding, template: template, profile: incoming)
+            // 1. Snapshot outgoing profile
+            if let outgoingId, let outgoing = self.store.profiles.first(where: { $0.id == outgoingId }) {
+                let snapshot = SessionSnapshotService.captureSnapshot(for: outgoing)
+                self.store.saveSnapshot(snapshot)
             }
-        } else if let snapshot = store.snapshot(for: id) {
-            scheduleProfileWork(delay: 0.15) {
-                SessionSnapshotService.restoreSnapshot(snapshot, for: incoming)
+
+            // 2. Get incoming profile
+            guard let incoming = self.store.profiles.first(where: { $0.id == id }) else { return }
+
+            // 3. Hide outgoing apps (except shared ones)
+            if let outgoingId, let outgoing = self.store.profiles.first(where: { $0.id == outgoingId }) {
+                SessionSnapshotService.hideProfileApps(outgoing, excluding: incoming)
             }
-        }
 
-        // 7. Move apps to their assigned displays (if multi-monitor)
-        applyDisplayAssignments(for: incoming)
+            // 4. Switch the active profile
+            self.store.setActiveProfile(id: id)
 
-        // 8. Show sticky note if set
-        if let note = incoming.stickyNote, !note.isEmpty {
-            stickyNoteController.show(profileName: incoming.name, note: note)
+            // 4b. Record for time tracking (Pro)
+            if let provider = ProServiceRegistry.shared.provider as? ProBridgeTimeTracking {
+                provider.recordProfileSwitch(profileId: id, profileName: incoming.name)
+            }
+
+            // 5. Unhide incoming apps
+            SessionSnapshotService.unhideProfileApps(incoming)
+
+            // 6. Apply layout or restore window positions after a small delay (let unhide take effect)
+            if let binding = incoming.layoutBinding,
+               let template = self.store.allTemplates.first(where: { $0.id == binding.templateId }),
+               !binding.zoneAssignments.isEmpty {
+                self.scheduleProfileWork(delay: 0.15) {
+                    LayoutService.applyLayout(binding: binding, template: template, profile: incoming)
+                }
+            } else if let snapshot = self.store.snapshot(for: id) {
+                self.scheduleProfileWork(delay: 0.15) {
+                    SessionSnapshotService.restoreSnapshot(snapshot, for: incoming)
+                }
+            }
+
+            // 7. Move apps to their assigned displays (if multi-monitor)
+            self.applyDisplayAssignments(for: incoming)
+
+            // 8. Show sticky note if set
+            if let note = incoming.stickyNote, !note.isEmpty {
+                self.stickyNoteController.show(profileName: incoming.name, note: note)
+            }
         }
     }
 

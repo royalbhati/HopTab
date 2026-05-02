@@ -34,6 +34,9 @@ final class HotkeyService {
     var onWindowPickerSelect: (() -> Void)?
     var onWindowPickerCancel: (() -> Void)?
 
+    // Expand highlighted app into its windows (Space while switcher active)
+    var onExpandWindows: (() -> Void)?
+
     // Snap Callbacks (arrow keys while switcher active)
     var onSnapLeft: (() -> Void)?
     var onSnapRight: (() -> Void)?
@@ -192,6 +195,9 @@ final class HotkeyService {
 
     func enterWindowPickerMode() {
         isWindowPickerActive = true
+        // Leaving the app switcher — prevent a trailing onSwitcherDismissed
+        // from firing when the user releases the modifier over the picker.
+        isSwitcherActive = false
     }
 
     func exitWindowPickerMode() {
@@ -343,6 +349,12 @@ final class HotkeyService {
                 default:
                     break // swallow all other keys
                 }
+                return nil
+            }
+
+            // Space on a highlighted app → drill into its windows
+            if isSwitcherActive && keyCode == Int64(kVK_Space) {
+                onExpandWindows?()
                 return nil
             }
 

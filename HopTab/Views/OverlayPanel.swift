@@ -182,7 +182,7 @@ final class StickyNoteOverlayController {
             width: fittingSize.width,
             height: fittingSize.height
         )
-        panel.setFrame(panelFrame, display: true)
+        panel.setFrame(panelFrame, display: false)
         panel.orderFrontRegardless()
         self.panel = panel
 
