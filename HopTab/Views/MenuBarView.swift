@@ -67,6 +67,49 @@ struct MenuBarView: View {
                 Divider()
             }
 
+            // Up-next meeting banner (Pro) — shown within an hour of start
+            if let meetingProvider = ProServiceRegistry.shared.provider as? ProActiveMeetingProvider,
+               meetingProvider.activeMeetingTitle == nil,
+               let next = meetingProvider.nextMeeting,
+               next.start.timeIntervalSinceNow < 3600 {
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                        Text(next.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                        Spacer()
+                        Text("in \(max(0, Int(ceil(next.start.timeIntervalSinceNow / 60))))m")
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let url = next.url {
+                        Button {
+                            NSWorkspace.shared.open(url)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "video.fill")
+                                    .font(.system(size: 10))
+                                Text("Join Early")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
+                            .background(Color.accentColor.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
+
+                Divider()
+            }
+
             // Active meeting banner (Pro)
             if let meetingProvider = ProServiceRegistry.shared.provider as? ProActiveMeetingProvider,
                let meetingTitle = meetingProvider.activeMeetingTitle {
@@ -251,6 +294,35 @@ struct MenuBarView: View {
 
                     Divider()
                 }
+            }
+
+            // Focus session (Pro)
+            if let provider = ProServiceRegistry.shared.provider, provider.isLicensed {
+                if let remaining = provider.focusSessionRemainingMinutes {
+                    Button {
+                        provider.stopFocusSession()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "moon.zzz.fill")
+                            Text("End Focus Session — \(remaining)m left")
+                        }
+                    }
+                } else {
+                    Menu {
+                        ForEach([25, 50, 90], id: \.self) { minutes in
+                            Button("\(minutes) minutes") {
+                                appState.startFocusSession(minutes: minutes)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "moon.zzz")
+                            Text("Start Focus Session")
+                        }
+                    }
+                }
+
+                Divider()
             }
 
             Button("Settings...") {

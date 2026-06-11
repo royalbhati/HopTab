@@ -30,6 +30,30 @@ final class OverlayPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
+    /// Fade in. Use instead of bare `orderFrontRegardless()`.
+    func present() {
+        alphaValue = 0
+        orderFrontRegardless()
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.13
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            animator().alphaValue = 1
+        }
+    }
+
+    /// Fade out, then order out. Strongly captures self so the panel
+    /// survives until the animation completes even after the owning
+    /// controller drops its reference.
+    func fadeOut() {
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.1
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            animator().alphaValue = 0
+        }, completionHandler: {
+            self.orderOut(nil)
+        })
+    }
+
     /// Returns the screen the mouse cursor is on, falling back to the main screen.
     static var activeScreen: NSScreen {
         let mouse = NSEvent.mouseLocation
@@ -87,7 +111,7 @@ final class OverlayWindowController {
         panel.contentView = hostingView
 
         centerOnScreen(panel, fittingSize: hostingView.fittingSize)
-        panel.orderFrontRegardless()
+        panel.present()
         self.panel = panel
     }
 
@@ -106,7 +130,7 @@ final class OverlayWindowController {
     }
 
     func dismiss() {
-        panel?.orderOut(nil)
+        panel?.fadeOut()
         panel = nil
     }
 }
@@ -137,7 +161,7 @@ final class ProfileOverlayWindowController {
         panel.contentView = hostingView
 
         centerOnScreen(panel, fittingSize: hostingView.fittingSize)
-        panel.orderFrontRegardless()
+        panel.present()
         self.panel = panel
     }
 
@@ -154,7 +178,7 @@ final class ProfileOverlayWindowController {
     }
 
     func dismiss() {
-        panel?.orderOut(nil)
+        panel?.fadeOut()
         panel = nil
     }
 }
@@ -183,7 +207,7 @@ final class StickyNoteOverlayController {
             height: fittingSize.height
         )
         panel.setFrame(panelFrame, display: false)
-        panel.orderFrontRegardless()
+        panel.present()
         self.panel = panel
 
         dismissTask = Task { @MainActor in
@@ -195,7 +219,7 @@ final class StickyNoteOverlayController {
     func dismiss() {
         dismissTask?.cancel()
         dismissTask = nil
-        panel?.orderOut(nil)
+        panel?.fadeOut()
         panel = nil
     }
 }
@@ -224,7 +248,7 @@ final class ToastOverlayController {
             height: fittingSize.height
         )
         panel.setFrame(panelFrame, display: true)
-        panel.orderFrontRegardless()
+        panel.present()
         self.panel = panel
 
         dismissTask = Task { @MainActor in
@@ -236,7 +260,7 @@ final class ToastOverlayController {
     func dismiss() {
         dismissTask?.cancel()
         dismissTask = nil
-        panel?.orderOut(nil)
+        panel?.fadeOut()
         panel = nil
     }
 }
@@ -271,7 +295,7 @@ final class WindowPickerOverlayController {
         panel.contentView = hostingView
 
         centerOnScreen(panel, fittingSize: hostingView.fittingSize)
-        panel.orderFrontRegardless()
+        panel.present()
         self.panel = panel
     }
 
@@ -290,7 +314,7 @@ final class WindowPickerOverlayController {
     }
 
     func dismiss() {
-        panel?.orderOut(nil)
+        panel?.fadeOut()
         panel = nil
     }
 }

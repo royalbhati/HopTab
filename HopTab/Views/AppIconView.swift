@@ -3,42 +3,27 @@ import SwiftUI
 struct AppIconView: View {
     let app: PinnedApp
     let isSelected: Bool
-
-    private let iconSize: CGFloat = 64
-    private let totalSize: CGFloat = 90
+    var iconSize: CGFloat = 64
 
     var body: some View {
-        VStack(spacing: 6) {
-            ZStack(alignment: .bottomTrailing) {
-                Image(nsImage: app.icon)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: iconSize, height: iconSize)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                            .animation(.easeInOut(duration: 0.15), value: isSelected)
-                    )
-                    .scaleEffect(isSelected ? 1.1 : 1.0)
-                    .animation(.easeInOut(duration: 0.15), value: isSelected)
-                    .saturation(app.isRunning ? 1.0 : 0.4)
+        ZStack(alignment: .bottomTrailing) {
+            Image(nsImage: app.icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: iconSize, height: iconSize)
+                .saturation(app.isRunning ? 1.0 : 0.4)
+                .opacity(app.isRunning ? 1.0 : 0.6)
 
-                // Running indicator dot
+            // Running indicator — Dock-style: shown only when running, since
+            // desaturation already marks the not-running state.
+            if app.isRunning {
                 Circle()
-                    .fill(app.isRunning ? Color.green : Color.gray.opacity(0.5))
-                    .frame(width: 8, height: 8)
+                    .fill(Color.green)
+                    .frame(width: 7, height: 7)
                     .overlay(Circle().stroke(Color.black.opacity(0.3), lineWidth: 0.5))
-                    .offset(x: -2, y: -2)
+                    .offset(x: -3, y: -3)
             }
-
-            Text(app.displayName)
-                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? .primary : .secondary)
-                .lineLimit(1)
-                .frame(width: totalSize)
         }
-        .frame(width: totalSize)
-        .opacity(app.isRunning ? 1.0 : 0.6)
         .accessibilityLabel("\(app.displayName), \(app.isRunning ? "running" : "not running")")
     }
 }

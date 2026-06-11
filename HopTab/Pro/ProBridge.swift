@@ -9,6 +9,10 @@ import SwiftUI
 @MainActor
 final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetingProvider {
     let module = HopTabProModule()
+    /// Long-lived toast — a throwaway controller would deallocate its panel
+    /// before the toast finishes displaying.
+    private let toastController = ToastOverlayController()
+    private let digestController = StickyNoteOverlayController()
 
     var isLicensed: Bool { module.isLicensed }
     var licenseEmail: String? { module.licenseEmail }
@@ -28,11 +32,40 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
             LayoutService.snapApp(bundleIdentifier: bundleId, to: direction)
         }
         // Wire undo failure toast (T4)
-        module.windowUndo.onUndoFailed = { message in
-            let toast = ToastOverlayController()
-            toast.show(icon: "exclamationmark.circle", message: message)
+        module.windowUndo.onUndoFailed = { [weak self] message in
+            self?.toastController.show(icon: "exclamationmark.circle", message: message)
+        }
+        // Focus session nudges + completion
+        module.focusSession.onNudge = { [weak self] message in
+            self?.toastController.show(icon: "moon.zzz", message: message, duration: 2.5)
+        }
+        module.focusSession.onEnded = { [weak self] message in
+            self?.toastController.show(icon: "checkmark.circle", message: message, duration: 3)
+        }
+        // App budget nudges
+        module.appUsage.onBudgetExceeded = { [weak self] appName, minutes in
+            self?.toastController.show(icon: "hourglass", message: "\(appName): past your \(minutes)m daily limit", duration: 3)
+        }
+        // Weekly digest — sticky-note panel fits the multi-line summary
+        module.onWeeklyDigest = { [weak self] digest in
+            self?.digestController.show(profileName: "Last week in HopTab", note: digest, duration: 10)
         }
         module.startServices(profileSwitcher: profileSwitcher)
+    }
+
+    // MARK: - Focus Sessions
+
+    func startFocusSession(minutes: Int, profileName: String, allowedBundleIds: [String]) {
+        module.focusSession.start(minutes: minutes, profileName: profileName, allowedBundleIds: allowedBundleIds)
+        toastController.show(icon: "moon.zzz.fill", message: "Focus session started — \(minutes) min in \(profileName)", duration: 2)
+    }
+
+    func stopFocusSession() {
+        module.focusSession.stop()
+    }
+
+    var focusSessionRemainingMinutes: Int? {
+        module.focusSession.remainingMinutes
     }
 
     /// Record a profile switch for time tracking.
@@ -48,6 +81,12 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
 
     var activeMeetingURL: URL? {
         ActiveMeetingState.shared.activeMeeting?.meetingURL
+    }
+
+    var nextMeeting: (title: String, start: Date, url: URL?)? {
+        guard module.isLicensed,
+              let next = module.calendar.nextUpcomingMeeting() else { return nil }
+        return (next.title, next.startDate, next.url)
     }
 
     func stopServices() {
@@ -84,13 +123,19 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
     // MARK: - Per-Section Views
 
     func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView? {
+        // Pro features no longer piggyback on the Profiles section — they
+        // live in the dedicated Automation section.
+        nil
+    }
+
+    func automationSectionView(profiles: [ProProfileInfo]) -> AnyView? {
         let proProfiles = profiles.map {
             HopTabPro.ProProfileInfo(id: $0.id, name: $0.name)
         }
         if module.isLicensed {
             return AnyView(
                 VStack(alignment: .leading, spacing: 20) {
-                    TimeTrackingView(timeTracking: module.timeTracking)
+                    TimeTrackingView(timeTracking: module.timeTracking, appUsage: module.appUsage)
                     CalendarConfigView(calendarService: module.calendar, profiles: proProfiles)
                     ScheduleConfigView(scheduleService: module.schedule, profiles: proProfiles)
                     FocusModeConfigView(focusModeService: module.focusMode, profiles: proProfiles)

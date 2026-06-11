@@ -20,6 +20,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         settingsController.show(appState: appState)
     }
 
+    /// hoptab:// deep links (Raycast, Shortcuts, Stream Deck, terminal `open`).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            appState.handleDeepLink(url)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         if appState.permissions.isTrusted {
             appState.startHotkey()
@@ -41,6 +48,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         // Check for updates silently
         UpdateService.shared.checkOnLaunchIfNeeded()
+
+        // Menu-bar meeting HUD (no-op without a licensed Pro module)
+        appState.startMeetingHUD()
 
         // Bootstrap Pro module if available
         #if canImport(HopTabPro)

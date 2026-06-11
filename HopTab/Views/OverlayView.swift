@@ -2,53 +2,80 @@ import SwiftUI
 
 struct OverlayView: View {
     @ObservedObject var viewModel: OverlayViewModel
+    @Namespace private var selection
+
+    /// Shrink icons when many apps are pinned so the row stays on screen.
+    private var iconSize: CGFloat { viewModel.apps.count > 12 ? 48 : 64 }
 
     var body: some View {
         VStack(spacing: 0) {
             if viewModel.apps.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: HopSpacing.sm) {
                     Image(systemName: "square.dashed")
                         .font(.system(size: 28))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(HopOverlay.tertiaryText)
                     Text("No pinned apps")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(HopOverlay.secondaryText)
                     Text("Pin apps in Settings to switch between them")
                         .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(HopOverlay.tertiaryText)
                 }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 24)
+                .padding(.horizontal, HopSpacing.xxl)
+                .padding(.vertical, HopSpacing.xl)
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: HopSpacing.xs) {
                     ForEach(Array(viewModel.apps.enumerated()), id: \.element.id) { index, app in
-                        AppIconView(app: app, isSelected: index == viewModel.selectedIndex)
+                        AppIconView(app: app, isSelected: index == viewModel.selectedIndex, iconSize: iconSize)
+                            .padding(HopSpacing.md)
+                            .background {
+                                // Native Cmd+Tab-style backplate that slides
+                                // between icons instead of a stroke + scale.
+                                if index == viewModel.selectedIndex {
+                                    RoundedRectangle(cornerRadius: HopRadius.card + 6, style: .continuous)
+                                        .fill(HopOverlay.backplate)
+                                        .matchedGeometryEffect(id: "selection", in: selection)
+                                }
+                            }
                             .contentShape(Rectangle())
                             .onTapGesture { viewModel.onAppClicked?(index) }
                             .accessibilityAddTraits(index == viewModel.selectedIndex ? .isSelected : [])
                     }
                 }
+                .animation(.snappy(duration: 0.18), value: viewModel.selectedIndex)
                 .accessibilityLabel("App Switcher")
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, viewModel.showHints ? 8 : 16)
+                // Keep the panel at least as wide as the name line's cap so
+                // selection changes never resize the panel.
+                .frame(minWidth: 260)
+                .padding(.horizontal, HopSpacing.lg)
+                .padding(.top, HopSpacing.lg)
+
+                Text(selectedAppName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(HopOverlay.primaryText)
+                    .lineLimit(1)
+                    .frame(maxWidth: 240)
+                    .padding(.top, HopSpacing.sm)
+                    .padding(.bottom, viewModel.showHints ? HopSpacing.sm : HopSpacing.lg)
 
                 if viewModel.showHints {
-                    HStack(spacing: 16) {
+                    HStack(spacing: HopSpacing.lg) {
                         HintLabel(text: "Tab to cycle")
                         HintLabel(text: "Release to switch")
                         HintLabel(text: "Esc to cancel")
                     }
-                    .padding(.bottom, 12)
+                    .padding(.bottom, HopSpacing.md)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
         }
-        .background {
-            VisualEffectBlur(cornerRadius: 18)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+        .overlayChrome()
+    }
+
+    private var selectedAppName: String {
+        guard viewModel.apps.indices.contains(viewModel.selectedIndex) else { return " " }
+        let app = viewModel.apps[viewModel.selectedIndex]
+        return app.isRunning ? app.displayName : "\(app.displayName) — not running"
     }
 }
 
@@ -57,8 +84,8 @@ private struct HintLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10))
-            .foregroundStyle(.white.opacity(0.5))
+            .font(.system(size: 11))
+            .foregroundStyle(HopOverlay.secondaryText)
     }
 }
 
@@ -66,35 +93,36 @@ private struct HintLabel: View {
 
 struct ProfileOverlayView: View {
     @ObservedObject var viewModel: ProfileOverlayViewModel
+    @Namespace private var selection
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HopSpacing.sm) {
             ForEach(Array(viewModel.profiles.enumerated()), id: \.element.id) { index, profile in
                 let isSelected = index == viewModel.selectedIndex
                 VStack(spacing: 6) {
-                    // App icon grid instead of person avatar
                     ProfileAppIcons(apps: profile.pinnedApps, isSelected: isSelected)
 
                     Text(profile.name)
                         .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                        .foregroundStyle(isSelected ? .white : .primary)
+                        .foregroundStyle(isSelected ? HopOverlay.primaryText : HopOverlay.secondaryText)
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isSelected ? Color.accentColor : Color.clear)
-                )
+                .padding(.horizontal, HopSpacing.md)
+                .padding(.vertical, HopSpacing.sm + 2)
+                .background {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                            .fill(HopOverlay.backplate)
+                            .matchedGeometryEffect(id: "selection", in: selection)
+                    }
+                }
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background {
-            VisualEffectBlur(cornerRadius: 18)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+        .animation(.snappy(duration: 0.18), value: viewModel.selectedIndex)
+        .padding(.horizontal, HopSpacing.lg)
+        .padding(.vertical, HopSpacing.lg)
+        .overlayChrome()
     }
 }
 
@@ -116,7 +144,7 @@ private struct ProfileAppIcons: View {
             if visible.isEmpty {
                 Image(systemName: "square.dashed")
                     .font(.system(size: 24))
-                    .foregroundStyle(isSelected ? .white.opacity(0.5) : .secondary)
+                    .foregroundStyle(isSelected ? HopOverlay.secondaryText : HopOverlay.tertiaryText)
             } else {
                 let columns = visible.count <= 1 ? 1 : 2
                 let gridCols = Array(repeating: GridItem(.fixed(iconSize), spacing: gridSpacing), count: columns)
@@ -133,7 +161,7 @@ private struct ProfileAppIcons: View {
                     if remaining > 0 {
                         Text("+\(remaining)")
                             .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(HopOverlay.primaryText)
                             .padding(.horizontal, 3)
                             .padding(.vertical, 1)
                             .background(Capsule().fill(Color.black.opacity(0.6)))
@@ -160,51 +188,47 @@ struct WindowPickerView: View {
                     .frame(width: 32, height: 32)
                 Text(viewModel.appName)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(HopOverlay.primaryText)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, HopSpacing.lg)
             .padding(.top, 14)
             .padding(.bottom, 10)
 
             Divider()
-                .padding(.horizontal, 12)
+                .padding(.horizontal, HopSpacing.md)
 
             // Window list
             VStack(spacing: 2) {
                 ForEach(Array(viewModel.windows.enumerated()), id: \.element.id) { index, window in
                     let isSelected = index == viewModel.selectedIndex
-                    HStack(spacing: 8) {
+                    HStack(spacing: HopSpacing.sm) {
                         Image(systemName: window.isMinimized ? "minus.circle" : "macwindow")
                             .font(.system(size: 13))
-                            .foregroundStyle(isSelected ? .white : .secondary)
+                            .foregroundStyle(isSelected ? HopOverlay.primaryText : HopOverlay.secondaryText)
                             .frame(width: 16)
 
                         Text(window.title)
                             .font(.system(size: 13))
-                            .foregroundStyle(isSelected ? .white : .primary)
+                            .foregroundStyle(HopOverlay.primaryText)
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
                     .accessibilityLabel("\(window.title)\(window.isMinimized ? ", minimized" : "")")
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, HopSpacing.md)
+                    .padding(.vertical, HopSpacing.sm)
                     .background(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(isSelected ? Color.accentColor : Color.clear)
                     )
                 }
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, HopSpacing.sm)
             .padding(.top, 6)
             .padding(.bottom, 10)
         }
         .frame(width: 320)
-        .background {
-            VisualEffectBlur(cornerRadius: 18)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+        .overlayChrome()
     }
 }
 
@@ -215,27 +239,24 @@ struct StickyNoteOverlayView: View {
     let note: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: HopSpacing.sm) {
             HStack(spacing: 6) {
                 Image(systemName: "note.text")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(HopOverlay.secondaryText)
                 Text(profileName)
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(HopOverlay.primaryText)
             }
 
             Text(note)
                 .font(.system(size: 12))
-                .foregroundStyle(.primary)
+                .foregroundStyle(HopOverlay.primaryText)
                 .lineLimit(5)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
+        .padding(HopSpacing.lg)
         .frame(maxWidth: 320, alignment: .leading)
-        .background {
-            VisualEffectBlur(cornerRadius: 14)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+        .overlayChrome()
     }
 }
 
@@ -246,21 +267,17 @@ struct ToastOverlayView: View {
     let message: String
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HopSpacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundStyle(.white)
+                .foregroundStyle(HopOverlay.primaryText)
             Text(message)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(HopOverlay.primaryText)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background {
-            VisualEffectBlur(cornerRadius: 12)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.3), radius: 20, y: 5)
+        .padding(.horizontal, HopSpacing.xl - 4)
+        .padding(.vertical, HopSpacing.md)
+        .overlayChrome()
     }
 }
 

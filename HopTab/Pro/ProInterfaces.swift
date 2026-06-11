@@ -32,6 +32,12 @@ protocol HopTabProProvider: AnyObject {
     var canWindowRedo: Bool { get }
     func declutterNow() -> Int
 
+    // Focus sessions
+    func startFocusSession(minutes: Int, profileName: String, allowedBundleIds: [String])
+    func stopFocusSession()
+    /// nil when no session is running.
+    var focusSessionRemainingMinutes: Int? { get }
+
     // v2 Pro per-feature views
     func windowUndoSectionView() -> AnyView?
     func focusDimmingSectionView() -> AnyView?
@@ -39,6 +45,8 @@ protocol HopTabProProvider: AnyObject {
 
     // Per-section views for sidebar settings
     func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView?
+    /// Pro automation home: time tracking, calendar, schedule, focus modes.
+    func automationSectionView(profiles: [ProProfileInfo]) -> AnyView?
     func windowsSectionView() -> AnyView?
     func displaysSectionView(profiles: [ProProfileInfo]) -> AnyView?
     func licenseSectionView() -> AnyView?
@@ -120,6 +128,8 @@ protocol ScreenBreakServiceProtocol: AnyObject {
 protocol ProActiveMeetingProvider {
     var activeMeetingTitle: String? { get }
     var activeMeetingURL: URL? { get }
+    /// Next matched meeting (for the menu-bar HUD), or nil.
+    var nextMeeting: (title: String, start: Date, url: URL?)? { get }
 }
 
 // MARK: - Time Tracking Bridge

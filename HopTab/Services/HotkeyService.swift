@@ -464,10 +464,12 @@ final class HotkeyService {
             // Global snap shortcuts — only when no switcher is active
             if !isSwitcherActive && !isProfileSwitcherActive
                 && activeProfileHotkeyId == nil && !isWindowPickerActive {
-                let nonShiftMods = CGEventFlags([.maskControl, .maskAlternate, .maskCommand])
-                let eventMods = flags.intersection(nonShiftMods)
+                // Shift must participate in matching: bindings like Undo (Ctrl+Opt+Z)
+                // and Redo (Ctrl+Opt+Shift+Z) differ only by Shift.
+                let snapMods = CGEventFlags([.maskControl, .maskAlternate, .maskCommand, .maskShift])
+                let eventMods = flags.intersection(snapMods)
                 for snap in snapShortcuts {
-                    let requiredMods = snap.modifiers.intersection(nonShiftMods)
+                    let requiredMods = snap.modifiers.intersection(snapMods)
                     if eventMods == requiredMods && keyCode == snap.keyCode {
                         onGlobalSnap?(snap.direction)
                         return nil

@@ -81,6 +81,11 @@ final class AppState: ObservableObject {
     @Published private(set) var profileShortcutKeyName: String = "`"
 
     // Window picker state
+    /// Menu-bar HUD text for the imminent/active meeting ("Standup in 4m"),
+    /// or nil to show the plain icon. Refreshed every 30s.
+    @Published private(set) var meetingHUD: String?
+    private var meetingHUDTimer: Timer?
+
     @Published private(set) var isWindowPickerVisible: Bool = false
     @Published private(set) var windowPickerSelectedIndex: Int = 0
     private var windowPickerWindows: [WindowInfo] = []
@@ -95,6 +100,12 @@ final class AppState: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var workspaceObservers: [NSObjectProtocol] = []
     private var profileSwitchWorkItems: [DispatchWorkItem] = []
+    /// True while `switchToProfile` is in flight or its scheduled tail is still running.
+    /// Stage Manager fires `activeSpaceDidChangeNotification` on every stage transition,
+    /// so this flag suppresses re-entrant space-driven switches that would oscillate
+    /// between space-bound profiles.
+    private var isApplyingProfile: Bool = false
+    private let spaceChangeSubject = PassthroughSubject<Void, Never>()
 
     init() {
         // Forward store's changes so SwiftUI views update
@@ -140,6 +151,14 @@ final class AppState: ObservableObject {
             .debounce(for: .milliseconds(100), scheduler: RunLoop.main)
             .sink { [weak self] _ in
                 self?.syncProfileHotkeys()
+            }
+            .store(in: &cancellables)
+
+        // Coalesce Stage Manager's rapid-fire space-change notifications.
+        spaceChangeSubject
+            .debounce(for: .milliseconds(250), scheduler: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleSpaceChange()
             }
             .store(in: &cancellables)
     }
@@ -273,7 +292,10 @@ final class AppState: ObservableObject {
         // Per-profile hotkey callbacks
         hotkeyService.onProfileHotkeyActivated = { [weak self] profileId in
             self?.switchToProfile(id: profileId)
-            self?.showSwitcher()
+            // switchToProfile applies its changes on the next main-queue turn;
+            // enqueue the switcher behind it so the overlay shows the *new*
+            // profile's apps rather than the outgoing one's.
+            DispatchQueue.main.async { self?.showSwitcher() }
         }
 
         hotkeyService.onProfileHotkeyCycleForward = { [weak self] _ in
@@ -320,30 +342,8 @@ final class AppState: ObservableObject {
 
         // Global snap shortcuts (work without switcher)
         hotkeyService.configureSnapShortcuts(SnapShortcutConfig.current)
-        hotkeyService.onGlobalSnap = { direction in
-            switch direction {
-            case .nextMonitor:
-                LayoutService.moveFrontmostToNextMonitor()
-            case .previousMonitor:
-                LayoutService.moveFrontmostToPreviousMonitor()
-            case .undo:
-                // Use Pro Window Undo if available (tracks all moves, not just snaps)
-                if let provider = ProServiceRegistry.shared.provider, provider.canWindowUndo {
-                    provider.windowUndo()
-                } else {
-                    LayoutService.undoSnap()
-                }
-            case .redo:
-                if let provider = ProServiceRegistry.shared.provider, provider.canWindowRedo {
-                    provider.windowRedo()
-                }
-            case .cycleNext:
-                LayoutService.snapFrontmostCycle(forward: true)
-            case .cyclePrevious:
-                LayoutService.snapFrontmostCycle(forward: false)
-            default:
-                LayoutService.snapFrontmost(to: direction)
-            }
+        hotkeyService.onGlobalSnap = { [weak self] direction in
+            self?.performSnapAction(direction)
         }
 
         // Window picker callbacks
@@ -651,17 +651,136 @@ final class AppState: ObservableObject {
             workspaceObservers.append(observer)
         }
 
-        // Auto-switch profile when the active Space changes
+        // Auto-switch profile when the active Space changes.
+        // Route through `spaceChangeSubject` so the debounce in init() can coalesce
+        // bursts (Stage Manager emits one notification per stage animation).
         let spaceObserver = center.addObserver(
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.handleSpaceChange()
+                self?.spaceChangeSubject.send()
             }
         }
         workspaceObservers.append(spaceObserver)
+    }
+
+    // MARK: - Snap Actions
+
+    /// Perform a snap action on the frontmost window. Shared by the global
+    /// hotkeys and hoptab:// deep links.
+    func performSnapAction(_ direction: SnapDirection) {
+        switch direction {
+        case .nextMonitor:
+            LayoutService.moveFrontmostToNextMonitor()
+        case .previousMonitor:
+            LayoutService.moveFrontmostToPreviousMonitor()
+        case .undo:
+            // Use Pro Window Undo if available (tracks all moves, not just snaps)
+            if let provider = ProServiceRegistry.shared.provider, provider.canWindowUndo {
+                provider.windowUndo()
+            } else {
+                LayoutService.undoSnap()
+            }
+        case .redo:
+            if let provider = ProServiceRegistry.shared.provider, provider.canWindowRedo {
+                provider.windowRedo()
+            }
+        case .cycleNext:
+            LayoutService.snapFrontmostCycle(forward: true)
+        case .cyclePrevious:
+            LayoutService.snapFrontmostCycle(forward: false)
+        default:
+            LayoutService.snapFrontmost(to: direction)
+        }
+    }
+
+    // MARK: - Meeting HUD (Pro)
+
+    /// Start the 30s refresh loop for the menu-bar meeting HUD. Cheap no-op
+    /// each tick when Pro isn't installed/licensed.
+    func startMeetingHUD() {
+        guard meetingHUDTimer == nil else { return }
+        updateMeetingHUD()
+        let timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.updateMeetingHUD() }
+        }
+        timer.tolerance = 5
+        meetingHUDTimer = timer
+    }
+
+    private func updateMeetingHUD() {
+        guard let provider = ProServiceRegistry.shared.provider,
+              provider.isLicensed,
+              let meetings = provider as? ProActiveMeetingProvider
+        else {
+            if meetingHUD != nil { meetingHUD = nil }
+            return
+        }
+
+        var text: String?
+        if let title = meetings.activeMeetingTitle {
+            text = "\(Self.hudTitle(title)) · now"
+        } else if let next = meetings.nextMeeting {
+            let minutes = max(0, Int(ceil(next.start.timeIntervalSinceNow / 60)))
+            if minutes <= 15 {
+                text = "\(Self.hudTitle(next.title)) in \(minutes)m"
+            }
+        }
+        if meetingHUD != text { meetingHUD = text }
+    }
+
+    private static func hudTitle(_ title: String) -> String {
+        title.count > 18 ? String(title.prefix(17)) + "…" : title
+    }
+
+    // MARK: - Focus Sessions (Pro)
+
+    /// Start a focus session scoped to the active profile's pinned apps.
+    func startFocusSession(minutes: Int) {
+        guard let provider = ProServiceRegistry.shared.provider, provider.isLicensed else { return }
+        let profile = store.activeProfile
+        provider.startFocusSession(
+            minutes: minutes,
+            profileName: profile?.name ?? "your profile",
+            allowedBundleIds: (profile?.pinnedApps ?? []).map(\.bundleIdentifier)
+        )
+    }
+
+    // MARK: - Deep Links (hoptab://)
+
+    /// Routes hoptab:// URLs:
+    ///   hoptab://profile/<name>   switch to the named profile
+    ///   hoptab://snap/<direction> snap the frontmost window (e.g. left, topRight)
+    ///   hoptab://undo, hoptab://redo
+    ///   hoptab://focus/<minutes>  start a focus session (Pro)
+    func handleDeepLink(_ url: URL) {
+        guard url.scheme?.lowercased() == "hoptab" else { return }
+        let action = url.host?.lowercased() ?? ""
+        let argument = url.pathComponents.count > 1 ? url.pathComponents[1] : nil
+
+        switch action {
+        case "profile":
+            guard let name = argument?.removingPercentEncoding,
+                  let profile = store.profiles.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame })
+            else { return }
+            activateProfile(id: profile.id)
+        case "snap":
+            guard let raw = argument,
+                  let direction = SnapDirection(rawValue: raw)
+                    ?? SnapDirection.allCases.first(where: { $0.rawValue.lowercased() == raw.lowercased() })
+            else { return }
+            performSnapAction(direction)
+        case "undo":
+            performSnapAction(.undo)
+        case "redo":
+            performSnapAction(.redo)
+        case "focus":
+            startFocusSession(minutes: Int(argument ?? "") ?? 25)
+        default:
+            break
+        }
     }
 
     // MARK: - Session-Aware Profile Switching
@@ -691,17 +810,25 @@ final class AppState: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
 
+            // Resolve the incoming profile before touching any state — an early
+            // return after `isApplyingProfile = true` would leave the flag stuck
+            // and silently disable space-driven auto-switching until relaunch.
+            guard let incoming = self.store.profiles.first(where: { $0.id == id }) else { return }
+
             // Cancel any pending layout/snapshot work from a previous rapid switch
             self.cancelPendingProfileWork()
+
+            // Suppress space-driven re-entry while we hide/unhide/move windows.
+            // Stage Manager animates each activation as a stage transition and fires
+            // `activeSpaceDidChangeNotification` with a fresh spaceId, which would
+            // otherwise resolve to a different space-bound profile and oscillate.
+            self.isApplyingProfile = true
 
             // 1. Snapshot outgoing profile
             if let outgoingId, let outgoing = self.store.profiles.first(where: { $0.id == outgoingId }) {
                 let snapshot = SessionSnapshotService.captureSnapshot(for: outgoing)
                 self.store.saveSnapshot(snapshot)
             }
-
-            // 2. Get incoming profile
-            guard let incoming = self.store.profiles.first(where: { $0.id == id }) else { return }
 
             // 3. Hide outgoing apps (except shared ones)
             if let outgoingId, let outgoing = self.store.profiles.first(where: { $0.id == outgoingId }) {
@@ -739,6 +866,14 @@ final class AppState: ObservableObject {
             if let note = incoming.stickyNote, !note.isEmpty {
                 self.stickyNoteController.show(profileName: incoming.name, note: note)
             }
+
+            // 9. Release the space-change suppression after the second
+            // applyDisplayAssignments wave (+2.5s) plus a buffer for Stage Manager
+            // animation aftershocks. Tracked through scheduleProfileWork so a
+            // rapid follow-up switch cancels and re-arms it.
+            self.scheduleProfileWork(delay: 3.0) { [weak self] in
+                self?.isApplyingProfile = false
+            }
         }
     }
 
@@ -762,6 +897,10 @@ final class AppState: ObservableObject {
 
         // Cancel any pending work from a previous restore
         cancelPendingProfileWork()
+
+        // Same Stage Manager rationale as switchToProfile — block space-driven
+        // re-entry while we launch apps and reposition windows.
+        isApplyingProfile = true
 
         // Launch all apps
         SessionSnapshotService.launchProfileApps(profile)
@@ -795,6 +934,12 @@ final class AppState: ObservableObject {
         // Show sticky note if set
         if let note = profile.stickyNote, !note.isEmpty {
             stickyNoteController.show(profileName: profile.name, note: note)
+        }
+
+        // Release space-change suppression after the last applyDisplayAssignments
+        // wave (+5.0s = initialDelay 3.0 + 2.0) plus a buffer for app launch jitter.
+        scheduleProfileWork(delay: 6.0) { [weak self] in
+            self?.isApplyingProfile = false
         }
     }
 
@@ -853,6 +998,10 @@ final class AppState: ObservableObject {
     }
 
     private func handleSpaceChange() {
+        // Drop space-change events that fire during/just-after a profile switch —
+        // they're almost certainly Stage Manager's own stage transitions, not a
+        // genuine desktop change by the user.
+        guard !isApplyingProfile else { return }
         guard let spaceId = SpaceService.currentSpaceId,
               let profileId = store.profileForSpace(spaceId)
         else { return }

@@ -73,10 +73,13 @@ final class DragSnapService {
             lastDragProcessTime = now
 
             // Check if a window is being dragged
-            if detectWindowDrag() {
+            switch detectWindowDrag() {
+            case .dragging:
                 state = .dragging
                 checkZone(at: pos)
-            } else {
+            case .watching:
+                break // frame primed or window not moving yet — keep detecting
+            case .noWindow:
                 state = .idle
             }
 
@@ -110,39 +113,40 @@ final class DragSnapService {
 
     // MARK: - Window Drag Detection
 
-    private func detectWindowDrag() -> Bool {
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return false }
+    private enum DragDetection { case dragging, watching, noWindow }
+
+    private func detectWindowDrag() -> DragDetection {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return .noWindow }
         let pid = frontApp.processIdentifier
         let axApp = AXUIElementCreateApplication(pid)
 
         // Get focused window
         var focusedRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedRef) == .success,
-              let window = focusedRef
-        else { return false }
+              let window = focusedRef,
+              CFGetTypeID(window) == AXUIElementGetTypeID()
+        else { return .noWindow }
 
         let axWindow = window as! AXUIElement
         let frame = LayoutService.windowFrame(axWindow)
-        guard !frame.isEmpty else { return false }
-
-        // Check if window position changed from initial mouse down
-        // (if the window moved roughly with the cursor, user is dragging it)
-        let windowMoved = abs(frame.origin.x - initialWindowFrame.origin.x) > 2 ||
-                          abs(frame.origin.y - initialWindowFrame.origin.y) > 2
+        guard !frame.isEmpty else { return .noWindow }
 
         if initialWindowFrame.isEmpty {
-            // First check — store the frame and wait for next drag event
+            // First check — store the frame and keep watching for movement
             initialWindowFrame = frame
-            return false
+            return .watching
         }
 
+        // If the window moved roughly with the cursor, the user is dragging it
+        let windowMoved = abs(frame.origin.x - initialWindowFrame.origin.x) > 2 ||
+                          abs(frame.origin.y - initialWindowFrame.origin.y) > 2
         if windowMoved {
             draggedWindow = axWindow
             draggedPID = pid
-            return true
+            return .dragging
         }
 
-        return false
+        return .watching
     }
 
     // MARK: - Zone Detection

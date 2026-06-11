@@ -39,6 +39,7 @@
 		A10026 /* LayoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10026 /* LayoutService.swift */; };
 		A10027 /* LayoutPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10027 /* LayoutPickerView.swift */; };
 		A10028 /* UpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10028 /* UpdateService.swift */; };
+		A10095 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10095 /* Theme.swift */; };
 		B62FDCA03A63757AF4FD5FAA /* ProInterfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F1C33077834094398FDD13 /* ProInterfaces.swift */; };
 		BC2E4D65367C19EDC9B22B1D /* DragSnapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B61D2B25ADBF683674D4A6 /* DragSnapService.swift */; };
 /* End PBXBuildFile section */
@@ -75,6 +76,7 @@
 		B10026 /* LayoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutService.swift; sourceTree = "<group>"; };
 		B10027 /* LayoutPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutPickerView.swift; sourceTree = "<group>"; };
 		B10028 /* UpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateService.swift; sourceTree = "<group>"; };
+		B10095 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		B10099 /* HopTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE6E742B24C5D97FB6BF1BDE /* ProFeatureGate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProFeatureGate.swift; path = HopTab/Pro/ProFeatureGate.swift; sourceTree = SOURCE_ROOT; };
 		F0A4E841454545134FAE3339 /* SnapShortcutConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapShortcutConfig.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				B10009 /* OverlayPanel.swift */,
 				B10010 /* OverlayView.swift */,
 				B10011 /* AppIconView.swift */,
+				B10095 /* Theme.swift */,
 				B10012 /* SettingsView.swift */,
 				B10013 /* MenuBarView.swift */,
 				B10019 /* ShortcutRecorderView.swift */,
@@ -268,6 +271,7 @@
 				A10009 /* OverlayPanel.swift in Sources */,
 				A10010 /* OverlayView.swift in Sources */,
 				A10011 /* AppIconView.swift in Sources */,
+				A10095 /* Theme.swift in Sources */,
 				A10012 /* SettingsView.swift in Sources */,
 				A10013 /* MenuBarView.swift in Sources */,
 				A10015 /* ShortcutConfig.swift in Sources */,
@@ -404,9 +408,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = "";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = GP4Y23ZTR6;
 				ENABLE_APP_SANDBOX = NO;
@@ -424,7 +429,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoptab.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
@@ -445,9 +450,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = "";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = GP4Y23ZTR6;
 				ENABLE_APP_SANDBOX = NO;
@@ -465,7 +471,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.3.1;
+				MARKETING_VERSION = 1.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.hoptab.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;

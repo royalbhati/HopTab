@@ -19,13 +19,15 @@ final class SettingsWindowController {
 
         let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 580),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
-        w.title = "HopTab"
+        w.title = "HopTab Settings"
         w.contentView = hostingView
-        w.center()
+        w.contentMinSize = NSSize(width: 680, height: 480)
+        w.setFrameAutosaveName("HopTabSettings")
+        if w.frame.width < 680 { w.center() }
         w.isReleasedWhenClosed = false
         w.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -36,35 +38,35 @@ final class SettingsWindowController {
 // MARK: - Sidebar Navigation
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
-    case apps = "Apps"
-    case profiles = "Profiles"
+    case appsAndProfiles = "Apps & Profiles"
+    case switcher = "Switcher"
+    case windows = "Windows"
     case layouts = "Layouts"
-    case shortcuts = "Shortcuts"
-    case snapping = "Snapping"
-    case windowRules = "Window Rules"
-    case windowUndo = "Window Undo"
-    case screenBreaks = "Screen Breaks"
-    case displays = "Displays"
-    case pro = "Pro"
+    case automation = "Automation"
     case about = "About"
 
     var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .appsAndProfiles: return "person.2"
+        case .switcher: return "command"
+        case .windows: return "macwindow"
+        case .layouts: return "rectangle.split.3x1"
+        case .automation: return "sparkles"
+        case .about: return "info.circle"
+        }
+    }
 }
 
 // MARK: - Settings Root View
 
 private struct SettingsRootView: View {
     @EnvironmentObject private var appState: AppState
-    @State private var selection: SettingsSection = .apps
+    @State private var selection: SettingsSection = .appsAndProfiles
 
     private var sections: [SettingsSection] {
-        var result: [SettingsSection] = [.apps, .profiles, .layouts, .shortcuts, .snapping, .windowRules, .windowUndo, .screenBreaks]
-        if ProServiceRegistry.shared.isProAvailable {
-            result.append(.displays)
-        }
-        result.append(.pro)
-        result.append(.about)
-        return result
+        SettingsSection.allCases
     }
 
     var body: some View {
@@ -95,48 +97,83 @@ private struct SettingsRootView: View {
     }
 
     private func sidebarItem(_ section: SettingsSection) -> some View {
-        Button {
+        let isSelected = selection == section
+        return Button {
             selection = section
         } label: {
-            Text(section.rawValue)
-                .font(.system(size: 13))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(selection == section ? Color.primary.opacity(0.06) : Color.clear)
-                )
-                .contentShape(Rectangle())
+            HStack(spacing: 8) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 13))
+                    .frame(width: 18)
+                    .foregroundStyle(isSelected ? .white : .secondary)
+                Text(section.rawValue)
+                    .font(.system(size: 13))
+                    .foregroundStyle(isSelected ? .white : .primary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 5)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(isSelected ? Color.accentColor : Color.clear)
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder
     private var contentView: some View {
         switch selection {
-        case .apps:
-            PinnedAppsSection()
-        case .profiles:
-            ProfilesSection()
+        case .appsAndProfiles:
+            VStack(alignment: .leading, spacing: 24) {
+                PinnedAppsSection()
+                Divider()
+                ProfilesSection()
+            }
+        case .switcher:
+            ShortcutsSection()
+        case .windows:
+            VStack(alignment: .leading, spacing: 24) {
+                SnappingSection()
+                Divider()
+                WindowRulesSection()
+                Divider()
+                WindowUndoSection()
+            }
         case .layouts:
             LayoutsSection()
-        case .shortcuts:
-            ShortcutsSection()
-        case .snapping:
-            SnappingSection()
-        case .windowRules:
-            WindowRulesSection()
-        case .windowUndo:
-            WindowUndoSection()
-        case .screenBreaks:
-            ScreenBreaksSection()
-        case .displays:
-            DisplaysSection()
-        case .pro:
-            ProSection()
+        case .automation:
+            automationContent
         case .about:
-            AboutSection()
+            VStack(alignment: .leading, spacing: 24) {
+                ProSection()
+                Divider()
+                AboutSection()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var automationContent: some View {
+        if let provider = ProServiceRegistry.shared.provider {
+            // Cards separate themselves visually — no dividers needed.
+            VStack(alignment: .leading, spacing: 16) {
+                provider.automationSectionView(profiles: appState.store.profiles.map { ProProfileInfo(id: $0.id, name: $0.name) })
+                ScreenBreaksSection()
+                DisplaysSection()
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Automation")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("Pro features require HopTab Pro")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                Link("Get HopTab Pro", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
+                    .font(.system(size: 12))
+            }
         }
     }
 }
@@ -426,11 +463,6 @@ private struct ProfilesSection: View {
                     Link("Unlock unlimited", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
                         .font(.system(size: 11))
                 }
-            }
-
-            // Pro automation features
-            if let provider = ProServiceRegistry.shared.provider {
-                provider.profileSectionViews(profiles: appState.store.profiles.map { ProProfileInfo(id: $0.id, name: $0.name) })
             }
 
             Spacer()
@@ -1419,17 +1451,17 @@ private struct ProSection: View {
 
 private struct WindowUndoSection: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Window Undo")
-                .font(.system(size: 15, weight: .semibold))
-            Text("Undo any window move or resize. Full history — step back through your last 50 window operations.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-
-            if let provider = ProServiceRegistry.shared.provider,
-               let view = provider.windowUndoSectionView() {
-                view
-            } else {
+        // The Pro view is a self-titled card; only headline the locked state.
+        if let provider = ProServiceRegistry.shared.provider,
+           let view = provider.windowUndoSectionView() {
+            view
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Window Undo")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("Undo any window move or resize. Full history — step back through your last 50 window operations.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
                 proUpsell
             }
         }
@@ -1453,17 +1485,17 @@ private struct WindowUndoSection: View {
 
 private struct ScreenBreaksSection: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Screen Breaks")
-                .font(.system(size: 15, weight: .semibold))
-            Text("Workspace-aware break reminders. Shows a break screen with countdown, then restores everything when you return.")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-
-            if let provider = ProServiceRegistry.shared.provider,
-               let view = provider.screenBreaksSectionView() {
-                view
-            } else {
+        // The Pro view is a self-titled card; only headline the locked state.
+        if let provider = ProServiceRegistry.shared.provider,
+           let view = provider.screenBreaksSectionView() {
+            view
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Screen Breaks")
+                    .font(.system(size: 15, weight: .semibold))
+                Text("Workspace-aware break reminders. Shows a break screen with countdown, then restores everything when you return.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
                 proUpsell
             }
         }
@@ -1489,13 +1521,9 @@ private struct DisplaysSection: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Displays")
-                .font(.system(size: 13, weight: .semibold))
-
-            if let provider = ProServiceRegistry.shared.provider {
-                provider.displaysSectionView(profiles: appState.store.profiles.map { ProProfileInfo(id: $0.id, name: $0.name) })
-            }
+        // The Pro view is a self-titled card — no duplicate heading.
+        if let provider = ProServiceRegistry.shared.provider {
+            provider.displaysSectionView(profiles: appState.store.profiles.map { ProProfileInfo(id: $0.id, name: $0.name) })
         }
     }
 }

@@ -360,7 +360,13 @@ enum LayoutService {
         let targetFrame = snapFrame(for: resolved, in: screenFrame)
         moveWindow(axWindow, to: targetFrame)
         AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
-        running.activate()
+        // Only activate when the app isn't already frontmost. Otherwise we re-fire
+        // `didActivateApplicationNotification`, which `WindowRulesService` listens
+        // to and which re-enters `snapApp` — a ~150ms feedback loop the user sees
+        // as windows "blinking" between apps.
+        if !running.isActive {
+            running.activate()
+        }
     }
 
     // MARK: - Move Between Monitors
