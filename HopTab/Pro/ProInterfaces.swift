@@ -37,6 +37,8 @@ protocol HopTabProProvider: AnyObject {
     func stopFocusSession()
     /// nil when no session is running.
     var focusSessionRemainingMinutes: Int? { get }
+    /// End a running focus session because the user switched away from its profile. No-op if none.
+    func endFocusSessionForProfileSwitch()
 
     // v2 Pro per-feature views
     func windowUndoSectionView() -> AnyView?

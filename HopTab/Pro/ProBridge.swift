@@ -68,6 +68,13 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         module.focusSession.remainingMinutes
     }
 
+    /// A focus session is scoped to one profile; leaving that profile ends it.
+    func endFocusSessionForProfileSwitch() {
+        guard module.focusSession.isActive else { return }
+        module.focusSession.stop()
+        toastController.show(icon: "moon.zzz", message: "Focus session ended — switched profile", duration: 2)
+    }
+
     /// Record a profile switch for time tracking.
     func recordProfileSwitch(profileId: UUID, profileName: String) {
         module.recordProfileSwitch(profileId: profileId, profileName: profileName)

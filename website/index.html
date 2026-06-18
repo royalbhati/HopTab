@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HopTab — macOS Workspace Manager</title>
+  <meta name="description" content="Pin apps. Snap windows to halves, thirds, quarters. Switch profiles per desktop. Save and restore sessions. All from keyboard shortcuts." />
+  <link rel="canonical" href="https://hoptab.app/" />
+  <link rel="icon" href="/hoptab_icon.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="HopTab" />
+  <meta property="og:title" content="HopTab — macOS Workspace Manager" />
+  <meta property="og:description" content="Pin apps. Snap windows to halves, thirds, quarters. Switch profiles per desktop. Save and restore sessions. All from keyboard shortcuts." />
+  <meta property="og:url" content="https://hoptab.app/" />
+  <meta property="og:image" content="https://hoptab.app/hoptab-og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HopTab — macOS Workspace Manager" />
+  <meta name="twitter:description" content="Pin apps. Snap windows. Switch profiles per desktop. All from keyboard shortcuts. Free & open source." />
+  <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="/styles.css" />
+
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-9SCWYZ03TN');
+  </script>
+
+  <!-- Umami (privacy-friendly) — hoptab.app website stream. -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="13cd20c2-cfbe-40e7-8897-b67e68517286"></script>
+
+  <!-- Cloudflare Web Analytics (optional, free, no cookies):
+       After deploying, enable it in the Cloudflare dashboard and paste the
+       generated <script> token here. Tracking events still flow to GA4/Umami. -->
+</head>
+<body>
+  <div class="ht">
+    <header>
+      <a href="#" class="logo">
+        <img src="/hoptab_icon.png" alt="HopTab" />
+        HopTab
+      </a>
+      <div class="header-links">
+        <a href="#features">Features</a>
+        <a href="#pro">Pro</a>
+        <a href="#workflows">Workflows</a>
+        <a href="#shortcuts">Shortcuts</a>
+        <a href="#changelog">Changelog</a>
+        <a href="#install">Install</a>
+        <a href="https://discord.gg/6pSMtzBGUr" onclick="track('discord_click',{location:'header'})">Discord</a>
+        <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" onclick="track('pro_click',{location:'header'})">Get Pro</a>
+        <a href="https://github.com/royalbhati/HopTab" class="dl-btn" onclick="track('github_click',{location:'header'})">GitHub</a>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="hero">
+      <h1>The workspace manager macOS should&apos;ve shipped with.</h1>
+      <p>Pin apps. Snap windows to halves, thirds, quarters. Switch profiles per desktop. Save and restore sessions. All from keyboard shortcuts. Free tier covers everything you need &mdash; Pro adds time tracking, calendar auto-switch, and scheduling for $5 one-time.</p>
+      <div class="hero-actions">
+        <a href="https://github.com/royalbhati/HopTab/releases/latest" class="primary" onclick="track('download_click',{location:'hero'})">Download for macOS</a>
+        <a href="https://github.com/royalbhati/HopTab" class="secondary" onclick="track('github_click',{location:'hero'})">View Source</a>
+      </div>
+    </div>
+
+    <!-- Hero demo video -->
+    <div class="hero-demo">
+      <div style="position:relative;width:100%;padding-bottom:56.25%;border:2px solid #000;">
+        <iframe
+          src="https://www.youtube.com/embed/m5ZpmPWk_kM?autoplay=1&mute=1&loop=1&playlist=m5ZpmPWk_kM&controls=0&modestbranding=1&rel=0"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
+          allow="autoplay;encrypted-media"
+          allowfullscreen></iframe>
+      </div>
+      <div class="caption">Full demo — app switching, window tiling, profiles, layouts, and session management.</div>
+    </div>
+
+    <!-- Features with screenshots -->
+    <div class="section" id="features">
+      <div class="section-header">
+        <h2>Features</h2>
+      </div>
+
+      <!-- App Switching -->
+      <div class="feature-row">
+        <div class="feature-text">
+          <h3>Focused App Switching</h3>
+          <p>Pin only the apps you care about. Press Option+Tab to cycle through your pinned list &mdash; not the 20 random apps macOS shows. Release to switch, Escape to cancel.</p>
+          <p>Click to switch works too. Cmd+Q/H/M while the switcher is open to quit, hide, or minimize the highlighted app.</p>
+          <div class="shortcuts">
+            <span class="shortcut-tag"><kbd>&#8997;</kbd>+<kbd>Tab</kbd> Cycle</span>
+            <span class="shortcut-tag"><kbd>&#8679;</kbd>+<kbd>&#8997;</kbd>+<kbd>Tab</kbd> Reverse</span>
+            <span class="shortcut-tag"><kbd>Esc</kbd> Cancel</span>
+          </div>
+        </div>
+        <div class="feature-img">
+          <img src="/hoptab_pinned_apps.png" alt="Pinned apps settings" />
+          <div class="caption">Pin from running apps or browse all installed apps</div>
+        </div>
+      </div>
+
+      <!-- Window Tiling -->
+      <div class="feature-row reverse">
+        <div class="feature-text">
+          <h3>Window Tiling</h3>
+          <p>Global keyboard shortcuts snap any window to halves, thirds, quarters, or fullscreen. Works anytime &mdash; no switcher needed.</p>
+          <p>Press the same direction again to cycle sizes: &frac12; &rarr; &frac13; &rarr; &frac23;. Or use universal cycle shortcuts to step through all 15 positions with just two keys. Undo any snap instantly.</p>
+          <p><strong>Drag-to-Snap:</strong> Drag any window to a screen edge or corner to snap it. A translucent preview overlay shows the target zone. Edges snap to halves (or maximize/bottom), corners snap to quarters. Toggle on/off in Settings &rarr; Snapping.</p>
+          <div class="shortcuts">
+            <span class="shortcut-tag"><kbd>&#8963;</kbd><kbd>&#8997;</kbd>+<kbd>Arrows</kbd> Halves</span>
+            <span class="shortcut-tag"><kbd>&#8963;</kbd><kbd>&#8997;</kbd>+<kbd>UIJK</kbd> Quarters</span>
+            <span class="shortcut-tag"><kbd>&#8963;</kbd><kbd>&#8997;</kbd>+<kbd>DFG</kbd> Thirds</span>
+            <span class="shortcut-tag"><kbd>&#8963;</kbd><kbd>&#8997;</kbd>+<kbd>.</kbd> / <kbd>,</kbd> Cycle all</span>
+            <span class="shortcut-tag"><kbd>&#8963;</kbd><kbd>&#8997;</kbd>+<kbd>Z</kbd> Undo</span>
+            <span class="shortcut-tag">Drag to edge/corner</span>
+          </div>
+        </div>
+        <div class="feature-img">
+          <img src="/hoptab_window_snapping.png" alt="Window snapping settings" />
+          <div class="caption">17 snap directions + drag-to-snap, all configurable</div>
+        </div>
+      </div>
+
+      <!-- Layouts -->
+      <div class="feature-row">
+        <div class="feature-text">
+          <h3>Layout Templates</h3>
+          <p>Five built-in layouts plus a custom layout editor. Split zones, use presets, or build your own from scratch &mdash; perfect for rotated monitors and non-standard setups.</p>
+          <p>Works with stubborn apps &mdash; Chrome, Zed, Wezterm, Electron. Multi-retry positioning with dual strategies for GPU-rendered windows.</p>
+        </div>
+        <div class="feature-img">
+          <img src="/hoptab_layouts.png" alt="Layout templates" />
+          <div class="caption">Choose a template, assign apps to zones, apply</div>
+        </div>
+      </div>
+
+      <!-- Profiles -->
+      <div class="feature-row reverse">
+        <div class="feature-text">
+          <h3>Profiles</h3>
+          <p>Create profiles for different workflows &mdash; Coding, Design, Research. Each profile has its own pinned apps, layout, hotkey, and sticky note.</p>
+          <p>Assign profiles to macOS Spaces. Swipe between desktops and HopTab auto-switches the active profile. Save and restore full window sessions per profile.</p>
+          <div class="shortcuts">
+            <span class="shortcut-tag"><kbd>&#8997;</kbd>+<kbd>`</kbd> Switch profiles</span>
+            <span class="shortcut-tag">Per-profile hotkeys</span>
+            <span class="shortcut-tag">Space auto-switch</span>
+          </div>
+        </div>
+        <div class="feature-img">
+          <img src="/hoptab_profiles.png" alt="Profiles" />
+          <div class="caption">Profiles with desktop assignment and per-profile hotkeys</div>
+        </div>
+      </div>
+
+      <!-- Customization -->
+      <div class="feature-row">
+        <div class="feature-text">
+          <h3>Fully Customizable</h3>
+          <p>Every shortcut is configurable. The app switcher hotkey, profile switcher, all 17 snap directions, per-profile hotkeys &mdash; record whatever combo you want.</p>
+          <p>Want to replace macOS Cmd+Tab entirely? One-click preset. Supports Option, Control, Command, and any key. HyperKey compatible.</p>
+        </div>
+        <div class="feature-img">
+          <img src="/hoptab_shortuct_customisation.png" alt="Shortcut customization" />
+          <div class="caption">Built-in shortcut recorder for every action</div>
+        </div>
+      </div>
+
+      <!-- Window Rules -->
+      <div class="feature-row reverse">
+        <div class="feature-text">
+          <h3>Window Rules</h3>
+          <p>Set persistent rules like &ldquo;Chrome always snaps to left half on launch.&rdquo; Define it once, and every time that app opens or gets focus, it snaps to the right position automatically.</p>
+          <p>Free tier includes 2 rules. Pro unlocks unlimited.</p>
+        </div>
+        <div class="feature-img">
+          <img src="/hoptab_window_rules.png" alt="Window Rules" />
+          <div class="caption">Auto-snap windows on launch or focus</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HopTab Pro -->
+    <div class="section-full" id="pro">
+      <div style="max-width:900px;margin:0 auto;">
+        <div class="section-header">
+          <h2>HopTab Pro</h2>
+          <span class="tag">$5 One-Time</span>
+        </div>
+        <div class="section-desc">Everything above is free. Pro adds automation features that let HopTab manage your workspace without you thinking about it. One-time purchase via <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" style="color:#000;font-weight:600;" onclick="track('pro_click',{location:'pro_desc',provider:'polar'})">Polar</a> or <a href="https://github.com/sponsors/royalbhati" style="color:#666;" onclick="track('pro_click',{location:'pro_desc',provider:'github_sponsors'})">GitHub Sponsors</a>.</div>
+
+        <div style="margin:24px 0;">
+          <img src="/hoptab_pro_features.png" alt="HopTab Pro features" style="width:100%;border:2px solid #000;display:block;" />
+          <div class="caption" style="font-size:12px;color:#888;margin-top:8px;">Calendar auto-switch, time tracking, and focus mode integration</div>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card" style="background:#eef4ff;border-color:#d0e0ff;">
+            <h3>Time Tracking</h3>
+            <p>Zero-effort &mdash; tracks time per profile automatically. See exactly how long you spend coding, designing, or researching each day.</p>
+          </div>
+          <div class="feature-card" style="background:#ffeef0;border-color:#ffd0d5;">
+            <h3>Calendar Auto-Switch</h3>
+            <p>Maps calendar events to profiles. Detects Zoom/Teams/Meet links. Fullscreen meeting reminder with a one-click Join button.</p>
+          </div>
+          <div class="feature-card" style="background:#fff4e6;border-color:#ffe0b0;">
+            <h3>Time-Based Scheduling</h3>
+            <p>&ldquo;At 7 PM switch to Entertainment.&rdquo; Day-of-week filters for different weekday and weekend routines.</p>
+          </div>
+          <div class="feature-card" style="background:#f3eeff;border-color:#ddd0ff;">
+            <h3>Focus Mode Integration</h3>
+            <p>Maps macOS Focus modes to profiles. Turn on Do Not Disturb &rarr; deep work profile activates. Multiple profiles per mode.</p>
+          </div>
+          <div class="feature-card" style="background:#e6f9f5;border-color:#b0e8d8;">
+            <h3>Display Auto-Profiles</h3>
+            <p>Dock at work &rarr; work profile. Undock &rarr; laptop profile. Auto-switches when monitors connect or disconnect.</p>
+          </div>
+          <div class="feature-card" style="background:#eaffea;border-color:#c0e8c0;">
+            <h3>Unlimited Window Rules</h3>
+            <p>&ldquo;Chrome always left half on launch.&rdquo; Free tier gets 2 rules. Pro removes the limit entirely.</p>
+          </div>
+          <div class="feature-card" style="background:#fff9e6;border-color:#f0e0a0;">
+            <h3>Custom Layouts</h3>
+            <p>Build layouts with exact zone percentages. Perfect for ultrawide monitors, rotated displays, and non-standard setups.</p>
+          </div>
+          <div class="feature-card" style="background:#eee8ff;border-color:#d0c8f0;">
+            <h3>Unlimited Profiles</h3>
+            <p>Free tier includes 3 profiles. Pro removes the limit &mdash; create as many as you need.</p>
+          </div>
+          <div class="feature-card" style="background:#f5f5f5;border-color:#e0e0e0;">
+            <h3>Student / Can&apos;t Afford It?</h3>
+            <p>Email <a href="mailto:rawyelll@gmail.com" style="color:#000;font-weight:600;">rawyelll@gmail.com</a> for a free Pro key. No questions asked.</p>
+          </div>
+        </div>
+
+        <!-- Pricing comparison -->
+        <div class="pricing-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:32px;">
+          <div style="padding:28px;border:1px solid #e0e0e0;background:#fafafa;">
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:4px;">Free</h3>
+            <p style="font-size:13px;color:#555;margin-bottom:16px;">Open source &mdash; everything you need</p>
+            <ul style="list-style:none;padding:0;font-size:13px;color:#444;line-height:2.2;">
+              <li>&#10003; App switching (Option+Tab)</li>
+              <li>&#10003; Window tiling (17 snap directions)</li>
+              <li>&#10003; Drag-to-snap (edges &amp; corners)</li>
+              <li>&#10003; Snap size cycling &amp; undo</li>
+              <li>&#10003; Move between monitors</li>
+              <li>&#10003; 5 built-in layout templates</li>
+              <li>&#10003; 3 profiles with hotkeys &amp; sticky notes</li>
+              <li>&#10003; Session save/restore</li>
+              <li>&#10003; 2 window rules</li>
+              <li>&#10003; Configurable gaps</li>
+            </ul>
+          </div>
+          <div style="padding:28px;border:2px solid #000;background:#fff;">
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+              <h3 style="font-size:18px;font-weight:700;">Pro</h3>
+              <span style="font-size:22px;font-weight:700;">$5</span>
+              <span style="font-size:12px;color:#888;">one-time, lifetime</span>
+            </div>
+            <p style="font-size:13px;color:#555;margin-bottom:16px;">Everything in Free, plus automation</p>
+            <ul style="list-style:none;padding:0;font-size:13px;color:#222;line-height:2.2;font-weight:500;">
+              <li>&#10003; Time tracking</li>
+              <li>&#10003; Calendar auto-switch</li>
+              <li>&#10003; Time-based scheduling</li>
+              <li>&#10003; Focus mode integration</li>
+              <li>&#10003; Display auto-profiles</li>
+              <li>&#10003; Unlimited window rules</li>
+              <li>&#10003; Custom layouts (exact %)</li>
+              <li>&#10003; Unlimited profiles</li>
+            </ul>
+            <div style="margin-top:16px;display:flex;gap:12px;align-items:center;">
+              <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" onclick="track('pro_click',{location:'pro_section',provider:'polar'})" style="padding:10px 28px;background:#000;color:#fff;text-decoration:none;font-weight:600;font-size:13px;border:2px solid #000;">Get HopTab Pro</a>
+              <a href="https://github.com/sponsors/royalbhati" onclick="track('pro_click',{location:'pro_section',provider:'github_sponsors'})" style="font-size:12px;color:#888;text-decoration:none;">or GitHub Sponsors</a>
+            </div>
+            <p style="font-size:12px;color:#888;margin-top:14px;">Student / can&apos;t afford it? Email <a href="mailto:rawyelll@gmail.com" style="color:#555;font-weight:600;">rawyelll@gmail.com</a> for a free Pro key. No questions asked.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workflows — tabbed (rendered by app.js) -->
+    <div class="section" id="workflows">
+      <div class="section-header">
+        <h2>Workflows</h2>
+        <span class="tag">Use Cases</span>
+      </div>
+      <div class="section-desc">Click a workflow to see how HopTab features chain together in real scenarios.</div>
+
+      <div id="wf-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;"></div>
+      <div id="wf-detail"></div>
+      <div id="wf-pro-note" style="margin-top:12px;font-size:12px;color:#4a90d9;"></div>
+    </div>
+
+    <!-- More features grid -->
+    <div class="section-full">
+      <div style="max-width:900px;margin:0 auto;">
+        <div class="section-header">
+          <h2>And More</h2>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <h3>Space-Aware Window Picker</h3>
+            <p>Multi-window apps show a picker filtered to your current Space. No more getting yanked to another desktop when picking a Safari window.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Move Between Monitors</h3>
+            <p>Throw windows to the next display with Ctrl+Opt+Cmd+Arrow. Proportional placement across screen sizes.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Display-Aware Sessions</h3>
+            <p>Saves window positions per display configuration. Dock your laptop &mdash; get your external monitor layout. Undock &mdash; get your laptop layout. Automatic.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Undo Snap</h3>
+            <p>Every snap saves the previous position. Ctrl+Opt+Z restores it. Mistake-proof window management.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Auto-Unminimize</h3>
+            <p>Minimized apps are automatically restored when activated through HopTab. No fishing in the Dock.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Configurable Gaps</h3>
+            <p>0&ndash;20pt gaps between snapped windows and screen edges. Shared borders get half-gaps automatically.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Auto-Updates</h3>
+            <p>Checks every 4 hours. Shows a banner in the menu bar when a new version is available.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Sticky Notes</h3>
+            <p>Attach a note to each profile. Shown briefly when switching &mdash; remind yourself what each workspace is for.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Menu Bar Native</h3>
+            <p>Lives in the menu bar. No Dock icon. Settings, profiles, and status all accessible from the dropdown.</p>
+          </div>
+          <div class="feature-card">
+            <h3>Drag-to-Snap</h3>
+            <p>Drag any window to a screen edge or corner. Translucent preview overlay shows the target zone. Edges for halves, corners for quarters, top for maximize. Toggle in Settings.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shortcuts -->
+    <div class="section" id="shortcuts">
+      <div class="section-header">
+        <h2>Keyboard Shortcuts</h2>
+        <span class="tag">Default Bindings</span>
+      </div>
+      <div class="section-desc">All shortcuts are configurable in Settings &rarr; Windows tab.</div>
+
+      <table class="shortcuts-table">
+        <thead>
+          <tr><th>Action</th><th>Shortcut</th></tr>
+        </thead>
+        <tbody>
+          <tr class="group-header"><td colspan="2">App Switcher</td></tr>
+          <tr><td>Open &amp; cycle forward</td><td><kbd>&#8997;</kbd> + <kbd>Tab</kbd></td></tr>
+          <tr><td>Cycle backward</td><td><kbd>&#8679;</kbd> + <kbd>&#8997;</kbd> + <kbd>Tab</kbd></td></tr>
+          <tr><td>Activate selected</td><td>Release <kbd>&#8997;</kbd></td></tr>
+          <tr><td>Cancel</td><td><kbd>Esc</kbd></td></tr>
+
+          <tr class="group-header"><td colspan="2">While Switcher Open</td></tr>
+          <tr><td>Snap left / right / top / bottom</td><td><kbd>&#8592;</kbd> <kbd>&#8594;</kbd> <kbd>&#8593;</kbd> <kbd>&#8595;</kbd></td></tr>
+          <tr><td>Quit / Hide / Minimize</td><td><kbd>&#8984;</kbd>+<kbd>Q</kbd> / <kbd>&#8984;</kbd>+<kbd>H</kbd> / <kbd>&#8984;</kbd>+<kbd>M</kbd></td></tr>
+
+          <tr class="group-header"><td colspan="2">Global Window Tiling</td></tr>
+          <tr><td>Halves (left / right / top / bottom)</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>&#8592;</kbd><kbd>&#8594;</kbd><kbd>&#8593;</kbd><kbd>&#8595;</kbd></td></tr>
+          <tr><td>Quarters (TL / TR / BL / BR)</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>U</kbd><kbd>I</kbd><kbd>J</kbd><kbd>K</kbd></td></tr>
+          <tr><td>Thirds (first / center / last)</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>D</kbd><kbd>F</kbd><kbd>G</kbd></td></tr>
+          <tr><td>Two-thirds (first / last)</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>E</kbd><kbd>T</kbd></td></tr>
+          <tr><td>Maximize / Center</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>&#9166;</kbd> / <kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>C</kbd></td></tr>
+          <tr><td>Undo snap</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>Z</kbd></td></tr>
+          <tr><td>Cycle next / previous position</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>.</kbd> / <kbd>,</kbd></td></tr>
+
+          <tr class="group-header"><td colspan="2">Drag-to-Snap</td></tr>
+          <tr><td>Snap to left / right half</td><td>Drag to left / right edge</td></tr>
+          <tr><td>Maximize</td><td>Drag to top edge</td></tr>
+          <tr><td>Bottom half</td><td>Drag to bottom edge</td></tr>
+          <tr><td>Quarter snap</td><td>Drag to any corner</td></tr>
+
+          <tr class="group-header"><td colspan="2">Monitors</td></tr>
+          <tr><td>Next / Previous monitor</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd><kbd>&#8984;</kbd> + <kbd>&#8594;</kbd> / <kbd>&#8592;</kbd></td></tr>
+
+          <tr class="group-header"><td colspan="2">Profiles</td></tr>
+          <tr><td>Switch profile</td><td><kbd>&#8997;</kbd> + <kbd>`</kbd></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Changelog -->
+    <div class="section" id="changelog">
+      <div class="section-header">
+        <h2>Changelog</h2>
+      </div>
+
+      <div class="changelog-entry">
+        <div class="changelog-version">
+          <h3>v1.2.0</h3>
+          <span class="date">Upcoming</span>
+        </div>
+        <ul class="changelog-list">
+          <li class="feat"><span class="changelog-label feat">New</span> Drag-to-snap &mdash; drag any window to a screen edge or corner to snap it with a translucent preview overlay</li>
+          <li class="feat"><span class="changelog-label feat">New</span> HopTab Pro tier &mdash; $5 one-time via Polar or GitHub Sponsors</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Time tracking &mdash; automatic per-profile time tracking with zero effort</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Calendar auto-switch &mdash; maps calendar events to profiles, detects Zoom/Teams/Meet links, fullscreen meeting reminder with Join button</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Time-based scheduling &mdash; schedule profile switches by time of day with day-of-week filters</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Focus mode integration &mdash; maps macOS Focus modes to profiles, supports multiple profiles per mode</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Display auto-profiles &mdash; auto-switch profiles when monitors connect or disconnect</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Window rules &mdash; define per-app snap rules on launch (2 free, unlimited with Pro)</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Custom layouts with exact percentages (Pro)</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Unlimited profiles (Pro, free tier gets 3)</li>
+        </ul>
+      </div>
+
+      <div class="changelog-entry">
+        <div class="changelog-version">
+          <h3>v1.1.0</h3>
+          <span class="date">March 2026</span>
+        </div>
+        <ul class="changelog-list">
+          <li class="feat"><span class="changelog-label feat">New</span> Space-aware window picker &mdash; only shows windows on your current Space, no more getting thrown to another desktop</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Universal snap cycle shortcuts &mdash; <kbd>&#8963;</kbd><kbd>&#8997;</kbd>+<kbd>.</kbd> and <kbd>,</kbd> cycle through all 15 snap positions with smart position detection</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Custom layout editor &mdash; split zones, use presets, build layouts for rotated monitors and non-standard setups</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Display-aware session snapshots &mdash; separate window positions for laptop-only vs external monitor setups, auto-restores the right one</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Cmd+Tab preset &mdash; one-click option to replace the macOS app switcher entirely</li>
+          <li class="fix"><span class="changelog-label fix">Fix</span> Assign app dropdown now works on macOS Sequoia</li>
+          <li class="fix"><span class="changelog-label fix">Fix</span> Window picker uses stable window IDs instead of fragile array indices</li>
+        </ul>
+      </div>
+
+      <div class="changelog-entry">
+        <div class="changelog-version">
+          <h3>v1.0.1</h3>
+          <span class="date">March 2026</span>
+        </div>
+        <ul class="changelog-list">
+          <li class="feat"><span class="changelog-label feat">New</span> Window tiling with global snap shortcuts</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Global snap shortcuts for halves, thirds, quarters</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Settings window fixes and improvements</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Install -->
+    <div class="section" id="install">
+      <div class="section-header">
+        <h2>Install</h2>
+      </div>
+
+      <div class="install-box">
+        <button class="copy-btn" id="copy-btn">Copy</button>
+        <span class="comment"># Download latest release, unzip to Applications, clear quarantine</span><br />
+        <span class="cmd">curl -sL "$(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/latest | grep -o '"browser_download_url": *"[^"]*"' | head -1 | cut -d '"' -f 4)" -o /tmp/HopTab.zip && unzip -o /tmp/HopTab.zip -d /Applications && xattr -c /Applications/HopTab.app</span>
+      </div>
+
+      <div class="steps">
+        <div class="step-item">
+          <div class="step-num">01</div>
+          <strong>Run the command</strong>
+          <p>Or download from <a href="https://github.com/royalbhati/HopTab/releases/latest" onclick="track('download_click',{location:'install'})" style="color:#000;font-weight:600;">GitHub Releases</a></p>
+        </div>
+        <div class="step-item">
+          <div class="step-num">02</div>
+          <strong>Grant Accessibility</strong>
+          <p>System Settings &rarr; Privacy &rarr; Accessibility &rarr; enable HopTab</p>
+        </div>
+        <div class="step-item">
+          <div class="step-num">03</div>
+          <strong>Press Option+Tab</strong>
+          <p>Pin some apps, set up profiles, start tiling</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requirements -->
+    <div class="section">
+      <div class="section-header">
+        <h2>Requirements</h2>
+      </div>
+      <div style="display:flex;gap:32px;font-size:13px;color:#555;flex-wrap:wrap;">
+        <div><strong style="color:#000;">macOS</strong> 14.0+</div>
+        <div><strong style="color:#000;">Accessibility</strong> permission required</div>
+        <div><strong style="color:#000;">Architecture</strong> Universal (Apple Silicon + Intel)</div>
+        <div><strong style="color:#000;">Price</strong> Free &amp; open source. Pro: $5 one-time</div>
+      </div>
+    </div>
+
+    <footer>
+      <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
+      <div style="display:flex;gap:16px;">
+        <a href="https://discord.gg/6pSMtzBGUr" onclick="track('discord_click',{location:'footer'})">Discord</a>
+        <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'footer'})">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

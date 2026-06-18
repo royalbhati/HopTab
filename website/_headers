@@ -1,0 +1,12 @@
+# Cloudflare Pages headers
+# Long-cache static assets; keep HTML fresh.
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+/*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+/styles.css
+  Cache-Control: public, max-age=86400
+/app.js
+  Cache-Control: public, max-age=86400
+/
+  Cache-Control: public, max-age=0, must-revalidate

@@ -843,6 +843,9 @@ final class AppState: ObservableObject {
                 provider.recordProfileSwitch(profileId: id, profileName: incoming.name)
             }
 
+            // 4c. A focus session is scoped to the outgoing profile — end it (Pro).
+            ProServiceRegistry.shared.provider?.endFocusSessionForProfileSwitch()
+
             // 5. Unhide incoming apps
             SessionSnapshotService.unhideProfileApps(incoming)
 
