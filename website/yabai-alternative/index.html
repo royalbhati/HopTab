@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A yabai Alternative for Mac — No SIP, No Config Files (2026) — HopTab</title>
+  <meta name="description" content="yabai is powerful but needs SIP disabled and shell config. HopTab is the alternative if you want keyboard window management, snapping, and workspace profiles on macOS without disabling System Integrity Protection." />
+  <link rel="canonical" href="https://hoptab.app/yabai-alternative/" />
+  <link rel="icon" href="/hoptab_icon.png" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="HopTab" />
+  <meta property="og:title" content="A yabai Alternative for Mac — No SIP, No Config Files" />
+  <meta property="og:description" content="Keyboard window management and workspace profiles without disabling System Integrity Protection." />
+  <meta property="og:url" content="https://hoptab.app/yabai-alternative/" />
+  <meta property="og:image" content="https://hoptab.app/hoptab-og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="A yabai Alternative for Mac (No SIP)" />
+  <meta name="twitter:description" content="Keyboard window management and workspace profiles without disabling SIP." />
+  <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="/styles.css?v=20260619" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "headline": "A yabai Alternative for Mac — No SIP, No Config Files",
+        "description": "yabai is powerful but needs SIP disabled and shell config. HopTab is the alternative if you want keyboard window management, snapping, and workspace profiles without disabling System Integrity Protection.",
+        "datePublished": "2026-06-19",
+        "dateModified": "2026-06-19",
+        "author": { "@type": "Person", "name": "Royal Bhati", "url": "https://royalbhati.com" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "HopTab",
+          "logo": { "@type": "ImageObject", "url": "https://hoptab.app/hoptab_icon.png" }
+        },
+        "mainEntityOfPage": { "@type": "WebPage", "@id": "https://hoptab.app/yabai-alternative/" },
+        "image": "https://hoptab.app/hoptab-og.png"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://hoptab.app/" },
+          { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://hoptab.app/guides/" },
+          { "@type": "ListItem", "position": 3, "name": "yabai alternative", "item": "https://hoptab.app/yabai-alternative/" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Does HopTab require disabling SIP like yabai?", "acceptedAnswer": { "@type": "Answer", "text": "No. HopTab works entirely through the standard macOS Accessibility permission and never asks you to disable System Integrity Protection. yabai needs SIP partially disabled for its scripting addition and its more advanced features." } },
+          { "@type": "Question", "name": "Is HopTab a tiling window manager?", "acceptedAnswer": { "@type": "Answer", "text": "Not an automatic one. yabai auto-tiles every window with a BSP layout. HopTab snaps windows on demand with keyboard shortcuts or drag-to-snap, plus layout templates and saved sessions. It's manual control rather than fully automatic tiling." } },
+          { "@type": "Question", "name": "Do I need to edit config files to use HopTab?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything is configured in a GUI settings window — shortcuts, profiles, layouts, and rules. yabai is configured through a shell config file and usually skhd for keybindings." } }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-9SCWYZ03TN');
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="13cd20c2-cfbe-40e7-8897-b67e68517286"></script>
+</head>
+<body>
+  <div class="ht">
+    <header>
+      <a href="/" class="logo">
+        <img src="/hoptab_icon.png" alt="HopTab" />
+        HopTab
+      </a>
+      <div class="header-links">
+        <a href="/#features">Features</a>
+        <a href="/#pro">Pro</a>
+        <a href="/guides/">Guides</a>
+        <a href="/#install">Install</a>
+        <a href="https://github.com/royalbhati/HopTab" class="dl-btn" onclick="track('github_click',{location:'guide_header'})">GitHub</a>
+      </div>
+    </header>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span>&rsaquo;</span><a href="/guides/">Guides</a><span>&rsaquo;</span>yabai alternative
+    </nav>
+
+    <article class="guide">
+      <div class="eyebrow">Comparison</div>
+      <h1>A yabai alternative with no SIP and no config files</h1>
+      <p class="lede">yabai is the most powerful window manager on macOS &mdash; and the most demanding. If the dealbreaker is disabling System Integrity Protection or living in a shell config, HopTab gives you fast keyboard window management, snapping, and workspace profiles through a normal GUI app.</p>
+      <div class="meta">Updated June 2026 &middot; 6 min read</div>
+
+      <div class="prose">
+        <div class="tldr">
+          <div class="eyebrow">The short version</div>
+          <p><strong>Keep yabai</strong> if you want true automatic BSP tiling and you&apos;re comfortable disabling SIP and scripting your setup. <strong>Choose HopTab</strong> if you want most of the day-to-day speed &mdash; keyboard snapping, an app switcher, profiles, saved layouts &mdash; without touching SIP or editing a config file. Both are free and open source.</p>
+        </div>
+
+        <h2>What yabai is great at</h2>
+        <p><a href="https://github.com/koekeishiya/yabai">yabai</a> is a free, open-source <em>tiling</em> window manager. Windows arrange themselves automatically in a binary space-partitioning layout, and you drive everything from the keyboard &mdash; typically paired with <a href="https://github.com/koekeishiya/skhd">skhd</a> for hotkeys. For people who want a Linux-style tiling WM on a Mac and enjoy configuring it, nothing else comes close.</p>
+        <p>The cost of that power: yabai&apos;s scripting addition and its more advanced features require <strong>partially disabling System Integrity Protection</strong>, and the whole thing is configured through a shell config file. That&apos;s fine if you love it and a non-starter if you don&apos;t.</p>
+
+        <h2>Where HopTab is different</h2>
+        <p>HopTab isn&apos;t trying to be a tiling WM. It&apos;s a GUI window manager that gives you precise control on demand:</p>
+        <ul>
+          <li><strong>No SIP changes.</strong> It runs on the standard Accessibility permission, like Rectangle or Magnet.</li>
+          <li><strong>No config files.</strong> Shortcuts, profiles, layouts, and rules are all set in a settings window.</li>
+          <li><strong>Snapping, not auto-tiling.</strong> Snap any window to one of 17 positions with a shortcut, or drag-to-snap to an edge/corner &mdash; you decide when, instead of every window being placed for you.</li>
+          <li><strong>Layout templates &amp; sessions.</strong> Apply a saved layout to a set of apps, or save and restore an entire window arrangement.</li>
+          <li><strong>App switcher &amp; profiles.</strong> Cycle only your pinned apps with <code>Option+Tab</code>, and switch whole workspaces (apps + layout + hotkey) at once.</li>
+        </ul>
+
+        <h2>yabai vs HopTab</h2>
+        <div class="cmp-wrap">
+          <table class="cmp">
+            <thead>
+              <tr>
+                <th>&nbsp;</th>
+                <th>yabai</th>
+                <th class="hoptab-col">HopTab</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Price</th><td>Free</td><td class="hoptab-col">Free (Pro $5)</td></tr>
+              <tr><th scope="row">Open source</th><td class="yes">Yes</td><td class="hoptab-col yes">Yes</td></tr>
+              <tr><th scope="row">Works without disabling SIP</th><td class="no">Limited</td><td class="hoptab-col yes">Yes</td></tr>
+              <tr><th scope="row">GUI setup (no config file)</th><td class="no">&mdash;</td><td class="hoptab-col yes">Yes</td></tr>
+              <tr><th scope="row">Automatic BSP tiling</th><td class="yes">Yes</td><td class="no">&mdash;</td></tr>
+              <tr><th scope="row">On-demand snapping &amp; drag-to-snap</th><td class="yes">Yes</td><td class="hoptab-col yes">Yes</td></tr>
+              <tr><th scope="row">Layout templates / saved sessions</th><td class="yes">Scripted</td><td class="hoptab-col yes">Built-in</td></tr>
+              <tr><th scope="row">Focused app switcher</th><td class="no">&mdash;</td><td class="hoptab-col yes">Yes</td></tr>
+              <tr><th scope="row">Workspace profiles</th><td class="no">Scripted</td><td class="hoptab-col yes">Built-in</td></tr>
+              <tr><th scope="row">Learning curve</th><td>Steep</td><td class="hoptab-col">Minimal</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="figcap">yabai can do almost anything if you script it; HopTab does the common things out of the box without scripting or SIP changes.</p>
+
+        <div class="callout">
+          <strong>Being fair about it</strong>
+          If automatic tiling is the whole reason you want yabai, HopTab won&apos;t replace it &mdash; HopTab snaps on demand rather than tiling everything automatically. The switch makes sense when what you actually want is fast manual control without the SIP and config overhead.
+        </div>
+
+        <div class="cta-box">
+          <h3>Window management without the setup</h3>
+          <p>Keyboard snapping, an app switcher, and workspace profiles &mdash; no SIP changes, no config files. Free and open source, macOS 14+.</p>
+          <div class="cta-actions">
+            <a href="https://github.com/royalbhati/HopTab/releases/latest" class="primary" onclick="track('download_click',{location:'yabai_alt_cta'})">Download for macOS</a>
+            <a href="/" class="ghost">See all features</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <div class="faq-item">
+          <h3>Does HopTab require disabling SIP like yabai?</h3>
+          <p>No. HopTab works entirely through the standard macOS Accessibility permission and never asks you to disable System Integrity Protection. yabai needs SIP partially disabled for its scripting addition and its more advanced features.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Is HopTab a tiling window manager?</h3>
+          <p>Not an automatic one. yabai auto-tiles every window with a BSP layout. HopTab snaps windows on demand with keyboard shortcuts or drag-to-snap, plus layout templates and saved sessions &mdash; manual control rather than fully automatic tiling.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Do I need to edit config files to use HopTab?</h3>
+          <p>No. Everything is configured in a GUI settings window &mdash; shortcuts, profiles, layouts, and rules. yabai is configured through a shell config file and usually skhd for keybindings.</p>
+        </div>
+
+        <h2>Related guides</h2>
+        <div class="related-grid">
+          <a class="related-card" href="/best-window-manager-mac/">
+            <div class="eyebrow">Guide</div>
+            <h3>Best window manager for Mac</h3>
+            <p>Rectangle, Magnet, Moom, Loop, yabai and HopTab.</p>
+          </a>
+          <a class="related-card" href="/rectangle-alternative/">
+            <div class="eyebrow">Comparison</div>
+            <h3>HopTab vs Rectangle</h3>
+            <p>The two free, open-source GUI options.</p>
+          </a>
+          <a class="related-card" href="/how-to-snap-windows-on-mac/">
+            <div class="eyebrow">How-to</div>
+            <h3>How to snap windows on Mac</h3>
+            <p>Tile to halves, thirds, and quarters fast.</p>
+          </a>
+          <a class="related-card" href="/mac-window-management-shortcuts/">
+            <div class="eyebrow">Reference</div>
+            <h3>Window shortcuts cheat sheet</h3>
+            <p>Built-in macOS and HopTab shortcuts in one place.</p>
+          </a>
+        </div>
+      </div>
+    </article>
+
+    <footer>
+      <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
+      <div style="display:flex;gap:16px;">
+        <a href="/">Home</a>
+        <a href="/guides/">Guides</a>
+        <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'guide_footer'})">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

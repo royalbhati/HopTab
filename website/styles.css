@@ -1,11 +1,31 @@
-html, body { background: #fff; }
+:root {
+  /* Tinted neutrals — lean a hair toward the brand blue so black-on-white
+     reads warm-cool intentional rather than flat. */
+  --ink:       oklch(0.20 0.012 255);
+  --ink-soft:  oklch(0.34 0.012 255);
+  --paper:     oklch(0.99 0.003 255);
+  --paper-2:   oklch(0.975 0.004 255);
+  --line:      oklch(0.90 0.005 255);
+  --muted:     oklch(0.55 0.008 255);
+  --muted-2:   oklch(0.66 0.006 255);
+  --accent:    oklch(0.62 0.13 250);   /* the blue, links + Pro */
+
+  /* Category wayfinding hues — one per capability area. */
+  --c-window:  oklch(0.62 0.13 250);   /* window management — blue   */
+  --c-space:   oklch(0.55 0.16 290);   /* workspaces & profiles — violet */
+  --c-auto:    oklch(0.70 0.15  70);   /* automation — amber */
+  --c-focus:   oklch(0.62 0.12 165);   /* focus & wellbeing — teal */
+  --c-look:    oklch(0.65 0.17 350);   /* look & feel — magenta */
+}
+
+html, body { background: var(--paper); }
 
 .ht * { margin: 0; padding: 0; box-sizing: border-box; }
 
 .ht {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-  background: #fff;
-  color: #000;
+  background: var(--paper);
+  color: var(--ink);
   line-height: 1.6;
   min-height: 100vh;
 }
@@ -521,6 +541,325 @@ html, body { background: #fff; }
 
 .ht footer a { color: #000; text-decoration: none; font-weight: 600; }
 
+/* ============================================================
+   Guides / SEO article pages
+   ============================================================ */
+
+.ht .breadcrumb {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 32px 0;
+  font-size: 12px;
+  color: #999;
+}
+.ht .breadcrumb a { color: #999; text-decoration: none; }
+.ht .breadcrumb a:hover { color: #000; text-decoration: underline; }
+.ht .breadcrumb span { margin: 0 6px; }
+
+.ht .guide {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 32px 40px;
+}
+
+.ht .guide .eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin: 24px 0 12px;
+}
+
+.ht .guide h1 {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  margin-bottom: 16px;
+}
+
+.ht .guide .lede {
+  font-size: 17px;
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.ht .guide .meta {
+  font-size: 12px;
+  color: #999;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #000;
+}
+
+/* Prose */
+.ht .prose h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin: 44px 0 12px;
+}
+
+.ht .prose h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 28px 0 8px;
+}
+
+.ht .prose p {
+  font-size: 15px;
+  color: #333;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.ht .prose ul, .ht .prose ol {
+  margin: 0 0 16px;
+  padding-left: 22px;
+}
+
+.ht .prose li {
+  font-size: 15px;
+  color: #333;
+  line-height: 1.7;
+  margin-bottom: 6px;
+}
+
+.ht .prose a {
+  color: #000;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ht .prose a:hover { color: #4a90d9; }
+
+.ht .prose strong { font-weight: 700; color: #000; }
+
+.ht .prose img {
+  width: 100%;
+  border: 2px solid #000;
+  display: block;
+  margin: 24px 0 8px;
+}
+
+.ht .prose .figcap {
+  font-size: 12px;
+  color: #999;
+  margin: -4px 0 24px;
+}
+
+.ht .prose code {
+  font-family: 'SF Mono', monospace;
+  font-size: 13px;
+  background: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* TL;DR / key-takeaway box */
+.ht .tldr {
+  border: 2px solid #000;
+  padding: 20px 24px;
+  margin: 8px 0 24px;
+}
+.ht .tldr .eyebrow { margin: 0 0 8px; }
+.ht .tldr p { font-size: 14px; color: #222; line-height: 1.65; margin: 0; }
+.ht .tldr p + p { margin-top: 8px; }
+
+/* Callout */
+.ht .callout {
+  border: 2px solid #000;
+  background: #fafafa;
+  padding: 16px 20px;
+  margin: 24px 0;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.6;
+}
+.ht .callout strong { display: block; margin-bottom: 4px; }
+
+/* Comparison table */
+.ht .cmp-wrap { overflow-x: auto; margin: 16px 0 24px; }
+
+.ht .cmp {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 520px;
+}
+
+.ht .cmp th, .ht .cmp td {
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ht .cmp thead th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #000;
+  background: #fff;
+}
+
+.ht .cmp th[scope="row"] { font-weight: 600; color: #000; }
+.ht .cmp .yes { color: #000; font-weight: 700; }
+.ht .cmp .no { color: #ccc; }
+.ht .cmp .hoptab-col { background: #f5f9ff; }
+.ht .cmp thead .hoptab-col { background: #eef4ff; }
+
+/* CTA box */
+.ht .cta-box {
+  border: 2px solid #000;
+  background: #000;
+  color: #fff;
+  padding: 32px 28px;
+  margin: 44px 0;
+  text-align: center;
+}
+.ht .cta-box h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #fff; letter-spacing: -0.3px; }
+.ht .cta-box p { font-size: 14px; color: #bbb; margin-bottom: 20px; max-width: 480px; margin-left: auto; margin-right: auto; }
+.ht .cta-box .cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.ht .cta-box .cta-actions a {
+  display: inline-block;
+  padding: 12px 26px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 2px solid #fff;
+}
+.ht .cta-box .cta-actions a.primary { background: #fff; color: #000; }
+.ht .cta-box .cta-actions a.primary:hover { background: #ddd; }
+.ht .cta-box .cta-actions a.ghost { background: transparent; color: #fff; }
+.ht .cta-box .cta-actions a.ghost:hover { background: #222; }
+
+/* FAQ */
+.ht .faq-item { border-bottom: 1px solid #e0e0e0; padding: 20px 0; }
+.ht .faq-item:last-child { border-bottom: none; }
+.ht .faq-item h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.ht .faq-item p { font-size: 14px; color: #444; line-height: 1.65; margin-bottom: 0; }
+
+/* Related guides */
+.ht .related-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+}
+.ht .related-card {
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  text-decoration: none;
+  display: block;
+}
+.ht .related-card:hover { background: #fafafa; }
+.ht .related-card .eyebrow { font-size: 10px; margin: 0 0 6px; color: #999; }
+.ht .related-card h3 { font-size: 15px; font-weight: 700; color: #000; margin-bottom: 4px; }
+.ht .related-card p { font-size: 13px; color: #666; line-height: 1.5; margin: 0; }
+
+/* Guides hub cards */
+.ht .hub-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  margin-top: 8px;
+}
+.ht .hub-card {
+  padding: 28px 24px;
+  border: 1px solid #e0e0e0;
+  text-decoration: none;
+  display: block;
+}
+.ht .hub-card:hover { background: #fafafa; }
+.ht .hub-card .eyebrow { font-size: 10px; margin: 0 0 8px; color: #999; }
+.ht .hub-card h2 { font-size: 18px; font-weight: 700; color: #000; margin-bottom: 6px; letter-spacing: -0.3px; text-transform: none; }
+.ht .hub-card p { font-size: 13px; color: #666; line-height: 1.55; margin: 0; }
+
+/* ============================================================
+   Capability overview — the breadth map (5 category columns)
+   ============================================================ */
+.ht .caps-inner { max-width: 900px; margin: 0 auto; }
+
+.ht .cap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.ht .cap-card {
+  padding: 22px 22px 24px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transition: background 0.15s ease;
+}
+.ht .cap-card:hover {
+  background: color-mix(in oklch, var(--cat, var(--accent)) 7%, var(--paper));
+}
+
+.ht .cap-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--cat, var(--ink));
+  margin-bottom: 14px;
+}
+.ht .cap-label .dot { width: 9px; height: 9px; background: var(--cat, var(--ink)); flex: none; }
+
+.ht .cap-card ul { list-style: none; padding: 0; }
+.ht .cap-card li {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  padding: 5px 0 5px 16px;
+  position: relative;
+}
+.ht .cap-card li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 5px;
+  height: 5px;
+  background: var(--cat, var(--muted));
+  opacity: 0.55;
+}
+.ht .cap-card li b { font-weight: 700; color: var(--ink); }
+
+/* PRO / NEW inline tags */
+.ht .t-pro, .ht .t-new {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: 1px;
+  margin-left: 5px;
+  white-space: nowrap;
+}
+.ht .t-pro { color: var(--accent); border: 1px solid color-mix(in oklch, var(--accent) 35%, var(--paper)); }
+.ht .t-new { color: var(--paper); background: var(--c-focus); }
+
+/* Pro highlight strip — 3 Pro-only category cards */
+.ht .pro-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0;
+  margin: 24px 0 8px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+.ht .pro-strip .cap-card { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
 /* Responsive */
 @media (max-width: 700px) {
   .ht header { padding: 12px 16px; }
@@ -538,4 +877,9 @@ html, body { background: #fff; }
   .ht .steps { flex-direction: column; }
   .ht footer { flex-direction: column; gap: 8px; }
   .ht .pricing-grid { grid-template-columns: 1fr !important; }
+  .ht .guide { padding: 8px 16px 40px; }
+  .ht .breadcrumb { padding: 20px 16px 0; }
+  .ht .guide h1 { font-size: 27px; }
+  .ht .guide .lede { font-size: 16px; }
+  .ht .related-grid, .ht .hub-grid { grid-template-columns: 1fr; }
 }

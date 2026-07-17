@@ -69,6 +69,36 @@ var workflows = [
       { title: "Unplug at 6 PM", desc: "“Laptop” profile takes over" },
       { title: "7 PM — schedule triggers", desc: "Entertainment profile activates automatically" }
     ]
+  },
+  {
+    title: "Focus Sprint on a Task", role: "Pro", pro: true,
+    desc: "“Write the Q3 doc” is blocked on your calendar at 2 PM. You open the event in HopTab and hit the timer. A 25-minute focus interval starts; when it ends, a full-screen break nudges you to look away, then the next interval begins. Every minute you focus logs straight back to that event, so by Friday you know the doc actually cost you 3h 10m.",
+    steps: [
+      { title: "Open the event", desc: "Hit the timer to start a Pomodoro tied to it" },
+      { title: "25 / 5 cycle runs", desc: "Work, then a break overlay; long break every 4th" },
+      { title: "Step away, or skip", desc: "The break never fires during a live meeting" },
+      { title: "Time maps to the event", desc: "Per-event totals show up in Time Tracking" }
+    ]
+  },
+  {
+    title: "Tiling on Autopilot", role: "Pro", pro: true,
+    desc: "You don’t want to place windows at all. Turn on automatic tiling and every window you open slots into a binary layout. A focus border tracks the active window while the rest dim a touch, so your eye always knows where it is. Pick a rice preset and the whole workspace takes on the gaps, borders, and feel you like.",
+    steps: [
+      { title: "Enable BSP tiling", desc: "Windows auto-arrange, yabai-style, no config file" },
+      { title: "Open anything", desc: "New windows split into the tree automatically" },
+      { title: "Focus border + dimming", desc: "Active window outlined, the rest recede" },
+      { title: "Apply a rice preset", desc: "Per-profile gaps, borders, and feel" }
+    ]
+  },
+  {
+    title: "Healthy Long-Haul Day", role: "Pro", pro: true,
+    desc: "You’re heads-down for eight hours. HopTab tracks time per profile so you can see the split later. Set a 30-minute daily budget on the apps that eat your day, and a quiet nudge appears the moment you pass it. Every work interval, a break overlay tells you to look away. Windows you abandoned an hour ago get auto-minimized so the screen stays calm.",
+    steps: [
+      { title: "Time tracking runs", desc: "Per-profile hours, zero effort" },
+      { title: "App budget hit", desc: "Quiet nudge when you pass a daily limit" },
+      { title: "Break reminder", desc: "Look-away overlay every work interval" },
+      { title: "Auto-declutter", desc: "Stale windows minimize themselves" }
+    ]
   }
 ];
 

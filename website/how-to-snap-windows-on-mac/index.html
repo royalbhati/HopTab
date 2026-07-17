@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Snap Windows on Mac (Built-In + Faster Keyboard Way) — 2026</title>
+  <meta name="description" content="How to snap and tile windows on a Mac — the built-in drag-to-edge and Window menu methods, plus global keyboard shortcuts for halves, thirds, and quarters with a free app." />
+  <link rel="canonical" href="https://hoptab.app/how-to-snap-windows-on-mac/" />
+  <link rel="icon" href="/hoptab_icon.png" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="HopTab" />
+  <meta property="og:title" content="How to Snap Windows on Mac (Built-In + Faster Keyboard Way)" />
+  <meta property="og:description" content="The built-in drag-to-edge and Window menu methods, plus global keyboard shortcuts for halves, thirds, and quarters." />
+  <meta property="og:url" content="https://hoptab.app/how-to-snap-windows-on-mac/" />
+  <meta property="og:image" content="https://hoptab.app/hoptab-og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="How to Snap Windows on Mac" />
+  <meta name="twitter:description" content="Built-in methods plus global keyboard shortcuts for halves, thirds, and quarters." />
+  <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="/styles.css?v=20260619" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "HowTo",
+        "name": "How to snap windows on Mac",
+        "description": "Snap and tile windows on macOS using the built-in tools or global keyboard shortcuts.",
+        "totalTime": "PT2M",
+        "step": [
+          { "@type": "HowToStep", "name": "Drag to a screen edge", "text": "Drag a window's title bar to the left or right edge of the screen and release to tile it to that half. Drag to a corner for a quarter." },
+          { "@type": "HowToStep", "name": "Use the Window menu", "text": "On macOS Sequoia and later, open the Window menu and choose Move & Resize to tile the front window to a half or quarter." },
+          { "@type": "HowToStep", "name": "Use global keyboard shortcuts", "text": "Install a window manager such as HopTab to snap any window to halves, thirds, or quarters with a global keyboard shortcut, plus drag-to-snap with a preview overlay." }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://hoptab.app/" },
+          { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://hoptab.app/guides/" },
+          { "@type": "ListItem", "position": 3, "name": "How to snap windows on Mac", "item": "https://hoptab.app/how-to-snap-windows-on-mac/" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Does macOS have keyboard shortcuts to snap windows?", "acceptedAnswer": { "@type": "Answer", "text": "macOS Sequoia and later added some tiling shortcuts in the Window menu, but they're limited and the defaults are awkward. For fast, consistent halves/thirds/quarters on global shortcuts, most people use a dedicated tool like HopTab or Rectangle." } },
+          { "@type": "Question", "name": "How do I split the screen into two windows on Mac?", "acceptedAnswer": { "@type": "Answer", "text": "Drag one window to the left edge and another to the right edge to tile them side by side, or use a window manager to snap each to a half with a keyboard shortcut." } },
+          { "@type": "Question", "name": "How do I snap a window to a third of the screen?", "acceptedAnswer": { "@type": "Answer", "text": "macOS doesn't tile to thirds out of the box. A window manager like HopTab adds first/center/last third and two-thirds positions on dedicated shortcuts." } }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-9SCWYZ03TN');
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="13cd20c2-cfbe-40e7-8897-b67e68517286"></script>
+</head>
+<body>
+  <div class="ht">
+    <header>
+      <a href="/" class="logo">
+        <img src="/hoptab_icon.png" alt="HopTab" />
+        HopTab
+      </a>
+      <div class="header-links">
+        <a href="/#features">Features</a>
+        <a href="/#pro">Pro</a>
+        <a href="/guides/">Guides</a>
+        <a href="/#install">Install</a>
+        <a href="https://github.com/royalbhati/HopTab" class="dl-btn" onclick="track('github_click',{location:'guide_header'})">GitHub</a>
+      </div>
+    </header>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span>&rsaquo;</span><a href="/guides/">Guides</a><span>&rsaquo;</span>How to snap windows on Mac
+    </nav>
+
+    <article class="guide">
+      <div class="eyebrow">How-to</div>
+      <h1>How to snap windows on Mac</h1>
+      <p class="lede">There are three ways to tile windows on a Mac: dragging to a screen edge, the Window menu, and global keyboard shortcuts from a dedicated app. Here&apos;s when to use each &mdash; and why most people end up on shortcuts.</p>
+      <div class="meta">Updated June 2026 &middot; 5 min read</div>
+
+      <div class="prose">
+        <div class="tldr">
+          <div class="eyebrow">Quick answer</div>
+          <p>macOS can snap windows to halves and quarters if you <strong>drag to a screen edge</strong> or use the <strong>Window &rarr; Move &amp; Resize</strong> menu. There&apos;s no built-in shortcut for thirds, and the keyboard options are limited. For fast, consistent tiling, install a free window manager and snap with a single key combo.</p>
+        </div>
+
+        <h2>Method 1 &mdash; Drag to a screen edge</h2>
+        <p>On macOS Sequoia and later, drag a window&apos;s title bar to the left or right edge of the screen; release when you see the highlighted zone and the window tiles to that half. Drag into a corner for a quarter, or to the top to fill the screen. It works, but it&apos;s mouse-only and you have to aim.</p>
+
+        <h2>Method 2 &mdash; The Window menu</h2>
+        <p>With a window focused, open the <strong>Window</strong> menu in the menu bar and look for <strong>Move &amp; Resize</strong> (Sequoia and later). You&apos;ll find Left, Right, Top, Bottom, and quarter options, plus &ldquo;Fill.&rdquo; Some of these have keyboard shortcuts, but the defaults are awkward, app-dependent, and don&apos;t cover thirds.</p>
+
+        <h2>Method 3 &mdash; Global keyboard shortcuts (the fast way)</h2>
+        <p>This is what most Mac power users actually do. A small window manager adds <em>global</em> shortcuts that snap the focused window anywhere, in any app, without aiming a drag:</p>
+        <ul>
+          <li><strong>Halves:</strong> <kbd>&#8963;</kbd><kbd>&#8997;</kbd> + arrow keys (left, right, top, bottom).</li>
+          <li><strong>Quarters:</strong> <kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>U</kbd> <kbd>I</kbd> <kbd>J</kbd> <kbd>K</kbd>.</li>
+          <li><strong>Thirds:</strong> <kbd>&#8963;</kbd><kbd>&#8997;</kbd> + <kbd>D</kbd> <kbd>F</kbd> <kbd>G</kbd> &mdash; something macOS can&apos;t do at all.</li>
+          <li><strong>Maximize / center:</strong> one combo each, and press the same direction again to cycle &frac12; &rarr; &frac13; &rarr; &frac23;.</li>
+        </ul>
+        <p>HopTab also adds <strong>drag-to-snap</strong> with a translucent preview overlay (so you can see the target zone before dropping) and an <strong>undo</strong> shortcut, since the built-in tiling has no undo. Every shortcut is rebindable.</p>
+
+        <div class="cta-box">
+          <h3>Snap windows with one keystroke</h3>
+          <p>HopTab adds global shortcuts for halves, thirds, quarters, and more &mdash; plus drag-to-snap and undo. Free and open source, macOS 14+.</p>
+          <div class="cta-actions">
+            <a href="https://github.com/royalbhati/HopTab/releases/latest" class="primary" onclick="track('download_click',{location:'snap_howto_cta'})">Download for macOS</a>
+            <a href="/" class="ghost">See all features</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <div class="faq-item">
+          <h3>Does macOS have keyboard shortcuts to snap windows?</h3>
+          <p>macOS Sequoia and later added some tiling options in the Window menu, but they&apos;re limited and the defaults are awkward. For fast, consistent halves/thirds/quarters on global shortcuts, most people use a dedicated tool like HopTab or Rectangle.</p>
+        </div>
+        <div class="faq-item">
+          <h3>How do I split the screen into two windows on Mac?</h3>
+          <p>Drag one window to the left edge and another to the right edge to tile them side by side, or snap each to a half with a keyboard shortcut. (This is screen tiling, not the older full-screen Split View.)</p>
+        </div>
+        <div class="faq-item">
+          <h3>How do I snap a window to a third of the screen?</h3>
+          <p>macOS doesn&apos;t tile to thirds out of the box. A window manager like HopTab adds first/center/last third and two-thirds positions on dedicated shortcuts &mdash; ideal for wide and ultrawide displays.</p>
+        </div>
+
+        <h2>Related guides</h2>
+        <div class="related-grid">
+          <a class="related-card" href="/switch-between-windows-mac/">
+            <div class="eyebrow">How-to</div>
+            <h3>Switch between windows on Mac</h3>
+            <p>Fixing Cmd+Tab so it does what you want.</p>
+          </a>
+          <a class="related-card" href="/move-window-to-another-monitor-mac/">
+            <div class="eyebrow">How-to</div>
+            <h3>Move a window to another monitor</h3>
+            <p>The shortcut macOS doesn&apos;t give you.</p>
+          </a>
+          <a class="related-card" href="/best-window-manager-mac/">
+            <div class="eyebrow">Guide</div>
+            <h3>Best window manager for Mac</h3>
+            <p>Rectangle, Magnet, Moom, Loop, yabai and HopTab.</p>
+          </a>
+          <a class="related-card" href="/magnet-alternative/">
+            <div class="eyebrow">Comparison</div>
+            <h3>Free Magnet alternative</h3>
+            <p>Magnet&apos;s snapping, for free.</p>
+          </a>
+        </div>
+      </div>
+    </article>
+
+    <footer>
+      <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
+      <div style="display:flex;gap:16px;">
+        <a href="/">Home</a>
+        <a href="/guides/">Guides</a>
+        <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'guide_footer'})">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

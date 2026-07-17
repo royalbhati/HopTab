@@ -25,7 +25,7 @@
   <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles.css?v=20260619" />
 
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
@@ -51,8 +51,10 @@
         HopTab
       </a>
       <div class="header-links">
+        <a href="#overview">Overview</a>
         <a href="#features">Features</a>
         <a href="#pro">Pro</a>
+        <a href="/guides/">Guides</a>
         <a href="#workflows">Workflows</a>
         <a href="#shortcuts">Shortcuts</a>
         <a href="#changelog">Changelog</a>
@@ -66,7 +68,7 @@
     <!-- Hero -->
     <div class="hero">
       <h1>The workspace manager macOS should&apos;ve shipped with.</h1>
-      <p>Pin apps. Snap windows to halves, thirds, quarters. Switch profiles per desktop. Save and restore sessions. All from keyboard shortcuts. Free tier covers everything you need &mdash; Pro adds time tracking, calendar auto-switch, and scheduling for $5 one-time.</p>
+      <p>Pin apps, tile windows, and switch entire workspaces from the keyboard. Then hand it off: HopTab can switch profiles for your meetings, tile windows automatically, run focus sessions, and track where your hours go. The free tier is the whole core. Pro adds the automation for $5, once.</p>
       <div class="hero-actions">
         <a href="https://github.com/royalbhati/HopTab/releases/latest" class="primary" onclick="track('download_click',{location:'hero'})">Download for macOS</a>
         <a href="https://github.com/royalbhati/HopTab" class="secondary" onclick="track('github_click',{location:'hero'})">View Source</a>
@@ -85,10 +87,91 @@
       <div class="caption">Full demo — app switching, window tiling, profiles, layouts, and session management.</div>
     </div>
 
+    <!-- Capability overview — the breadth map -->
+    <div class="section-full" id="overview">
+      <div class="caps-inner">
+        <div class="section-header">
+          <h2>Everything HopTab does</h2>
+          <span class="tag">One menu-bar app</span>
+        </div>
+        <div class="section-desc">It started as a faster app switcher. It is now a full workspace layer: windows, profiles, automation, focus, and the way it all looks. Free covers the core; <span class="t-pro">PRO</span> marks the $5 automation layer.</div>
+
+        <div class="cap-grid">
+          <div class="cap-card" style="--cat:var(--c-window)">
+            <div class="cap-label"><span class="dot"></span>Window management</div>
+            <ul>
+              <li><b>17 snap directions</b> &mdash; halves, thirds, two-thirds, quarters, max, center</li>
+              <li>Same-direction <b>size cycling</b> + two-key universal cycle</li>
+              <li><b>Drag-to-snap</b> with a live preview overlay</li>
+              <li>Throw windows <b>between monitors</b></li>
+              <li><b>Automatic BSP tiling</b>, yabai-style <span class="t-pro">PRO</span></li>
+              <li>Layout templates + custom editor &middot; configurable gaps</li>
+            </ul>
+          </div>
+
+          <div class="cap-card" style="--cat:var(--c-space)">
+            <div class="cap-label"><span class="dot"></span>Workspaces &amp; profiles</div>
+            <ul>
+              <li><b>Pinned-app switcher</b> &mdash; Option+Tab cycles only your apps</li>
+              <li><b>Profiles</b> per workflow: apps, layout, hotkey, sticky note</li>
+              <li><b>Space-aware</b> auto-switching as you swipe desktops</li>
+              <li><b>Session save &amp; restore</b>, display-aware</li>
+              <li>Space-aware window picker</li>
+              <li>3 profiles free, <b>unlimited</b> <span class="t-pro">PRO</span></li>
+            </ul>
+          </div>
+
+          <div class="cap-card" style="--cat:var(--c-auto)">
+            <div class="cap-label"><span class="dot"></span>Automation <span class="t-pro">PRO</span></div>
+            <ul>
+              <li><b>Calendar auto-switch</b> + fullscreen meeting reminders</li>
+              <li>Detects Zoom / Teams / Meet links, one-click Join</li>
+              <li><b>Time-based scheduling</b> with day-of-week filters</li>
+              <li>Maps <b>macOS Focus modes</b> to profiles</li>
+              <li><b>Display / dock</b> auto-profiles</li>
+              <li>Unlimited <b>window rules</b> (auto-snap on launch)</li>
+            </ul>
+          </div>
+
+          <div class="cap-card" style="--cat:var(--c-focus)">
+            <div class="cap-label"><span class="dot"></span>Focus &amp; wellbeing <span class="t-pro">PRO</span></div>
+            <ul>
+              <li><b>Time tracking</b> per profile, zero effort</li>
+              <li><b>Pomodoro on a calendar event</b> &mdash; time logs back to it <span class="t-new">NEW</span></li>
+              <li><b>Focus sessions</b> with gentle off-profile nudges</li>
+              <li>Per-app <b>usage budgets</b></li>
+              <li><b>Screen-break</b> reminders &middot; <b>auto-declutter</b> stale windows</li>
+              <li>Multi-level <b>window undo</b></li>
+            </ul>
+          </div>
+
+          <div class="cap-card" style="--cat:var(--c-look)">
+            <div class="cap-label"><span class="dot"></span>Look &amp; feel <span class="t-pro">PRO</span></div>
+            <ul>
+              <li><b>Focus border</b> on the active window</li>
+              <li><b>Dim inactive</b> windows to cut visual noise</li>
+              <li>Per-profile <b>visual presets</b> (&ldquo;rice&rdquo;)</li>
+            </ul>
+          </div>
+
+          <div class="cap-card" style="--cat:var(--c-window)">
+            <div class="cap-label"><span class="dot"></span>Built for Mac</div>
+            <ul>
+              <li>Lives in the <b>menu bar</b>, no Dock icon</li>
+              <li>Universal &mdash; <b>Apple Silicon + Intel</b></li>
+              <li>Every shortcut is <b>configurable</b></li>
+              <li>Free &amp; <b>open source</b> (MIT)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Features with screenshots -->
     <div class="section" id="features">
       <div class="section-header">
         <h2>Features</h2>
+        <span class="tag">Free core, in depth</span>
       </div>
 
       <!-- App Switching -->
@@ -203,42 +286,33 @@
           <div class="caption" style="font-size:12px;color:#888;margin-top:8px;">Calendar auto-switch, time tracking, and focus mode integration</div>
         </div>
 
-        <div class="features-grid">
-          <div class="feature-card" style="background:#eef4ff;border-color:#d0e0ff;">
-            <h3>Time Tracking</h3>
-            <p>Zero-effort &mdash; tracks time per profile automatically. See exactly how long you spend coding, designing, or researching each day.</p>
+        <div class="pro-strip">
+          <div class="cap-card" style="--cat:var(--c-auto)">
+            <div class="cap-label"><span class="dot"></span>Automation</div>
+            <ul>
+              <li><b>Calendar auto-switch</b> with fullscreen meeting reminders + one-click Join</li>
+              <li><b>Time-based scheduling</b>, day-of-week aware</li>
+              <li><b>Focus-mode</b> and <b>display / dock</b> auto-profiles</li>
+              <li>Unlimited <b>window rules</b></li>
+            </ul>
           </div>
-          <div class="feature-card" style="background:#ffeef0;border-color:#ffd0d5;">
-            <h3>Calendar Auto-Switch</h3>
-            <p>Maps calendar events to profiles. Detects Zoom/Teams/Meet links. Fullscreen meeting reminder with a one-click Join button.</p>
+          <div class="cap-card" style="--cat:var(--c-focus)">
+            <div class="cap-label"><span class="dot"></span>Focus &amp; wellbeing</div>
+            <ul>
+              <li><b>Pomodoro on a calendar event</b> &mdash; focused time logs back to it <span class="t-new">NEW</span></li>
+              <li><b>Focus sessions</b> + per-app <b>usage budgets</b></li>
+              <li><b>Time tracking</b> per profile, zero effort</li>
+              <li><b>Screen breaks</b>, <b>auto-declutter</b>, multi-level <b>window undo</b></li>
+            </ul>
           </div>
-          <div class="feature-card" style="background:#fff4e6;border-color:#ffe0b0;">
-            <h3>Time-Based Scheduling</h3>
-            <p>&ldquo;At 7 PM switch to Entertainment.&rdquo; Day-of-week filters for different weekday and weekend routines.</p>
-          </div>
-          <div class="feature-card" style="background:#f3eeff;border-color:#ddd0ff;">
-            <h3>Focus Mode Integration</h3>
-            <p>Maps macOS Focus modes to profiles. Turn on Do Not Disturb &rarr; deep work profile activates. Multiple profiles per mode.</p>
-          </div>
-          <div class="feature-card" style="background:#e6f9f5;border-color:#b0e8d8;">
-            <h3>Display Auto-Profiles</h3>
-            <p>Dock at work &rarr; work profile. Undock &rarr; laptop profile. Auto-switches when monitors connect or disconnect.</p>
-          </div>
-          <div class="feature-card" style="background:#eaffea;border-color:#c0e8c0;">
-            <h3>Unlimited Window Rules</h3>
-            <p>&ldquo;Chrome always left half on launch.&rdquo; Free tier gets 2 rules. Pro removes the limit entirely.</p>
-          </div>
-          <div class="feature-card" style="background:#fff9e6;border-color:#f0e0a0;">
-            <h3>Custom Layouts</h3>
-            <p>Build layouts with exact zone percentages. Perfect for ultrawide monitors, rotated displays, and non-standard setups.</p>
-          </div>
-          <div class="feature-card" style="background:#eee8ff;border-color:#d0c8f0;">
-            <h3>Unlimited Profiles</h3>
-            <p>Free tier includes 3 profiles. Pro removes the limit &mdash; create as many as you need.</p>
-          </div>
-          <div class="feature-card" style="background:#f5f5f5;border-color:#e0e0e0;">
-            <h3>Student / Can&apos;t Afford It?</h3>
-            <p>Email <a href="mailto:rawyelll@gmail.com" style="color:#000;font-weight:600;">rawyelll@gmail.com</a> for a free Pro key. No questions asked.</p>
+          <div class="cap-card" style="--cat:var(--c-look)">
+            <div class="cap-label"><span class="dot"></span>Look &amp; feel, no limits</div>
+            <ul>
+              <li><b>Focus border</b> + <b>dim inactive</b> windows</li>
+              <li>Per-profile <b>visual presets</b> (&ldquo;rice&rdquo;)</li>
+              <li><b>Automatic BSP tiling</b> + custom-percentage layouts</li>
+              <li><b>Unlimited</b> profiles &amp; window rules</li>
+            </ul>
           </div>
         </div>
 
@@ -267,15 +341,16 @@
               <span style="font-size:12px;color:#888;">one-time, lifetime</span>
             </div>
             <p style="font-size:13px;color:#555;margin-bottom:16px;">Everything in Free, plus automation</p>
-            <ul style="list-style:none;padding:0;font-size:13px;color:#222;line-height:2.2;font-weight:500;">
-              <li>&#10003; Time tracking</li>
-              <li>&#10003; Calendar auto-switch</li>
+            <ul style="list-style:none;padding:0;font-size:13px;color:#222;line-height:2.0;font-weight:500;">
+              <li>&#10003; Automatic BSP tiling (yabai-style)</li>
+              <li>&#10003; Calendar auto-switch + meeting reminders</li>
               <li>&#10003; Time-based scheduling</li>
-              <li>&#10003; Focus mode integration</li>
-              <li>&#10003; Display auto-profiles</li>
-              <li>&#10003; Unlimited window rules</li>
-              <li>&#10003; Custom layouts (exact %)</li>
-              <li>&#10003; Unlimited profiles</li>
+              <li>&#10003; Focus mode + display auto-profiles</li>
+              <li>&#10003; Time tracking + per-app budgets</li>
+              <li>&#10003; Focus sessions + event Pomodoro</li>
+              <li>&#10003; Screen breaks, auto-declutter, window undo</li>
+              <li>&#10003; Focus border, dimming, visual presets</li>
+              <li>&#10003; Unlimited profiles, rules &amp; custom layouts</li>
             </ul>
             <div style="margin-top:16px;display:flex;gap:12px;align-items:center;">
               <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" onclick="track('pro_click',{location:'pro_section',provider:'polar'})" style="padding:10px 28px;background:#000;color:#fff;text-decoration:none;font-weight:600;font-size:13px;border:2px solid #000;">Get HopTab Pro</a>
@@ -407,8 +482,37 @@
 
       <div class="changelog-entry">
         <div class="changelog-version">
+          <h3>v1.5.0</h3>
+          <span class="date">In development</span>
+        </div>
+        <ul class="changelog-list">
+          <li class="feat"><span class="changelog-label feat">New</span> Pomodoro on a calendar event &mdash; start a work/break cycle tied to a meeting or task; focused time logs back to that event, with a per-event breakdown in Time Tracking</li>
+        </ul>
+      </div>
+
+      <div class="changelog-entry">
+        <div class="changelog-version">
+          <h3>v1.4.0</h3>
+          <span class="date">June 2026</span>
+        </div>
+        <ul class="changelog-list">
+          <li class="feat"><span class="changelog-label feat">New</span> Automatic BSP tiling &mdash; yabai-style binary space partitioning that tiles windows for you, with rice presets</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Focus sessions &mdash; timed deep-work blocks with a gentle nudge when you stray to an off-profile app</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Screen-break reminders &mdash; workspace-aware break overlay that never interrupts a meeting</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Per-app usage budgets &mdash; set a daily limit on any app and get nudged when you pass it</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Multi-level window undo &mdash; step back through window position and size changes</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Auto-declutter &mdash; auto-minimize windows left idle too long</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Focus border + dimming &mdash; outline the active window, dim the rest</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Per-profile visual presets (&ldquo;rice&rdquo;)</li>
+          <li class="feat"><span class="changelog-label feat">New</span> hoptab:// URL scheme &mdash; deep links for profile switch, snap, undo, and focus session</li>
+          <li class="feat"><span class="changelog-label feat">New</span> In-app update feed with a menu-bar update banner</li>
+        </ul>
+      </div>
+
+      <div class="changelog-entry">
+        <div class="changelog-version">
           <h3>v1.2.0</h3>
-          <span class="date">Upcoming</span>
+          <span class="date">April 2026</span>
         </div>
         <ul class="changelog-list">
           <li class="feat"><span class="changelog-label feat">New</span> Drag-to-snap &mdash; drag any window to a screen edge or corner to snap it with a translucent preview overlay</li>
@@ -500,6 +604,7 @@
     <footer>
       <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
       <div style="display:flex;gap:16px;">
+        <a href="/guides/">Guides</a>
         <a href="https://discord.gg/6pSMtzBGUr" onclick="track('discord_click',{location:'footer'})">Discord</a>
         <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'footer'})">GitHub</a>
       </div>

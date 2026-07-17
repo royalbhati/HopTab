@@ -325,6 +325,34 @@ struct MenuBarView: View {
                 Divider()
             }
 
+            // Active Pomodoro (Pro) — started from the Calendar event list
+            if let provider = ProServiceRegistry.shared.provider, provider.isLicensed,
+               let pomo = provider.pomodoroStatus {
+                let mins = max(0, Int(ceil(Double(pomo.secondsRemaining) / 60)))
+                let title = pomo.eventTitle.count > 22 ? String(pomo.eventTitle.prefix(21)) + "…" : pomo.eventTitle
+                Button {
+                    provider.stopPomodoro()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: pomo.isBreak ? "cup.and.saucer.fill" : "timer")
+                        Text("End Pomodoro — \(title): \(pomo.phaseLabel) \(mins)m")
+                    }
+                }
+
+                if pomo.isBreak {
+                    Button {
+                        provider.skipPomodoroBreak()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "forward.fill")
+                            Text("Skip Break")
+                        }
+                    }
+                }
+
+                Divider()
+            }
+
             Button("Settings...") {
                 NSApp.sendAction(#selector(AppDelegate.openSettings(_:)), to: nil, from: nil)
             }

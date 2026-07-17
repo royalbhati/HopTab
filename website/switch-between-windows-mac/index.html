@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Switch Between Windows on Mac (and Fix Cmd+Tab) — 2026</title>
+  <meta name="description" content="Cmd+Tab switches apps, not windows. Here's how to switch between windows of the same app, cycle all windows, and set up a faster app switcher that shows only the apps you use." />
+  <link rel="canonical" href="https://hoptab.app/switch-between-windows-mac/" />
+  <link rel="icon" href="/hoptab_icon.png" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="HopTab" />
+  <meta property="og:title" content="How to Switch Between Windows on Mac (and Fix Cmd+Tab)" />
+  <meta property="og:description" content="Cmd+Tab switches apps, not windows. Here's how to switch windows, and a faster app switcher." />
+  <meta property="og:url" content="https://hoptab.app/switch-between-windows-mac/" />
+  <meta property="og:image" content="https://hoptab.app/hoptab-og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="How to Switch Between Windows on Mac" />
+  <meta name="twitter:description" content="Cmd+Tab switches apps, not windows. Here's how to switch windows, and a faster app switcher." />
+  <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="/styles.css?v=20260619" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "HowTo",
+        "name": "How to switch between windows on Mac",
+        "description": "Switch between apps and between windows of the same app on macOS, and set up a faster app switcher.",
+        "step": [
+          { "@type": "HowToStep", "name": "Switch apps with Cmd+Tab", "text": "Hold Command and press Tab to cycle through open apps. Release Command to switch to the highlighted app." },
+          { "@type": "HowToStep", "name": "Switch windows of the same app", "text": "With an app focused, press Command and the backtick key to cycle through that app's windows on the current Space." },
+          { "@type": "HowToStep", "name": "See all windows of an app", "text": "Press Control and Down Arrow (App Exposé) to fan out every window of the front app, then click one." },
+          { "@type": "HowToStep", "name": "Use a focused app switcher", "text": "Install HopTab to pin only the apps you use and cycle that short list with Option+Tab, with a Space-aware picker for multi-window apps." }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://hoptab.app/" },
+          { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://hoptab.app/guides/" },
+          { "@type": "ListItem", "position": 3, "name": "Switch between windows on Mac", "item": "https://hoptab.app/switch-between-windows-mac/" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Why does Cmd+Tab switch apps instead of windows on Mac?", "acceptedAnswer": { "@type": "Answer", "text": "macOS is app-centric: Cmd+Tab cycles applications, not individual windows. To move between windows of the same app, use Cmd+backtick; to see all of an app's windows, use Control+Down (App Exposé)." } },
+          { "@type": "Question", "name": "How do I switch between two windows of the same app on Mac?", "acceptedAnswer": { "@type": "Answer", "text": "Press Command and the backtick key while that app is focused to cycle through its windows on the current Space." } },
+          { "@type": "Question", "name": "Can I make Cmd+Tab only show certain apps?", "acceptedAnswer": { "@type": "Answer", "text": "Not with the built-in switcher. HopTab lets you pin a short list of apps and cycle just those with Option+Tab, and it can replace Cmd+Tab entirely with a one-click preset." } }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-9SCWYZ03TN');
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="13cd20c2-cfbe-40e7-8897-b67e68517286"></script>
+</head>
+<body>
+  <div class="ht">
+    <header>
+      <a href="/" class="logo">
+        <img src="/hoptab_icon.png" alt="HopTab" />
+        HopTab
+      </a>
+      <div class="header-links">
+        <a href="/#features">Features</a>
+        <a href="/#pro">Pro</a>
+        <a href="/guides/">Guides</a>
+        <a href="/#install">Install</a>
+        <a href="https://github.com/royalbhati/HopTab" class="dl-btn" onclick="track('github_click',{location:'guide_header'})">GitHub</a>
+      </div>
+    </header>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span>&rsaquo;</span><a href="/guides/">Guides</a><span>&rsaquo;</span>Switch between windows on Mac
+    </nav>
+
+    <article class="guide">
+      <div class="eyebrow">How-to</div>
+      <h1>How to switch between windows on Mac</h1>
+      <p class="lede">If you came from Windows, the Mac&apos;s <code>Cmd+Tab</code> feels broken &mdash; it switches <em>apps</em>, not windows, and shows every app you have open. Here are the built-in shortcuts that actually exist, and how to get a switcher that shows only the apps you care about.</p>
+      <div class="meta">Updated June 2026 &middot; 5 min read</div>
+
+      <div class="prose">
+        <div class="tldr">
+          <div class="eyebrow">Quick answer</div>
+          <p><kbd>&#8984;</kbd>+<kbd>Tab</kbd> switches apps. <kbd>&#8984;</kbd>+<kbd>`</kbd> (backtick) switches between windows <em>of the current app</em>. <kbd>&#8963;</kbd>+<kbd>&#8595;</kbd> fans out all windows of the front app. If you want a switcher that only cycles a handful of apps you pick, you need a dedicated tool.</p>
+        </div>
+
+        <h2>Why Cmd+Tab feels wrong</h2>
+        <p>macOS is app-centric, not window-centric. <code>Cmd+Tab</code> was designed to cycle <em>applications</em> &mdash; so a single browser with eight windows shows up as one icon, and your rarely-used menu-bar apps clutter the list. That&apos;s the source of nearly every &ldquo;Mac window switching is frustrating&rdquo; complaint.</p>
+
+        <h2>The built-in shortcuts</h2>
+        <ul>
+          <li><strong>Switch apps:</strong> <kbd>&#8984;</kbd>+<kbd>Tab</kbd>, then keep tapping <kbd>Tab</kbd> (or <kbd>&#8679;</kbd>+<kbd>Tab</kbd> to go backward). Release to switch.</li>
+          <li><strong>Switch windows of the same app:</strong> <kbd>&#8984;</kbd>+<kbd>`</kbd> (the key above Tab). Cycles the front app&apos;s windows on the current Space.</li>
+          <li><strong>See all windows of the front app:</strong> <kbd>&#8963;</kbd>+<kbd>&#8595;</kbd> (App Exposé) fans them out so you can click one.</li>
+          <li><strong>See every window everywhere:</strong> <kbd>&#8963;</kbd>+<kbd>&#8593;</kbd> (Mission Control).</li>
+        </ul>
+        <div class="callout">
+          <strong>The catch with Cmd+backtick</strong>
+          It only cycles windows of the <em>frontmost</em> app, and only ones on your current Space. Windows on other desktops are invisible to it, which is why it so often seems to &ldquo;skip&rdquo; a window you know is open.
+        </div>
+
+        <h2>A focused app switcher (the fix)</h2>
+        <p>The real fix isn&apos;t a different keystroke &mdash; it&apos;s a switcher that shows fewer things. HopTab lets you <strong>pin only the apps you actually use</strong> (say, your editor, terminal, browser, and Slack) and cycle just those:</p>
+        <ul>
+          <li>Press <kbd>&#8997;</kbd>+<kbd>Tab</kbd> to cycle your pinned list; release <kbd>&#8997;</kbd> to switch, <kbd>Esc</kbd> to cancel.</li>
+          <li>For multi-window apps, a <strong>Space-aware window picker</strong> shows only windows on your current desktop &mdash; so you never get yanked to another Space.</li>
+          <li>While the switcher is open, <kbd>&#8984;</kbd>+<kbd>Q</kbd>/<kbd>H</kbd>/<kbd>M</kbd> quits, hides, or minimizes the highlighted app.</li>
+          <li>Prefer to keep one switcher? A one-click preset lets HopTab <strong>replace <code>Cmd+Tab</code></strong> entirely.</li>
+        </ul>
+
+        <div class="cta-box">
+          <h3>Switch only the apps you use</h3>
+          <p>Pin your real apps and cycle them with Option+Tab &mdash; no clutter, no wrong Space. Free and open source, macOS 14+.</p>
+          <div class="cta-actions">
+            <a href="https://github.com/royalbhati/HopTab/releases/latest" class="primary" onclick="track('download_click',{location:'switch_howto_cta'})">Download for macOS</a>
+            <a href="/" class="ghost">See all features</a>
+          </div>
+        </div>
+
+        <h2>FAQ</h2>
+        <div class="faq-item">
+          <h3>Why does Cmd+Tab switch apps instead of windows on Mac?</h3>
+          <p>macOS is app-centric: <code>Cmd+Tab</code> cycles applications, not individual windows. To move between windows of the same app, use <code>Cmd+`</code>; to see all of an app&apos;s windows, use <code>Control+Down</code> (App Exposé).</p>
+        </div>
+        <div class="faq-item">
+          <h3>How do I switch between two windows of the same app on Mac?</h3>
+          <p>Press <kbd>&#8984;</kbd>+<kbd>`</kbd> (the backtick key, above Tab) while that app is focused to cycle through its windows on the current Space.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Can I make Cmd+Tab only show certain apps?</h3>
+          <p>Not with the built-in switcher. HopTab lets you pin a short list of apps and cycle just those with <code>Option+Tab</code>, and it can replace <code>Cmd+Tab</code> entirely with a one-click preset.</p>
+        </div>
+
+        <h2>Related guides</h2>
+        <div class="related-grid">
+          <a class="related-card" href="/how-to-snap-windows-on-mac/">
+            <div class="eyebrow">How-to</div>
+            <h3>How to snap windows on Mac</h3>
+            <p>Tile to halves, thirds, and quarters fast.</p>
+          </a>
+          <a class="related-card" href="/move-window-to-another-monitor-mac/">
+            <div class="eyebrow">How-to</div>
+            <h3>Move a window to another monitor</h3>
+            <p>The shortcut macOS doesn&apos;t give you.</p>
+          </a>
+          <a class="related-card" href="/best-window-manager-mac/">
+            <div class="eyebrow">Guide</div>
+            <h3>Best window manager for Mac</h3>
+            <p>The free and paid tools worth knowing.</p>
+          </a>
+          <a class="related-card" href="/rectangle-alternative/">
+            <div class="eyebrow">Comparison</div>
+            <h3>HopTab vs Rectangle</h3>
+            <p>A snapper that also switches apps.</p>
+          </a>
+        </div>
+      </div>
+    </article>
+
+    <footer>
+      <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
+      <div style="display:flex;gap:16px;">
+        <a href="/">Home</a>
+        <a href="/guides/">Guides</a>
+        <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'guide_footer'})">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
