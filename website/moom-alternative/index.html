@@ -22,7 +22,7 @@
   <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260619" />
+  <link rel="stylesheet" href="/styles.css?v=20260714d" />
 
   <script type="application/ld+json">
   {
@@ -84,7 +84,7 @@
         <a href="/#pro">Pro</a>
         <a href="/guides/">Guides</a>
         <a href="/#install">Install</a>
-        <a href="https://github.com/royalbhati/HopTab" class="dl-btn" onclick="track('github_click',{location:'guide_header'})">GitHub</a>
+        <a href="/download" class="dl-btn" onclick="track('download_click',{location:'guide_header'})">Download</a>
       </div>
     </header>
 
@@ -151,7 +151,7 @@
           <h3>Try HopTab &mdash; free &amp; open source</h3>
           <p>Saved layouts and per-display sessions, plus a focused app switcher and workspace profiles. macOS 14+.</p>
           <div class="cta-actions">
-            <a href="https://github.com/royalbhati/HopTab/releases/latest" class="primary" onclick="track('download_click',{location:'moom_alt_cta'})">Download for macOS</a>
+            <a href="/download" class="primary" onclick="track('download_click',{location:'moom_alt_cta'})">Download for macOS</a>
             <a href="/" class="ghost">See all features</a>
           </div>
         </div>
@@ -194,6 +194,19 @@
           </a>
         </div>
       </div>
+    
+        <div class="cta-box">
+          <h3>Try HopTab free</h3>
+          <p>Free and open source. Install in 30 seconds with Homebrew, or grab the app from GitHub. Pro automation is $5 once, forever.</p>
+          <div class="cta-cmd">
+            <button class="copy-btn">Copy</button>
+            <span class="cmd">brew tap royalbhati/tap &amp;&amp; brew install --cask hoptab</span>
+          </div>
+          <div class="cta-actions">
+            <a href="/download" class="primary" onclick="track('download_click',{location:'guide_end_cta'})">Download for macOS</a>
+            <a href="/" class="ghost">Everything HopTab does</a>
+          </div>
+        </div>
     </article>
 
     <footer>

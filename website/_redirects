@@ -1,0 +1,2 @@
+# Stable download URL — update the target on every release (same time as update.json).
+/download https://github.com/royalbhati/HopTab/releases/download/v1.4.0/HopTab-1.4.0.zip 302

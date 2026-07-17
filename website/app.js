@@ -81,23 +81,13 @@ var workflows = [
     ]
   },
   {
-    title: "Tiling on Autopilot", role: "Pro", pro: true,
-    desc: "You don’t want to place windows at all. Turn on automatic tiling and every window you open slots into a binary layout. A focus border tracks the active window while the rest dim a touch, so your eye always knows where it is. Pick a rice preset and the whole workspace takes on the gaps, borders, and feel you like.",
-    steps: [
-      { title: "Enable BSP tiling", desc: "Windows auto-arrange, yabai-style, no config file" },
-      { title: "Open anything", desc: "New windows split into the tree automatically" },
-      { title: "Focus border + dimming", desc: "Active window outlined, the rest recede" },
-      { title: "Apply a rice preset", desc: "Per-profile gaps, borders, and feel" }
-    ]
-  },
-  {
     title: "Healthy Long-Haul Day", role: "Pro", pro: true,
-    desc: "You’re heads-down for eight hours. HopTab tracks time per profile so you can see the split later. Set a 30-minute daily budget on the apps that eat your day, and a quiet nudge appears the moment you pass it. Every work interval, a break overlay tells you to look away. Windows you abandoned an hour ago get auto-minimized so the screen stays calm.",
+    desc: "You’re heads-down for eight hours. HopTab tracks time per profile so you can see the split later. Set a 30-minute daily budget on the apps that eat your day, and a quiet nudge appears the moment you pass it. Every work interval, a break overlay tells you to look away. Come Monday, a weekly digest shows exactly where the hours went.",
     steps: [
       { title: "Time tracking runs", desc: "Per-profile hours, zero effort" },
       { title: "App budget hit", desc: "Quiet nudge when you pass a daily limit" },
       { title: "Break reminder", desc: "Look-away overlay every work interval" },
-      { title: "Auto-declutter", desc: "Stale windows minimize themselves" }
+      { title: "Weekly digest", desc: "A summary of last week’s time, per profile" }
     ]
   }
 ];
@@ -151,23 +141,110 @@ function renderWorkflows() {
   }
 }
 
-// --- Install command copy ----------------------------------------------
-function wireCopyButton() {
-  var btn = document.getElementById("copy-btn");
-  if (!btn) return;
-  btn.addEventListener("click", function () {
-    var box = btn.parentElement.querySelector(".cmd");
-    if (!box) return;
-    var cmd = box.textContent;
-    navigator.clipboard.writeText(cmd).then(function () {
-      btn.textContent = "Copied!";
-      track("install_command_copied");
-      setTimeout(function () { btn.textContent = "Copy"; }, 2000);
+// --- Install command copy (works for every .copy-btn on the page) -------
+function wireCopyButtons() {
+  var btns = document.querySelectorAll(".copy-btn");
+  for (var i = 0; i < btns.length; i++) {
+    (function (btn) {
+      btn.addEventListener("click", function () {
+        var box = btn.parentElement.querySelector(".cmd");
+        if (!box) return;
+        navigator.clipboard.writeText(box.textContent).then(function () {
+          btn.textContent = "Copied!";
+          track("install_command_copied");
+          setTimeout(function () { btn.textContent = "Copy"; }, 2000);
+        });
+      });
+    })(btns[i]);
+  }
+}
+
+// --- Scroll-reveal -------------------------------------------------------
+// Gentle fade/rise as sections enter view. No-JS and reduced-motion users see
+// everything immediately — CSS only hides elements once .reveal-ready is set.
+function wireReveal() {
+  if (!("IntersectionObserver" in window)) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  document.documentElement.classList.add("reveal-ready");
+  var els = document.querySelectorAll(
+    ".feature-row, .cap-card, .quote-card, #workflows .workflow, .home-cta .cta-box, .pricing-grid > div"
+  );
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }
     });
-  });
+  }, { threshold: 0.08, rootMargin: "0px 0px -40px 0px" });
+
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    el.classList.add("reveal");
+    // Already in view at load → reveal immediately so there's no flash.
+    if (el.getBoundingClientRect().top < window.innerHeight) {
+      el.classList.add("is-in");
+    } else {
+      io.observe(el);
+    }
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   renderWorkflows();
-  wireCopyButton();
+  wireCopyButtons();
+  wireReveal();
 });
+
+// --- Install-steps sheet: shown when a download starts -------------------
+// The /download link still navigates (the browser downloads the zip and stays
+// on the page); this just explains the drag-and-drop install while it lands.
+function wireInstallSheet() {
+  var links = document.querySelectorAll('a[href="/download"]');
+  if (!links.length) return;
+
+  var sheet = null;
+
+  function close() {
+    if (!sheet) return;
+    sheet.classList.remove("is-open");
+    var s = sheet;
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 250);
+    sheet = null;
+    document.removeEventListener("keydown", onKey);
+  }
+  function onKey(e) { if (e.key === "Escape") close(); }
+
+  function open() {
+    if (sheet) return;
+    sheet = document.createElement("div");
+    sheet.className = "install-sheet";
+    sheet.innerHTML =
+      '<div class="is-scrim"></div>' +
+      '<div class="is-card" role="dialog" aria-modal="true" aria-labelledby="is-title">' +
+        '<button class="is-close" aria-label="Close">&times;</button>' +
+        '<h3 id="is-title">Downloading HopTab&hellip;</h3>' +
+        '<p class="is-sub">Three steps and you&rsquo;re tiling windows:</p>' +
+        '<ol class="is-steps">' +
+          '<li><b>Open the zip</b> in your Downloads folder &mdash; it unpacks to <b>HopTab.app</b>.</li>' +
+          '<li><b>Drag HopTab into Applications</b> and open it. If macOS warns about an unidentified developer, right-click the app and choose <b>Open</b>.</li>' +
+          '<li><b>Grant Accessibility</b> when prompted (System Settings &rarr; Privacy &amp; Security &rarr; Accessibility), then press <kbd>&#8997;</kbd>+<kbd>Tab</kbd>.</li>' +
+        '</ol>' +
+        '<p class="is-brew">Prefer the terminal? <code>brew tap royalbhati/tap &amp;&amp; brew install --cask hoptab</code></p>' +
+      '</div>';
+    document.body.appendChild(sheet);
+    sheet.querySelector(".is-scrim").addEventListener("click", close);
+    sheet.querySelector(".is-close").addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    // Two frames so the enter transition runs from the initial state.
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      sheet.classList.add("is-open");
+      sheet.querySelector(".is-close").focus();
+    }); });
+    track("install_sheet_shown", {});
+  }
+
+  for (var i = 0; i < links.length; i++) {
+    links[i].addEventListener("click", function () { open(); });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", wireInstallSheet);

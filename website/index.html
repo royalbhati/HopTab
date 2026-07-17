@@ -24,8 +24,7 @@
   <meta name="twitter:description" content="Pin apps. Snap windows. Switch profiles per desktop. All from keyboard shortcuts. Free & open source." />
   <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="stylesheet" href="/styles.css?v=20260619" />
+  <link rel="stylesheet" href="/styles.css?v=20260714d" />
 
   <!-- Google Analytics 4 -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
@@ -53,31 +52,37 @@
       <div class="header-links">
         <a href="#overview">Overview</a>
         <a href="#features">Features</a>
+        <a href="#workflows">Workflows</a>
         <a href="#pro">Pro</a>
         <a href="/guides/">Guides</a>
-        <a href="#workflows">Workflows</a>
-        <a href="#shortcuts">Shortcuts</a>
-        <a href="#changelog">Changelog</a>
-        <a href="#install">Install</a>
         <a href="https://discord.gg/6pSMtzBGUr" onclick="track('discord_click',{location:'header'})">Discord</a>
         <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" onclick="track('pro_click',{location:'header'})">Get Pro</a>
-        <a href="https://github.com/royalbhati/HopTab" class="dl-btn" onclick="track('github_click',{location:'header'})">GitHub</a>
+        <a href="/download" class="dl-btn" onclick="track('download_click',{location:'header'})">Download</a>
       </div>
     </header>
 
     <!-- Hero -->
     <div class="hero">
+      <div class="hero-eyebrow"><span class="dot"></span>macOS workspace manager &middot; free &amp; open source</div>
       <h1>The workspace manager macOS should&apos;ve shipped with.</h1>
-      <p>Pin apps, tile windows, and switch entire workspaces from the keyboard. Then hand it off: HopTab can switch profiles for your meetings, tile windows automatically, run focus sessions, and track where your hours go. The free tier is the whole core. Pro adds the automation for $5, once.</p>
+      <p class="lead">Pin your apps, tile windows from the keyboard, and switch entire workspaces in one keystroke. Then let HopTab run it for you.</p>
       <div class="hero-actions">
-        <a href="https://github.com/royalbhati/HopTab/releases/latest" class="primary" onclick="track('download_click',{location:'hero'})">Download for macOS</a>
-        <a href="https://github.com/royalbhati/HopTab" class="secondary" onclick="track('github_click',{location:'hero'})">View Source</a>
+        <a href="/download" class="primary" onclick="track('download_click',{location:'hero'})">Download for macOS</a>
+        <a href="https://github.com/royalbhati/HopTab" class="secondary" onclick="track('github_click',{location:'hero'})">View on GitHub <span class="star-count">&#9733; 272</span></a>
+      </div>
+      <div class="proof-strip">
+        <span class="pf"><span class="star">&#9733;</span> <b>272</b> on GitHub</span>
+        <span class="pf"><b>MIT</b> open source</span>
+        <span class="pf">No telemetry</span>
+        <span class="pf">No App Sandbox</span>
+        <span class="pf"><b>$5</b> once, no subscription</span>
+        <span class="pf">Free Pro for students</span>
       </div>
     </div>
 
     <!-- Hero demo video -->
     <div class="hero-demo">
-      <div style="position:relative;width:100%;padding-bottom:56.25%;border:2px solid #000;">
+      <div class="video-frame" style="position:relative;width:100%;padding-bottom:56.25%;">
         <iframe
           src="https://www.youtube.com/embed/m5ZpmPWk_kM?autoplay=1&mute=1&loop=1&playlist=m5ZpmPWk_kM&controls=0&modestbranding=1&rel=0"
           style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
@@ -85,6 +90,31 @@
           allowfullscreen></iframe>
       </div>
       <div class="caption">Full demo — app switching, window tiling, profiles, layouts, and session management.</div>
+    </div>
+
+    <!-- Used by — social proof, set apart from the hero trust strip -->
+    <div class="usedby">
+      <div class="usedby-inner">
+        <span class="usedby-label">Used by people at</span>
+        <div class="marquee" role="img" aria-label="Used by people at Apple, Betaworks, University of California, University of Michigan, Gojek, Bumble, and Postman">
+          <div class="marquee-track">
+            <span class="co">Apple</span>
+            <span class="co">Betaworks</span>
+            <span class="co">University of California</span>
+            <span class="co">University of Michigan</span>
+            <span class="co">Gojek</span>
+            <span class="co">Bumble</span>
+            <span class="co">Postman</span>
+            <span class="co" aria-hidden="true">Apple</span>
+            <span class="co" aria-hidden="true">Betaworks</span>
+            <span class="co" aria-hidden="true">University of California</span>
+            <span class="co" aria-hidden="true">University of Michigan</span>
+            <span class="co" aria-hidden="true">Gojek</span>
+            <span class="co" aria-hidden="true">Bumble</span>
+            <span class="co" aria-hidden="true">Postman</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Capability overview — the breadth map -->
@@ -104,8 +134,8 @@
               <li>Same-direction <b>size cycling</b> + two-key universal cycle</li>
               <li><b>Drag-to-snap</b> with a live preview overlay</li>
               <li>Throw windows <b>between monitors</b></li>
-              <li><b>Automatic BSP tiling</b>, yabai-style <span class="t-pro">PRO</span></li>
-              <li>Layout templates + custom editor &middot; configurable gaps</li>
+              <li>Layout templates + a custom layout editor</li>
+              <li>Per-snap undo &middot; configurable gaps</li>
             </ul>
           </div>
 
@@ -140,17 +170,8 @@
               <li><b>Pomodoro on a calendar event</b> &mdash; time logs back to it <span class="t-new">NEW</span></li>
               <li><b>Focus sessions</b> with gentle off-profile nudges</li>
               <li>Per-app <b>usage budgets</b></li>
-              <li><b>Screen-break</b> reminders &middot; <b>auto-declutter</b> stale windows</li>
+              <li><b>Screen-break</b> reminders</li>
               <li>Multi-level <b>window undo</b></li>
-            </ul>
-          </div>
-
-          <div class="cap-card" style="--cat:var(--c-look)">
-            <div class="cap-label"><span class="dot"></span>Look &amp; feel <span class="t-pro">PRO</span></div>
-            <ul>
-              <li><b>Focus border</b> on the active window</li>
-              <li><b>Dim inactive</b> windows to cut visual noise</li>
-              <li>Per-profile <b>visual presets</b> (&ldquo;rice&rdquo;)</li>
             </ul>
           </div>
 
@@ -161,6 +182,16 @@
               <li>Universal &mdash; <b>Apple Silicon + Intel</b></li>
               <li>Every shortcut is <b>configurable</b></li>
               <li>Free &amp; <b>open source</b> (MIT)</li>
+            </ul>
+          </div>
+
+          <div class="cap-card" style="--cat:var(--c-look)">
+            <div class="cap-label"><span class="dot"></span>Open &amp; private</div>
+            <ul>
+              <li><b>No telemetry</b>, no tracking, ever</li>
+              <li><b>No App Sandbox</b> &mdash; nothing hidden from you</li>
+              <li><b>$5 once</b>, no subscription</li>
+              <li><b>Free Pro</b> for students &amp; anyone who asks</li>
             </ul>
           </div>
         </div>
@@ -272,6 +303,19 @@
       </div>
     </div>
 
+    <!-- Workflows — tabbed (rendered by app.js) -->
+    <div class="section" id="workflows">
+      <div class="section-header">
+        <h2>Workflows</h2>
+        <span class="tag">A day with HopTab</span>
+      </div>
+      <div class="section-desc">Real scenarios, one click each. See how pinning, tiling, profiles, and automation chain together across a working day.</div>
+
+      <div id="wf-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;"></div>
+      <div id="wf-detail"></div>
+      <div id="wf-pro-note" style="margin-top:12px;font-size:12px;color:var(--accent);"></div>
+    </div>
+
     <!-- HopTab Pro -->
     <div class="section-full" id="pro">
       <div style="max-width:900px;margin:0 auto;">
@@ -279,11 +323,11 @@
           <h2>HopTab Pro</h2>
           <span class="tag">$5 One-Time</span>
         </div>
-        <div class="section-desc">Everything above is free. Pro adds automation features that let HopTab manage your workspace without you thinking about it. One-time purchase via <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" style="color:#000;font-weight:600;" onclick="track('pro_click',{location:'pro_desc',provider:'polar'})">Polar</a> or <a href="https://github.com/sponsors/royalbhati" style="color:#666;" onclick="track('pro_click',{location:'pro_desc',provider:'github_sponsors'})">GitHub Sponsors</a>.</div>
+        <div class="section-desc">Everything above is free. Pro adds automation features that let HopTab manage your workspace without you thinking about it. One-time purchase via <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" style="color:var(--accent);font-weight:600;" onclick="track('pro_click',{location:'pro_desc',provider:'polar'})">Polar</a> or <a href="https://github.com/sponsors/royalbhati" style="color:var(--muted);" onclick="track('pro_click',{location:'pro_desc',provider:'github_sponsors'})">GitHub Sponsors</a>.</div>
 
         <div style="margin:24px 0;">
-          <img src="/hoptab_pro_features.png" alt="HopTab Pro features" style="width:100%;border:2px solid #000;display:block;" />
-          <div class="caption" style="font-size:12px;color:#888;margin-top:8px;">Calendar auto-switch, time tracking, and focus mode integration</div>
+          <img src="/hoptab_pro_features.png" alt="HopTab Pro features" style="width:100%;display:block;" />
+          <div class="caption" style="font-size:12px;color:var(--muted);margin-top:8px;">Calendar auto-switch, time tracking, and focus mode integration</div>
         </div>
 
         <div class="pro-strip">
@@ -302,26 +346,25 @@
               <li><b>Pomodoro on a calendar event</b> &mdash; focused time logs back to it <span class="t-new">NEW</span></li>
               <li><b>Focus sessions</b> + per-app <b>usage budgets</b></li>
               <li><b>Time tracking</b> per profile, zero effort</li>
-              <li><b>Screen breaks</b>, <b>auto-declutter</b>, multi-level <b>window undo</b></li>
+              <li><b>Screen breaks</b> + multi-level <b>window undo</b></li>
             </ul>
           </div>
-          <div class="cap-card" style="--cat:var(--c-look)">
-            <div class="cap-label"><span class="dot"></span>Look &amp; feel, no limits</div>
+          <div class="cap-card" style="--cat:var(--c-space)">
+            <div class="cap-label"><span class="dot"></span>No limits</div>
             <ul>
-              <li><b>Focus border</b> + <b>dim inactive</b> windows</li>
-              <li>Per-profile <b>visual presets</b> (&ldquo;rice&rdquo;)</li>
-              <li><b>Automatic BSP tiling</b> + custom-percentage layouts</li>
-              <li><b>Unlimited</b> profiles &amp; window rules</li>
+              <li><b>Unlimited profiles</b> (free tier has 3)</li>
+              <li><b>Unlimited window rules</b> (free tier has 2)</li>
+              <li><b>Custom layouts</b> with exact zone percentages</li>
             </ul>
           </div>
         </div>
 
         <!-- Pricing comparison -->
-        <div class="pricing-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:32px;">
-          <div style="padding:28px;border:1px solid #e0e0e0;background:#fafafa;">
+        <div class="pricing-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:32px;">
+          <div style="padding:32px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--paper);box-shadow:var(--shadow-card);">
             <h3 style="font-size:18px;font-weight:700;margin-bottom:4px;">Free</h3>
-            <p style="font-size:13px;color:#555;margin-bottom:16px;">Open source &mdash; everything you need</p>
-            <ul style="list-style:none;padding:0;font-size:13px;color:#444;line-height:2.2;">
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Open source &mdash; everything you need</p>
+            <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-soft);line-height:2.2;">
               <li>&#10003; App switching (Option+Tab)</li>
               <li>&#10003; Window tiling (17 snap directions)</li>
               <li>&#10003; Drag-to-snap (edges &amp; corners)</li>
@@ -334,95 +377,120 @@
               <li>&#10003; Configurable gaps</li>
             </ul>
           </div>
-          <div style="padding:28px;border:2px solid #000;background:#fff;">
+          <div style="padding:32px;border:1px solid color-mix(in oklch, var(--accent) 40%, var(--paper));border-radius:var(--r-l);background:var(--paper);box-shadow:var(--shadow-card);">
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
               <h3 style="font-size:18px;font-weight:700;">Pro</h3>
               <span style="font-size:22px;font-weight:700;">$5</span>
-              <span style="font-size:12px;color:#888;">one-time, lifetime</span>
+              <span style="font-size:12px;color:var(--muted);">one-time, lifetime</span>
             </div>
-            <p style="font-size:13px;color:#555;margin-bottom:16px;">Everything in Free, plus automation</p>
-            <ul style="list-style:none;padding:0;font-size:13px;color:#222;line-height:2.0;font-weight:500;">
-              <li>&#10003; Automatic BSP tiling (yabai-style)</li>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Everything in Free, plus automation</p>
+            <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink);line-height:2.0;font-weight:500;">
               <li>&#10003; Calendar auto-switch + meeting reminders</li>
               <li>&#10003; Time-based scheduling</li>
               <li>&#10003; Focus mode + display auto-profiles</li>
               <li>&#10003; Time tracking + per-app budgets</li>
               <li>&#10003; Focus sessions + event Pomodoro</li>
-              <li>&#10003; Screen breaks, auto-declutter, window undo</li>
-              <li>&#10003; Focus border, dimming, visual presets</li>
+              <li>&#10003; Screen breaks + multi-level window undo</li>
               <li>&#10003; Unlimited profiles, rules &amp; custom layouts</li>
             </ul>
             <div style="margin-top:16px;display:flex;gap:12px;align-items:center;">
-              <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" onclick="track('pro_click',{location:'pro_section',provider:'polar'})" style="padding:10px 28px;background:#000;color:#fff;text-decoration:none;font-weight:600;font-size:13px;border:2px solid #000;">Get HopTab Pro</a>
-              <a href="https://github.com/sponsors/royalbhati" onclick="track('pro_click',{location:'pro_section',provider:'github_sponsors'})" style="font-size:12px;color:#888;text-decoration:none;">or GitHub Sponsors</a>
+              <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" onclick="track('pro_click',{location:'pro_section',provider:'polar'})" style="padding:12px 28px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:14px;border-radius:var(--r-pill);">Get HopTab Pro</a>
+              <a href="https://github.com/sponsors/royalbhati" onclick="track('pro_click',{location:'pro_section',provider:'github_sponsors'})" style="font-size:12px;color:var(--muted);text-decoration:none;">or GitHub Sponsors</a>
             </div>
-            <p style="font-size:12px;color:#888;margin-top:14px;">Student / can&apos;t afford it? Email <a href="mailto:rawyelll@gmail.com" style="color:#555;font-weight:600;">rawyelll@gmail.com</a> for a free Pro key. No questions asked.</p>
+            <p style="font-size:12px;color:var(--muted);margin-top:14px;">Student / can&apos;t afford it? Email <a href="mailto:rawyelll@gmail.com" style="color:var(--ink-soft);font-weight:600;">rawyelll@gmail.com</a> for a free Pro key. No questions asked.</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Workflows — tabbed (rendered by app.js) -->
-    <div class="section" id="workflows">
+    <!-- Comparison -->
+    <div class="section" id="compare">
       <div class="section-header">
-        <h2>Workflows</h2>
-        <span class="tag">Use Cases</span>
+        <h2>How HopTab compares</h2>
+        <span class="tag">vs the usual suspects</span>
       </div>
-      <div class="section-desc">Click a workflow to see how HopTab features chain together in real scenarios.</div>
-
-      <div id="wf-pills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px;"></div>
-      <div id="wf-detail"></div>
-      <div id="wf-pro-note" style="margin-top:12px;font-size:12px;color:#4a90d9;"></div>
+      <div class="section-desc">Most tools snap windows. HopTab snaps windows <em>and</em> manages your whole workspace.</div>
+      <div class="cmp-wrap">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th class="hoptab-col">HopTab</th>
+              <th>Magnet</th>
+              <th>Moom</th>
+              <th>Rectangle</th>
+              <th>yabai</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Window snapping &amp; tiling</th><td class="hoptab-col yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+            <tr><th scope="row">Pinned-app switcher</th><td class="hoptab-col yes">&#10003;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td></tr>
+            <tr><th scope="row">Profiles / workspaces</th><td class="hoptab-col yes">&#10003;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td></tr>
+            <tr><th scope="row">Session save &amp; restore</th><td class="hoptab-col yes">&#10003;</td><td class="no">&mdash;</td><td>partial</td><td class="no">&mdash;</td><td class="no">&mdash;</td></tr>
+            <tr><th scope="row">Calendar / Focus automation</th><td class="hoptab-col yes">&#10003;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td></tr>
+            <tr><th scope="row">Time tracking &amp; focus tools</th><td class="hoptab-col yes">&#10003;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="no">&mdash;</td></tr>
+            <tr><th scope="row">No config file needed</th><td class="hoptab-col yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td><td class="no">&mdash;</td></tr>
+            <tr><th scope="row">Open source</th><td class="hoptab-col yes">&#10003; MIT</td><td class="no">&mdash;</td><td class="no">&mdash;</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+            <tr><th scope="row">Price</th><td class="hoptab-col">Free / $5</td><td>Paid</td><td>Paid</td><td>Free</td><td>Free</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- More features grid -->
-    <div class="section-full">
-      <div style="max-width:900px;margin:0 auto;">
-        <div class="section-header">
-          <h2>And More</h2>
-        </div>
+    <!-- Testimonials -->
+    <div class="section" id="loved">
+      <div class="section-header">
+        <h2>What people say</h2>
+        <span class="tag">From the community</span>
+      </div>
+      <div class="section-desc">Straight from the issue tracker. Most feature requests ship in the next release; every quote links to its source.</div>
 
-        <div class="features-grid">
-          <div class="feature-card">
-            <h3>Space-Aware Window Picker</h3>
-            <p>Multi-window apps show a picker filtered to your current Space. No more getting yanked to another desktop when picking a Safari window.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Move Between Monitors</h3>
-            <p>Throw windows to the next display with Ctrl+Opt+Cmd+Arrow. Proportional placement across screen sizes.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Display-Aware Sessions</h3>
-            <p>Saves window positions per display configuration. Dock your laptop &mdash; get your external monitor layout. Undock &mdash; get your laptop layout. Automatic.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Undo Snap</h3>
-            <p>Every snap saves the previous position. Ctrl+Opt+Z restores it. Mistake-proof window management.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Auto-Unminimize</h3>
-            <p>Minimized apps are automatically restored when activated through HopTab. No fishing in the Dock.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Configurable Gaps</h3>
-            <p>0&ndash;20pt gaps between snapped windows and screen edges. Shared borders get half-gaps automatically.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Auto-Updates</h3>
-            <p>Checks every 4 hours. Shows a banner in the menu bar when a new version is available.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Sticky Notes</h3>
-            <p>Attach a note to each profile. Shown briefly when switching &mdash; remind yourself what each workspace is for.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Menu Bar Native</h3>
-            <p>Lives in the menu bar. No Dock icon. Settings, profiles, and status all accessible from the dropdown.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Drag-to-Snap</h3>
-            <p>Drag any window to a screen edge or corner. Translucent preview overlay shows the target zone. Edges for halves, corners for quarters, top for maximize. Toggle in Settings.</p>
-          </div>
+      <div class="quotes">
+        <div class="quote-card">
+          <blockquote>&ldquo;A huge thank you for building HopTab &mdash; it&rsquo;s genuinely replaced Cmd+Tab for me and I don&rsquo;t miss it at all. A truly wonderful app and dev.&rdquo;</blockquote>
+          <div class="who"><b><a href="https://github.com/royalbhati/HopTab/issues/9" style="color:inherit;text-decoration:none;">@z76k</a></b> &middot; GitHub issue #9</div>
+        </div>
+        <div class="quote-card">
+          <blockquote>&ldquo;Awesome &mdash; great work on this.&rdquo; <span style="color:var(--muted);">After suggesting a Cmd+Tab replacement preset; it shipped in the next release.</span></blockquote>
+          <div class="who"><b><a href="https://github.com/royalbhati/HopTab/issues/17" style="color:inherit;text-decoration:none;">@davejorg</a></b> &middot; GitHub issue #17</div>
+        </div>
+        <div class="quote-card">
+          <blockquote>&ldquo;Using the custom shortcut it works fine and is perfect for me!&rdquo; <span style="color:var(--muted);">Asked for configurable shortcuts; got them.</span></blockquote>
+          <div class="who"><b><a href="https://github.com/royalbhati/HopTab/issues/7" style="color:inherit;text-decoration:none;">@warmup72</a></b> &middot; GitHub issue #7</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section" id="faq">
+      <div class="section-header">
+        <h2>FAQ</h2>
+        <span class="tag">Good to know</span>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item" open><summary>Is HopTab free?</summary><p>Yes. The whole core is free and open source (MIT). HopTab Pro is a $5 one-time unlock for the automation layer, with no subscription. Students and anyone who can&rsquo;t afford it can email for a free Pro key.</p></details>
+        <details class="faq-item"><summary>How is it different from Magnet or Rectangle?</summary><p>Those snap windows. HopTab also pins your apps for a focused switcher, switches whole workspaces (profiles) per desktop, and automates which profile is active around your calendar, Focus mode, and displays.</p></details>
+        <details class="faq-item"><summary>Do I need to configure it like yabai?</summary><p>No. No config file, no scripting, no disabling SIP. Install it, grant Accessibility, press Option+Tab. You get keyboard-driven snapping, layouts, and profiles without the setup.</p></details>
+        <details class="faq-item"><summary>Does it work on Apple Silicon and Intel?</summary><p>Yes. It&rsquo;s a universal binary and runs on macOS 14 or later.</p></details>
+        <details class="faq-item"><summary>Is it a subscription?</summary><p>Never. Pro is $5 once, for life. The free tier stays free forever.</p></details>
+        <details class="faq-item"><summary>Does it collect my data?</summary><p>No telemetry, no tracking, no account. It&rsquo;s open source, so you can read exactly what it does.</p></details>
+        <details class="faq-item"><summary>Why does it need Accessibility permission?</summary><p>macOS only lets an app move and resize other apps&rsquo; windows, and capture global shortcuts, through the Accessibility API. Every window manager needs it.</p></details>
+      </div>
+    </div>
+
+    <!-- Conversion CTA -->
+    <div class="section-full home-cta">
+      <div class="cta-box" style="max-width:760px;margin:0 auto;">
+        <h3>Set it up in 30 seconds</h3>
+        <p>Free and open source. Install with Homebrew, grant Accessibility, press Option+Tab. Pro is a $5 one-time unlock whenever you want the automation.</p>
+        <div class="cta-cmd">
+          <button class="copy-btn">Copy</button>
+          <span class="cmd">brew tap royalbhati/tap &amp;&amp; brew install --cask hoptab</span>
+        </div>
+        <div class="cta-actions">
+          <a href="/download" class="primary" onclick="track('download_click',{location:'cta'})">Download for macOS</a>
+          <a href="https://github.com/royalbhati/HopTab" class="ghost" onclick="track('github_click',{location:'cta'})">&#9733; Star on GitHub</a>
+          <a href="https://discord.gg/6pSMtzBGUr" class="ghost" onclick="track('discord_click',{location:'cta'})">Join the Discord</a>
         </div>
       </div>
     </div>
@@ -496,14 +564,10 @@
           <span class="date">June 2026</span>
         </div>
         <ul class="changelog-list">
-          <li class="feat"><span class="changelog-label feat">New</span> Automatic BSP tiling &mdash; yabai-style binary space partitioning that tiles windows for you, with rice presets</li>
           <li class="feat"><span class="changelog-label feat">New</span> Focus sessions &mdash; timed deep-work blocks with a gentle nudge when you stray to an off-profile app</li>
           <li class="feat"><span class="changelog-label feat">New</span> Screen-break reminders &mdash; workspace-aware break overlay that never interrupts a meeting</li>
           <li class="feat"><span class="changelog-label feat">New</span> Per-app usage budgets &mdash; set a daily limit on any app and get nudged when you pass it</li>
           <li class="feat"><span class="changelog-label feat">New</span> Multi-level window undo &mdash; step back through window position and size changes</li>
-          <li class="feat"><span class="changelog-label feat">New</span> Auto-declutter &mdash; auto-minimize windows left idle too long</li>
-          <li class="feat"><span class="changelog-label feat">New</span> Focus border + dimming &mdash; outline the active window, dim the rest</li>
-          <li class="feat"><span class="changelog-label feat">New</span> Per-profile visual presets (&ldquo;rice&rdquo;)</li>
           <li class="feat"><span class="changelog-label feat">New</span> hoptab:// URL scheme &mdash; deep links for profile switch, snap, undo, and focus session</li>
           <li class="feat"><span class="changelog-label feat">New</span> In-app update feed with a menu-bar update banner</li>
         </ul>
@@ -573,7 +637,7 @@
         <div class="step-item">
           <div class="step-num">01</div>
           <strong>Run the command</strong>
-          <p>Or download from <a href="https://github.com/royalbhati/HopTab/releases/latest" onclick="track('download_click',{location:'install'})" style="color:#000;font-weight:600;">GitHub Releases</a></p>
+          <p>Or download from <a href="https://github.com/royalbhati/HopTab/releases/latest" onclick="track('download_click',{location:'install'})" style="color:var(--accent);font-weight:600;">GitHub Releases</a></p>
         </div>
         <div class="step-item">
           <div class="step-num">02</div>
@@ -593,11 +657,11 @@
       <div class="section-header">
         <h2>Requirements</h2>
       </div>
-      <div style="display:flex;gap:32px;font-size:13px;color:#555;flex-wrap:wrap;">
-        <div><strong style="color:#000;">macOS</strong> 14.0+</div>
-        <div><strong style="color:#000;">Accessibility</strong> permission required</div>
-        <div><strong style="color:#000;">Architecture</strong> Universal (Apple Silicon + Intel)</div>
-        <div><strong style="color:#000;">Price</strong> Free &amp; open source. Pro: $5 one-time</div>
+      <div style="display:flex;gap:32px;font-size:13px;color:var(--muted);flex-wrap:wrap;">
+        <div><strong style="color:var(--ink);">macOS</strong> 14.0+</div>
+        <div><strong style="color:var(--ink);">Accessibility</strong> permission required</div>
+        <div><strong style="color:var(--ink);">Architecture</strong> Universal (Apple Silicon + Intel)</div>
+        <div><strong style="color:var(--ink);">Price</strong> Free &amp; open source. Pro: $5 one-time</div>
       </div>
     </div>
 
