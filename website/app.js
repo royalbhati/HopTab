@@ -1,11 +1,25 @@
 // HopTab landing page — vanilla JS (no framework).
 
+// --- X (Twitter) Ads pixel. Set the pixel ID from ads.x.com → Tools → Events
+// Manager to activate; empty string = pixel never loads.
+var X_PIXEL_ID = "";
+if (X_PIXEL_ID) {
+  !function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},
+  s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
+  a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
+  twq('config', X_PIXEL_ID);
+}
+
 // --- Analytics: fire a custom event into whatever providers are loaded.
 // Safe no-op if a provider hasn't loaded or is blocked by the browser.
 window.track = function (event, data) {
   data = data || {};
   try { if (window.umami && window.umami.track) window.umami.track(event, data); } catch (e) {}
   try { if (window.gtag) window.gtag("event", event, data); } catch (e) {}
+  try {
+    if (window.twq && event === "download_click") twq("event", "tw-download", {});
+    if (window.twq && event === "pro_click") twq("event", "tw-pro-click", {});
+  } catch (e) {}
 };
 
 // --- Workflows (interactive tabs) ---------------------------------------
