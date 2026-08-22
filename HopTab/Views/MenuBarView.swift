@@ -182,13 +182,15 @@ struct MenuBarView: View {
                             appState.activateProfile(id: profile.id)
                         } label: {
                             HStack {
+                                if profile.id == appState.store.activeProfileId {
+                                    Image(systemName: "checkmark")
+                                }
                                 Text(profile.name)
                                 if profile.id == appState.store.activeProfileId {
                                     Text("(\(profile.pinnedApps.count))")
                                 }
                             }
                         }
-                        .disabled(profile.id == appState.store.activeProfileId)
                     }
                 } label: {
                     HStack {
@@ -254,7 +256,8 @@ struct MenuBarView: View {
                         }
                     }
 
-                    if SessionSnapshotService.hasRunningApps(appState.store.activeProfile!) {
+                    if let activeProfile = appState.store.activeProfile,
+                       SessionSnapshotService.hasRunningApps(activeProfile) {
                         Button {
                             appState.saveAndCloseSession(profileId: profileId)
                         } label: {
@@ -353,10 +356,15 @@ struct MenuBarView: View {
                 Divider()
             }
 
-            Button("Settings...") {
+            Button("Settings\u{2026}") {
                 NSApp.sendAction(#selector(AppDelegate.openSettings(_:)), to: nil, from: nil)
             }
             .keyboardShortcut(",", modifiers: .command)
+
+            Button("About HopTab") {
+                NSApp.activate(ignoringOtherApps: true)
+                NSApp.orderFrontStandardAboutPanel(nil)
+            }
 
             Divider()
 

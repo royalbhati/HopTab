@@ -25,8 +25,10 @@ enum AppSwitcherService {
             app.unhide()
         }
 
-        // 2. Unminimize windows so minimized apps restore on activation
-        unminimizeWindows(of: app)
+        // 2. If the app has no visible window at all (everything minimized),
+        //    restore just the frontmost one so activation has something to
+        //    show — don't yank every minimized window out of the Dock.
+        unminimizeFrontWindowIfAllMinimized(of: app)
 
         // 3. Use the older, more aggressive activate API
         //    The macOS 14+ parameterless activate() is weaker and doesn't
@@ -67,21 +69,29 @@ enum AppSwitcherService {
         }
     }
 
-    /// Unminimize all minimized windows of a running app.
-    private static func unminimizeWindows(of app: NSRunningApplication) {
+    /// If every window of the app is minimized, unminimize only the frontmost
+    /// (most recently used) one. If the app already has at least one visible
+    /// window, leave all minimized windows alone.
+    private static func unminimizeFrontWindowIfAllMinimized(of app: NSRunningApplication) {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
 
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value)
-        guard result == .success, let windows = value as? [AXUIElement] else { return }
+        guard result == .success, let windows = value as? [AXUIElement], !windows.isEmpty else { return }
 
         for window in windows {
             var minimized: CFTypeRef?
             let attrResult = AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimized)
-            if attrResult == .success, let isMin = minimized as? Bool, isMin {
-                AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, false as CFBoolean)
+            let isMin = (attrResult == .success) && (minimized as? Bool == true)
+            if !isMin {
+                // At least one visible window — nothing to restore.
+                return
             }
         }
+
+        // All windows are minimized. AX returns windows front-to-back, so the
+        // first one is the most recently used — restore just that one.
+        AXUIElementSetAttributeValue(windows[0], kAXMinimizedAttribute as CFString, false as CFBoolean)
     }
 
     private static func launchApp(at url: URL) {
@@ -96,24 +106,20 @@ enum AppSwitcherService {
 
     // MARK: - Window Enumeration
 
-    /// Query CGWindowList for all windows of a given PID.
-    /// Returns a lookup of [CGWindowID: spaceID] for cross-referencing with AX windows.
-    private static func cgWindowSpaces(for pid: pid_t) -> [CGWindowID: Int] {
-        guard let infoList = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else { return [:] }
-
-        var result: [CGWindowID: Int] = [:]
-        for info in infoList {
-            guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int,
-                  ownerPID == pid,
-                  let windowID = info[kCGWindowNumber as String] as? CGWindowID,
-                  let spaceID = info["kCGWindowWorkspace" as String] as? Int
-            else { continue }
-            result[windowID] = spaceID
-        }
-        return result
+    /// Look up which Space a window lives on via the private CGS API.
+    /// Returns nil if the API is unavailable or returns nothing — callers
+    /// treat nil as "unknown Space" and fail open.
+    /// (The old kCGWindowWorkspace key in CGWindowListCopyWindowInfo has been
+    /// dead since macOS 10.9 and always returned nil.)
+    private static func cgsSpaceID(forWindow windowID: CGWindowID) -> Int? {
+        let conn = CGSMainConnectionID()
+        guard conn > 0 else { return nil }
+        let windowIDs = [NSNumber(value: windowID)] as CFArray
+        guard let spaces = CGSCopySpacesForWindows(conn, kCGSAllSpacesMask, windowIDs)?
+                .takeRetainedValue() as? [Int],
+              let first = spaces.first, first > 0
+        else { return nil }
+        return first
     }
 
     /// List windows of a running app via AX API, enriched with stable CGWindowID and Space info.
@@ -123,8 +129,6 @@ enum AppSwitcherService {
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value)
         guard result == .success, let windows = value as? [AXUIElement] else { return [] }
-
-        let spaceMap = cgWindowSpaces(for: app.processIdentifier)
 
         var infos: [WindowInfo] = []
         for window in windows {
@@ -151,7 +155,7 @@ enum AppSwitcherService {
             var windowID: CGWindowID = 0
             guard _AXUIElementGetWindow(window, &windowID) == .success, windowID != 0 else { continue }
 
-            let spaceID = isMinimized ? nil : spaceMap[windowID]
+            let spaceID = isMinimized ? nil : cgsSpaceID(forWindow: windowID)
 
             infos.append(WindowInfo(id: windowID, title: title, isMinimized: isMinimized, spaceID: spaceID))
         }
@@ -200,3 +204,17 @@ enum AppSwitcherService {
 /// Extracts the CGWindowID from an AXUIElement window.
 @_silgen_name("_AXUIElementGetWindow")
 private func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGWindowID) -> AXError
+
+// MARK: - Private CGS declarations
+
+/// Connection ID for the current login session.
+@_silgen_name("CGSMainConnectionID")
+private func CGSMainConnectionID() -> Int32
+
+/// Returns the Space IDs containing the given windows. Copy function —
+/// the caller owns the returned array.
+@_silgen_name("CGSCopySpacesForWindows")
+private func CGSCopySpacesForWindows(_ cid: Int32, _ mask: UInt32, _ windowIDs: CFArray) -> Unmanaged<CFArray>?
+
+/// Include current, other, and fullscreen Spaces in the lookup.
+private let kCGSAllSpacesMask: UInt32 = 0x7

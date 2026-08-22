@@ -6,6 +6,17 @@ import QuartzCore
 final class DragSnapService {
     var isEnabled: Bool = false
 
+    /// UserDefaults key for restore-on-unsnap (default ON). When enabled,
+    /// dragging a window HopTab previously snapped away from its snapped
+    /// frame — without hitting a new snap zone — restores its pre-snap size
+    /// with the window following the cursor (Rectangle behavior).
+    /// Settings UI should bind a Toggle to this key.
+    static let restoreOnUnsnapDefaultsKey = "restoreSizeOnUnsnap"
+
+    private var restoreOnUnsnapEnabled: Bool {
+        UserDefaults.standard.object(forKey: Self.restoreOnUnsnapDefaultsKey) as? Bool ?? true
+    }
+
     private enum State { case idle, detecting, dragging }
     private var state: State = .idle
 
@@ -15,6 +26,17 @@ final class DragSnapService {
     private var draggedPID: pid_t = 0
     private var currentZone: SnapDirection?
     private var currentScreen: NSScreen?
+    private var lastMousePos: CGPoint = .zero
+    /// Increments on every mouse-down; async AX results from a previous
+    /// gesture are discarded when the generation no longer matches.
+    private var dragGeneration: Int = 0
+    /// True while an AX detection query is running on `axQueue`.
+    private var axDetectInFlight = false
+
+    /// Serial background queue for AX reads — the mouse event path only
+    /// records positions and schedules queries; it never waits on AX.
+    private let axQueue = DispatchQueue(label: "com.hoptab.DragSnapService.ax", qos: .userInteractive)
+    private let axMessagingTimeout: Float = 0.3
 
     // Throttle drag processing to avoid burning CPU at 60-120 Hz
     private var lastDragProcessTime: CFTimeInterval = 0
@@ -47,15 +69,18 @@ final class DragSnapService {
 
     private func handleMouseDown(_ event: CGEvent) {
         initialMousePos = event.location
+        lastMousePos = event.location
         initialWindowFrame = .zero  // Reset so detection starts fresh each click
         state = .detecting
         draggedWindow = nil
         currentZone = nil
         lastDragProcessTime = 0
+        dragGeneration += 1
     }
 
     private func handleMouseDragged(_ event: CGEvent) {
         let pos = event.location
+        lastMousePos = pos
 
         switch state {
         case .idle:
@@ -67,21 +92,14 @@ final class DragSnapService {
             let dy = pos.y - initialMousePos.y
             guard (dx * dx + dy * dy) > (dragDetectThreshold * dragDetectThreshold) else { return }
 
-            // Throttle AX detection calls (~15 Hz instead of 60-120 Hz)
+            // Throttle AX detection scheduling (~15 Hz instead of 60-120 Hz)
             let now = CACurrentMediaTime()
             guard now - lastDragProcessTime >= detectThrottleInterval else { return }
             lastDragProcessTime = now
 
-            // Check if a window is being dragged
-            switch detectWindowDrag() {
-            case .dragging:
-                state = .dragging
-                checkZone(at: pos)
-            case .watching:
-                break // frame primed or window not moving yet — keep detecting
-            case .noWindow:
-                state = .idle
-            }
+            // Schedule the AX query on the background queue — the event path
+            // records positions only and never waits on AX.
+            scheduleWindowDragDetection()
 
         case .dragging:
             // Throttle zone checks (~30 Hz — plenty for smooth preview)
@@ -98,6 +116,7 @@ final class DragSnapService {
             draggedWindow = nil
             currentZone = nil
             currentScreen = nil
+            dragGeneration += 1 // invalidate any in-flight AX detection
             previewController.hide()
         }
 
@@ -105,48 +124,99 @@ final class DragSnapService {
               let zone = currentZone,
               let window = draggedWindow,
               let screen = currentScreen
-        else { return }
+        else {
+            // Drag ended with no zone hit: if the drag started from a frame
+            // HopTab snapped this window to, restore its pre-snap size with
+            // the window following the cursor. LayoutService checks whether
+            // the start frame matches a known snapped frame — this never
+            // fires for windows HopTab never snapped.
+            if restoreOnUnsnapEnabled,
+               state == .dragging,
+               currentZone == nil,
+               let window = draggedWindow,
+               !initialWindowFrame.isEmpty {
+                LayoutService.restoreSizeAfterUnsnap(
+                    window: window,
+                    pid: draggedPID,
+                    dragStartFrame: initialWindowFrame,
+                    cursor: event.location
+                )
+            }
+            return
+        }
 
         let screenFrame = LayoutService.quartzVisibleFrame(for: screen)
+        // snapWindow enqueues its AX work on LayoutService's serial queue and
+        // returns immediately — the mouse-up path never blocks on a move.
         LayoutService.snapWindow(window, pid: draggedPID, to: zone, on: screenFrame)
     }
 
     // MARK: - Window Drag Detection
 
-    private enum DragDetection { case dragging, watching, noWindow }
-
-    private func detectWindowDrag() -> DragDetection {
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return .noWindow }
+    /// Kick off one async AX query (focused window + frame) on the background
+    /// queue. The result is applied back on the main queue if the gesture is
+    /// still in the detecting phase. At most one query is in flight at a time.
+    private func scheduleWindowDragDetection() {
+        guard !axDetectInFlight else { return }
+        axDetectInFlight = true
+        let generation = dragGeneration
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
+            axDetectInFlight = false
+            state = .idle
+            return
+        }
         let pid = frontApp.processIdentifier
-        let axApp = AXUIElementCreateApplication(pid)
+        let timeout = axMessagingTimeout
 
-        // Get focused window
-        var focusedRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedRef) == .success,
-              let window = focusedRef,
-              CFGetTypeID(window) == AXUIElementGetTypeID()
-        else { return .noWindow }
+        axQueue.async { [weak self] in
+            // All AX IPC happens here, never on the event path.
+            let axApp = AXUIElementCreateApplication(pid)
+            AXUIElementSetMessagingTimeout(axApp, timeout)
 
-        let axWindow = window as! AXUIElement
-        let frame = LayoutService.windowFrame(axWindow)
-        guard !frame.isEmpty else { return .noWindow }
+            var axWindow: AXUIElement?
+            var frame: CGRect = .zero
+
+            var focusedRef: CFTypeRef?
+            if AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &focusedRef) == .success,
+               let window = focusedRef,
+               CFGetTypeID(window) == AXUIElementGetTypeID() {
+                let win = window as! AXUIElement
+                AXUIElementSetMessagingTimeout(win, timeout)
+                axWindow = win
+                frame = LayoutService.windowFrame(win)
+            }
+
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.axDetectInFlight = false
+                // Stale result — the gesture ended or a new one started.
+                guard generation == self.dragGeneration, self.state == .detecting else { return }
+                self.applyDetectionResult(window: axWindow, frame: frame, pid: pid)
+            }
+        }
+    }
+
+    private func applyDetectionResult(window: AXUIElement?, frame: CGRect, pid: pid_t) {
+        guard let window, !frame.isEmpty else {
+            state = .idle
+            return
+        }
 
         if initialWindowFrame.isEmpty {
             // First check — store the frame and keep watching for movement
             initialWindowFrame = frame
-            return .watching
+            return
         }
 
         // If the window moved roughly with the cursor, the user is dragging it
         let windowMoved = abs(frame.origin.x - initialWindowFrame.origin.x) > 2 ||
                           abs(frame.origin.y - initialWindowFrame.origin.y) > 2
         if windowMoved {
-            draggedWindow = axWindow
+            draggedWindow = window
             draggedPID = pid
-            return .dragging
+            state = .dragging
+            checkZone(at: lastMousePos)
         }
-
-        return .watching
     }
 
     // MARK: - Zone Detection

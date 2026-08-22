@@ -25,7 +25,10 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         module.deactivate()
     }
 
-    func startServices(profileSwitcher: @escaping (UUID) -> Void) {
+    func startServices(profileSwitcher: @escaping (UUID) -> Void, currentProfile: (() -> UUID?)? = nil) {
+        // Let calendar/focus-mode restore logic detect manual mid-meeting switches
+        module.calendar.currentProfileProvider = currentProfile
+        module.focusMode.currentProfileProvider = currentProfile
         // Set up the window rules snap callback to bridge into LayoutService
         WindowRulesService.snapCallback = { (bundleId: String, directionRawValue: String) in
             guard let direction = SnapDirection(rawValue: directionRawValue) else { return }
@@ -41,6 +44,22 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         }
         module.focusSession.onEnded = { [weak self] message in
             self?.toastController.show(icon: "checkmark.circle", message: message, duration: 3)
+        }
+        // Pomodoro start/end toasts
+        module.pomodoro.onWorkStarted = { [weak self] title, minutes, interval in
+            self?.toastController.show(
+                icon: "timer",
+                message: "Focus \(minutes)m on \(title) — interval \(interval)",
+                duration: 2
+            )
+        }
+        module.pomodoro.onSessionEnded = { [weak self] title, seconds in
+            let mins = Int(seconds / 60)
+            self?.toastController.show(
+                icon: "checkmark.circle",
+                message: "Pomodoro ended — \(mins)m focused on \(title)",
+                duration: 3
+            )
         }
         // App budget nudges
         module.appUsage.onBudgetExceeded = { [weak self] appName, minutes in
@@ -73,6 +92,30 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         guard module.focusSession.isActive else { return }
         module.focusSession.stop()
         toastController.show(icon: "moon.zzz", message: "Focus session ended — switched profile", duration: 2)
+    }
+
+    // MARK: - Pomodoro
+
+    func startPomodoro(eventTitle: String, eventEndDate: Date?) {
+        module.pomodoro.start(eventTitle: eventTitle, eventEndDate: eventEndDate)
+    }
+
+    func stopPomodoro() {
+        module.pomodoro.stop()
+    }
+
+    func skipPomodoroBreak() {
+        module.pomodoro.skipBreak()
+    }
+
+    var pomodoroStatus: PomodoroStatusInfo? {
+        guard let session = module.pomodoro.current else { return nil }
+        return PomodoroStatusInfo(
+            eventTitle: session.eventTitle,
+            isBreak: session.phase.isBreak,
+            secondsRemaining: max(0, Int(session.phaseEndsAt.timeIntervalSinceNow)),
+            completedIntervals: session.completedWorkIntervals
+        )
     }
 
     /// Record a profile switch for time tracking.
@@ -118,8 +161,54 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         return AnyView(WindowUndoConfigView(service: module.windowUndo))
     }
 
+    // DISABLED: Focus Dimming, Focus Border, BSP tiling (and the rice presets /
+    // profile visuals built on them) are commented out for this release.
+    // Uncomment here and in HopTabProModule.swift / SettingsView.swift to restore.
     func focusDimmingSectionView() -> AnyView? {
-        return nil
+        // guard module.isLicensed else { return nil }
+        // return AnyView(FocusDimmingConfigView(service: module.focusDimming))
+        nil
+    }
+
+    func focusBorderSectionView() -> AnyView? {
+        // guard module.isLicensed else { return nil }
+        // return AnyView(FocusBorderConfigView(service: module.focusBorder))
+        nil
+    }
+
+    func bspTilingSectionView() -> AnyView? {
+        // guard module.isLicensed else { return nil }
+        // return AnyView(BSPTilingConfigView(service: module.bspTiling))
+        nil
+    }
+
+    func ricePresetsSectionView() -> AnyView? {
+        // guard module.isLicensed else { return nil }
+        // return AnyView(
+        //     RicePresetsView(
+        //         bsp: module.bspTiling,
+        //         border: module.focusBorder,
+        //         dimming: module.focusDimming,
+        //         userPresets: module.userPresets
+        //     )
+        // )
+        nil
+    }
+
+    func profileVisualsSectionView(profiles: [ProProfileInfo]) -> AnyView? {
+        // guard module.isLicensed else { return nil }
+        // let proProfiles = profiles.map { HopTabPro.ProProfileInfo(id: $0.id, name: $0.name) }
+        // return AnyView(
+        //     ProfileVisualsConfigView(
+        //         profiles: proProfiles,
+        //         store: module.profileVisualsStore,
+        //         userPresets: module.userPresets,
+        //         bsp: module.bspTiling,
+        //         border: module.focusBorder,
+        //         dimming: module.focusDimming
+        //     )
+        // )
+        nil
     }
 
     func screenBreaksSectionView() -> AnyView? {
@@ -142,8 +231,8 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         if module.isLicensed {
             return AnyView(
                 VStack(alignment: .leading, spacing: 20) {
-                    TimeTrackingView(timeTracking: module.timeTracking, appUsage: module.appUsage)
-                    CalendarConfigView(calendarService: module.calendar, profiles: proProfiles)
+                    TimeTrackingView(timeTracking: module.timeTracking, appUsage: module.appUsage, pomodoro: module.pomodoro)
+                    CalendarConfigView(calendarService: module.calendar, profiles: proProfiles, pomodoro: module.pomodoro)
                     ScheduleConfigView(scheduleService: module.schedule, profiles: proProfiles)
                     FocusModeConfigView(focusModeService: module.focusMode, profiles: proProfiles)
                 }
@@ -164,7 +253,7 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Link(destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!) {
+                        Link(destination: ProLinks.purchaseURL) {
                             Text("$5 one-time")
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(.white)
@@ -185,7 +274,7 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
                         TimeTrackingView(timeTracking: module.timeTracking)
                     }
                     lockedView {
-                        CalendarConfigView(calendarService: module.calendar, profiles: proProfiles)
+                        CalendarConfigView(calendarService: module.calendar, profiles: proProfiles, pomodoro: module.pomodoro)
                     }
                     lockedView {
                         ScheduleConfigView(scheduleService: module.schedule, profiles: proProfiles)
@@ -223,7 +312,7 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
                     Text("Auto-switch profiles when monitors change")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                    Link(destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!) {
+                    Link(destination: ProLinks.purchaseURL) {
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
                                 .font(.system(size: 9))
@@ -261,9 +350,7 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
                         .padding(8)
                 }
                 .onTapGesture {
-                    if let url = URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7") {
-                        NSWorkspace.shared.open(url)
-                    }
+                    NSWorkspace.shared.open(ProLinks.purchaseURL)
                 }
         }
     }

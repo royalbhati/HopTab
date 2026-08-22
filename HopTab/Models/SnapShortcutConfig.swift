@@ -44,6 +44,9 @@ struct SnapShortcutConfig: Codable {
             // Universal cycle
             .cycleNext:      shortcut(ctrlOpt, kVK_ANSI_Period),
             .cyclePrevious:  shortcut(ctrlOpt, kVK_ANSI_Comma),
+            // Adjacent-window split resize (Rectangle's Larger/Smaller keys)
+            .growSplit:      shortcut(ctrlOpt, kVK_ANSI_Equal),
+            .shrinkSplit:    shortcut(ctrlOpt, kVK_ANSI_Minus),
         ])
     }()
 

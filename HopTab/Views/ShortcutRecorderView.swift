@@ -7,10 +7,25 @@ struct ShortcutRecorderView: View {
     @State private var isRecording = false
     @State private var liveModifiers: String = ""
     @State private var rejectionHint: String = ""
+    @State private var shiftNote: String = ""
     @State private var flagsMonitor: Any?
     @State private var keyMonitor: Any?
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            recorderButton
+            if !shiftNote.isEmpty {
+                Text(shiftNote)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
+        }
+        .onDisappear { stopRecording() }
+    }
+
+    private var recorderButton: some View {
         Button(action: toggleRecording) {
             HStack(spacing: 6) {
                 if isRecording {
@@ -45,7 +60,6 @@ struct ShortcutRecorderView: View {
             )
         }
         .buttonStyle(.plain)
-        .onDisappear { stopRecording() }
     }
 
     private func toggleRecording() {
@@ -101,15 +115,31 @@ struct ShortcutRecorderView: View {
             }
 
             // Strip shift from stored flags — shift is used for reverse cycling
+            let hadShift = cgFlags.contains(.maskShift)
             var storedFlags = cgFlags
             storedFlags.remove(.maskShift)
 
-            shortcut = CustomShortcut(
+            let recorded = CustomShortcut(
                 modifierFlagsRawValue: storedFlags.rawValue,
                 keyCode: Int64(keyCode)
             )
+            shortcut = recorded
             stopRecording()
+
+            // Be honest about the strip: tell the user what actually got saved.
+            if hadShift {
+                showShiftNote("\u{21E7} is reserved for reverse cycling \u{2014} saved as \(recorded.displayName)")
+            }
             return nil
+        }
+    }
+
+    private func showShiftNote(_ note: String) {
+        withAnimation(.easeInOut(duration: 0.15)) { shiftNote = note }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            if shiftNote == note {
+                withAnimation(.easeInOut(duration: 0.15)) { shiftNote = "" }
+            }
         }
     }
 

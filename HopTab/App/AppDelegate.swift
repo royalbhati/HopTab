@@ -31,8 +31,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if appState.permissions.isTrusted {
             appState.startHotkey()
         } else {
-            // Prompt only on first-ever launch; poll silently afterwards
-            appState.permissions.promptIfNeeded()
+            if UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+                // Returning user lost the grant — re-prompt (first time only), then poll
+                appState.permissions.promptIfNeeded()
+            } else {
+                // Onboarding owns the Accessibility prompt (it has its own CTA);
+                // just poll silently so we pick up the grant when it lands.
+                appState.permissions.startPolling()
+            }
 
             // Start hotkey as soon as permission is granted
             appState.permissions.$isTrusted
@@ -57,9 +63,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         let pro = ProBridge()
         ProServiceRegistry.shared.register(pro)
         let startProServices = { [weak self] in
-            pro.startServices { profileId in
-                self?.appState.activateProfile(id: profileId)
-            }
+            pro.startServices(
+                profileSwitcher: { profileId in
+                    self?.appState.activateProfile(id: profileId)
+                },
+                currentProfile: { self?.appState.store.activeProfileId }
+            )
         }
         if pro.isLicensed {
             startProServices()

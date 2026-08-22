@@ -44,6 +44,12 @@ final class AppState: ObservableObject {
 
     @Published var selectedPreset: ShortcutPreset? = nil
 
+    /// Set when a windows-to-Space move verifiably failed (macOS restricted
+    /// CGSMoveWindowsToManagedSpace, 14.5+). Persisted so settings can show
+    /// "not supported on this macOS version" across launches.
+    @Published private(set) var spaceMoveUnsupported: Bool =
+        UserDefaults.standard.bool(forKey: "spaceMoveUnsupported")
+
     @Published var isCustomAppShortcut: Bool = false
 
     @Published var customAppShortcut: CustomShortcut? = nil {
@@ -105,6 +111,16 @@ final class AppState: ObservableObject {
     /// so this flag suppresses re-entrant space-driven switches that would oscillate
     /// between space-bound profiles.
     private var isApplyingProfile: Bool = false
+    /// Target profile of the switch currently mid-apply, or nil. Guards against
+    /// double-fires to the same target and profile deep links during a switch.
+    private var inFlightProfileSwitchId: UUID?
+    /// A genuine space change arrived while `isApplyingProfile` suppressed it —
+    /// re-evaluate it when the apply completes instead of dropping it.
+    private var pendingSpaceChangeDuringApply = false
+    /// Observer for apps launching during a readiness-driven session restore.
+    private var restoreLaunchObserver: NSObjectProtocol?
+    /// Observer for display configuration changes (NotificationCenter.default).
+    private var screenParamsObserver: NSObjectProtocol?
     private let spaceChangeSubject = PassthroughSubject<Void, Never>()
 
     init() {
@@ -153,6 +169,12 @@ final class AppState: ObservableObject {
                 self?.syncProfileHotkeys()
             }
             .store(in: &cancellables)
+
+        // Warm the SIP status cache off-main so the first profile switch and
+        // the settings Advanced section never block on spawning csrutil.
+        DispatchQueue.global(qos: .utility).async {
+            _ = SpaceService.sipStatus
+        }
 
         // Coalesce Stage Manager's rapid-fire space-change notifications.
         spaceChangeSubject
@@ -664,6 +686,24 @@ final class AppState: ObservableObject {
             }
         }
         workspaceObservers.append(spaceObserver)
+
+        // Cancel in-flight window positioning when the display configuration
+        // changes — pending frames were computed for a config that no longer exists.
+        screenParamsObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleScreenParametersChanged()
+            }
+        }
+    }
+
+    private func handleScreenParametersChanged() {
+        guard isApplyingProfile else { return }
+        cancelPendingProfileWork()
+        finishProfileApply()
     }
 
     // MARK: - Snap Actions
@@ -762,8 +802,12 @@ final class AppState: ObservableObject {
 
         switch action {
         case "profile":
-            guard let name = argument?.removingPercentEncoding,
-                  let profile = store.profiles.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame })
+            // Ignore deep links while a switch is mid-apply
+            guard inFlightProfileSwitchId == nil,
+                  let name = argument?.removingPercentEncoding else { return }
+            // Prefer an exact-case match when multiple profiles share a name
+            let candidates = store.profiles.filter { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+            guard let profile = candidates.first(where: { $0.name == name }) ?? candidates.first
             else { return }
             activateProfile(id: profile.id)
         case "snap":
@@ -794,21 +838,48 @@ final class AppState: ObservableObject {
     private func cancelPendingProfileWork() {
         for item in profileSwitchWorkItems { item.cancel() }
         profileSwitchWorkItems.removeAll()
+        if let observer = restoreLaunchObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            restoreLaunchObserver = nil
+        }
     }
 
     private func scheduleProfileWork(delay: TimeInterval, block: @escaping () -> Void) {
-        let item = DispatchWorkItem { block() }
+        var item: DispatchWorkItem!
+        item = DispatchWorkItem { [weak self] in
+            block()
+            // Prune executed items so the list doesn't grow until the next switch
+            if let self, let item { self.profileSwitchWorkItems.removeAll { $0 === item } }
+        }
         profileSwitchWorkItems.append(item)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
+    /// Release the space-change suppression and clear the in-flight switch token,
+    /// then re-evaluate any space change that arrived while suppressed.
+    private func finishProfileApply() {
+        isApplyingProfile = false
+        inFlightProfileSwitchId = nil
+        if pendingSpaceChangeDuringApply {
+            pendingSpaceChangeDuringApply = false
+            handleSpaceChange()
+        }
+    }
+
     /// Core profile switch: snapshot outgoing, hide, switch, unhide, restore incoming, show sticky note.
     private func switchToProfile(id: UUID) {
-        let outgoingId = store.activeProfileId
-        guard outgoingId != id else { return }
-
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+
+            // A second switch to the same target while one is mid-apply is a no-op.
+            guard self.inFlightProfileSwitchId != id else { return }
+
+            // Read the active profile *inside* the async block — two rapid switches
+            // would otherwise both capture the same stale outgoingId, and the second
+            // would re-snapshot the outgoing profile after its apps were hidden,
+            // corrupting its saved layout.
+            let outgoingId = self.store.activeProfileId
+            guard outgoingId != id else { return }
 
             // Resolve the incoming profile before touching any state — an early
             // return after `isApplyingProfile = true` would leave the flag stuck
@@ -817,6 +888,7 @@ final class AppState: ObservableObject {
 
             // Cancel any pending layout/snapshot work from a previous rapid switch
             self.cancelPendingProfileWork()
+            self.inFlightProfileSwitchId = id
 
             // Suppress space-driven re-entry while we hide/unhide/move windows.
             // Stage Manager animates each activation as a stage transition and fires
@@ -849,6 +921,28 @@ final class AppState: ObservableObject {
             // 5. Unhide incoming apps
             SessionSnapshotService.unhideProfileApps(incoming)
 
+            // 5b. Advanced space control (opt-in). Both run inside the
+            // isApplyingProfile window, so the space-change events they trigger
+            // can't recursively fire auto-switching.
+            if let assignedSpaceId = self.store.spaceForProfile(id) {
+                // Direct Space switch via CGS — only when SIP is reduced and the
+                // Advanced toggle is on. Falls back silently (returns false) to
+                // the default behavior otherwise.
+                if UserDefaults.standard.bool(forKey: "advancedSpaceControlEnabled"),
+                   SpaceService.sipStatus != .enabled {
+                    _ = SpaceService.switchToSpace(spaceId: assignedSpaceId)
+                }
+
+                // Move the profile's app windows onto its assigned Space (works
+                // with SIP fully enabled). Small delay so unhide takes effect
+                // and windows are enumerable.
+                if self.store.movesWindowsToAssignedSpace(id) {
+                    self.scheduleProfileWork(delay: 0.2) { [weak self] in
+                        self?.moveProfileWindows(incoming, toSpaceId: assignedSpaceId)
+                    }
+                }
+            }
+
             // 6. Apply layout or restore window positions after a small delay (let unhide take effect)
             if let binding = incoming.layoutBinding,
                let template = self.store.allTemplates.first(where: { $0.id == binding.templateId }),
@@ -875,8 +969,36 @@ final class AppState: ObservableObject {
             // animation aftershocks. Tracked through scheduleProfileWork so a
             // rapid follow-up switch cancels and re-arms it.
             self.scheduleProfileWork(delay: 3.0) { [weak self] in
-                self?.isApplyingProfile = false
+                self?.finishProfileApply()
             }
+        }
+    }
+
+    /// Move a profile's app windows to a Space (opt-in per profile, no SIP
+    /// needed). Minimized windows and windows already on the target Space are
+    /// skipped. On verifiable failure (macOS restricted the call), records
+    /// `spaceMoveUnsupported` and silently leaves hide-based behavior in place.
+    private func moveProfileWindows(_ profile: Profile, toSpaceId spaceId: Int) {
+        var windowIDs: [CGWindowID] = []
+        for app in profile.pinnedApps {
+            guard let running = app.runningApplication else { continue }
+            for window in AppSwitcherService.enumerateWindows(of: running)
+            where !window.isMinimized && window.spaceID != spaceId {
+                windowIDs.append(window.id)
+            }
+        }
+        guard !windowIDs.isEmpty else { return }
+
+        let success = SpaceService.moveWindows(windowIDs, toSpaceId: spaceId)
+        if success {
+            if spaceMoveUnsupported {
+                spaceMoveUnsupported = false
+                UserDefaults.standard.set(false, forKey: "spaceMoveUnsupported")
+            }
+        } else if !spaceMoveUnsupported {
+            spaceMoveUnsupported = true
+            UserDefaults.standard.set(true, forKey: "spaceMoveUnsupported")
+            NSLog("[HopTab] Windows-to-Space move failed — falling back to hide-based profile switching")
         }
     }
 
@@ -892,6 +1014,18 @@ final class AppState: ObservableObject {
 
         // Quit all running apps
         SessionSnapshotService.quitProfileApps(profile)
+
+        // terminate() is only a request — apps with unsaved-changes dialogs (or
+        // that refused outright) linger. Check back shortly and tell the user.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let self else { return }
+            let lingering = profile.pinnedApps.filter { $0.isRunning }.count
+            guard lingering > 0 else { return }
+            let message = lingering == 1
+                ? "1 app didn't close — check for unsaved changes"
+                : "\(lingering) apps didn't close — check for unsaved changes"
+            self.toastController.show(icon: "exclamationmark.circle", message: message)
+        }
     }
 
     /// Relaunch all apps in a profile and restore their window positions.
@@ -905,44 +1039,156 @@ final class AppState: ObservableObject {
         // re-entry while we launch apps and reposition windows.
         isApplyingProfile = true
 
-        // Launch all apps
-        SessionSnapshotService.launchProfileApps(profile)
+        // Resolve launch options per app. skipOnRestore apps stay pinned (in the
+        // switcher) but are excluded from launch and positioning entirely.
+        let optionsFor: (String) -> LaunchOptions? = { [store = self.store] bundleId in
+            store.launchOptions(profileId: profileId, bundleId: bundleId)
+        }
+        let launchable = profile.pinnedApps.filter { !(optionsFor($0.bundleIdentifier)?.skipOnRestore ?? false) }
+
+        // Group by launchPriority: lower first, nil = default/last group.
+        // Apps launch in parallel within a group; the next group waits until the
+        // previous group's apps are all ready (or timed out), plus launchDelay.
+        let prioritized = Dictionary(grouping: launchable) { optionsFor($0.bundleIdentifier)?.launchPriority }
+        var groups: [[PinnedApp]] = prioritized
+            .compactMap { key, apps in key.map { ($0, apps) } }
+            .sorted { $0.0 < $1.0 }
+            .map { $0.1 }
+        if let defaultGroup = prioritized[nil] { groups.append(defaultGroup) }
 
         // Check if this profile has a layout binding — use that instead of snapshot
+        let layoutWork: (binding: LayoutBinding, template: LayoutTemplate)?
         if let binding = profile.layoutBinding,
            let template = store.allTemplates.first(where: { $0.id == binding.templateId }),
            !binding.zoneAssignments.isEmpty {
-            // Apply layout after apps have had time to launch
-            scheduleProfileWork(delay: 2.5) {
-                LayoutService.applyLayout(binding: binding, template: template, profile: profile)
+            layoutWork = (binding, template)
+        } else {
+            layoutWork = nil
+        }
+        let snapshot = layoutWork == nil ? store.snapshot(for: profileId) : nil
+
+        // Readiness-driven restore: instead of blind fixed delays (which skip
+        // slow-launching apps and revert user adjustments with a second pass),
+        // poll each app every 0.5s (30s cap per group) until it exposes an AX
+        // window, position it as soon as it's ready, then advance to the next
+        // priority group. All timers route through scheduleProfileWork so a
+        // display change or new profile switch cancels everything cleanly.
+        var deadline = Date().addingTimeInterval(30)
+        var pending = Set<String>()          // current group's unready apps
+        var groupIndex = -1                  // advanced before each group starts
+        var restoredApps = Set<String>()
+        var urlsOpened = Set<String>()
+
+        // Open an app's configured URLs at most once per restore, best-effort.
+        let openURLsIfNeeded: (String) -> Void = { bundleId in
+            guard !urlsOpened.contains(bundleId),
+                  let urls = optionsFor(bundleId)?.openURLs, !urls.isEmpty else { return }
+            urlsOpened.insert(bundleId)
+            SessionSnapshotService.openURLs(urls, inApp: bundleId)
+        }
+
+        // Runs once every group is done (all apps ready or timed out).
+        let finish: () -> Void = { [weak self] in
+            guard let self else { return }
+            if let observer = self.restoreLaunchObserver {
+                NSWorkspace.shared.notificationCenter.removeObserver(observer)
+                self.restoreLaunchObserver = nil
             }
-            // Second attempt for slow-launching apps
-            scheduleProfileWork(delay: 5.0) {
-                LayoutService.applyLayout(binding: binding, template: template, profile: profile)
+            let skipped = Set(profile.pinnedApps.map(\.bundleIdentifier))
+                .subtracting(launchable.map(\.bundleIdentifier))
+            if let layoutWork {
+                _ = LayoutService.applyLayout(binding: layoutWork.binding, template: layoutWork.template, profile: profile)
+            } else if let snapshot {
+                // Cleanup: position apps the poll never caught, re-assert z-order —
+                // without re-applying frames of already-restored apps, and never
+                // touching skipOnRestore apps.
+                SessionSnapshotService.finalizeRestore(snapshot, for: profile, skipping: restoredApps.union(skipped))
             }
-        } else if let snapshot = store.snapshot(for: profileId) {
-            // Restore saved window positions
-            scheduleProfileWork(delay: 2.5) {
-                SessionSnapshotService.restoreSnapshot(snapshot, for: profile)
-            }
-            // Second attempt for slow-launching apps
-            scheduleProfileWork(delay: 5.0) {
-                SessionSnapshotService.restoreSnapshot(snapshot, for: profile)
+            // Move apps to assigned displays now that windows exist
+            self.applyDisplayAssignments(for: profile, initialDelay: 0.5)
+            // Release space-change suppression after the display-assignment waves
+            self.scheduleProfileWork(delay: 3.0) { [weak self] in
+                self?.finishProfileApply()
             }
         }
 
-        // Move apps to assigned displays
-        applyDisplayAssignments(for: profile, initialDelay: 3.0)
+        // Forward declaration so complete/pollReadiness can advance groups.
+        var startNextGroup: (() -> Void)!
+
+        let complete: (String) -> Void = { bundleId in
+            guard pending.remove(bundleId) != nil else { return }
+            // Ready or timed out — open its URLs if it's running at all
+            if !NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).isEmpty {
+                openURLsIfNeeded(bundleId)
+            }
+            if pending.isEmpty { startNextGroup() }
+        }
+
+        func pollReadiness(_ bundleId: String) {
+            guard pending.contains(bundleId) else { return }
+            if let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first,
+               SessionSnapshotService.appHasWindows(running) {
+                // Position this app's windows immediately rather than waiting for
+                // one global pass (layout bindings apply once, when all are ready)
+                if let snapshot {
+                    SessionSnapshotService.restoreWindows(from: snapshot, bundleIdentifier: bundleId)
+                    restoredApps.insert(bundleId)
+                }
+                complete(bundleId)
+                return
+            }
+            guard Date() < deadline else {
+                complete(bundleId) // never became ready — skip it
+                return
+            }
+            scheduleProfileWork(delay: 0.5) { pollReadiness(bundleId) }
+        }
+
+        startNextGroup = { [weak self] in
+            guard let self else { return }
+            groupIndex += 1
+            guard groupIndex < groups.count else {
+                finish()
+                return
+            }
+            let group = groups[groupIndex]
+            // 30s readiness cap per group, extended by the largest launchDelay
+            // so a staggered app still gets its full readiness window.
+            let maxDelay = groupIndex == 0 ? 0 : group
+                .compactMap { optionsFor($0.bundleIdentifier)?.launchDelay }
+                .max() ?? 0
+            deadline = Date().addingTimeInterval(30 + max(0, maxDelay))
+            pending = Set(group.map(\.bundleIdentifier))
+
+            for app in group {
+                let delay = groupIndex == 0 ? 0 : max(0, optionsFor(app.bundleIdentifier)?.launchDelay ?? 0)
+                let launch = {
+                    SessionSnapshotService.launchApps([app])
+                    pollReadiness(app.bundleIdentifier)
+                }
+                if delay > 0 {
+                    self.scheduleProfileWork(delay: delay) { launch() }
+                } else {
+                    launch()
+                }
+            }
+        }
+
+        // Fast path: an app finishing launch kicks its readiness poll immediately
+        restoreLaunchObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didLaunchApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { note in
+            guard let bundleId = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier else { return }
+            Task { @MainActor in pollReadiness(bundleId) }
+        }
+
+        startNextGroup()
 
         // Show sticky note if set
         if let note = profile.stickyNote, !note.isEmpty {
             stickyNoteController.show(profileName: profile.name, note: note)
-        }
-
-        // Release space-change suppression after the last applyDisplayAssignments
-        // wave (+5.0s = initialDelay 3.0 + 2.0) plus a buffer for app launch jitter.
-        scheduleProfileWork(delay: 6.0) { [weak self] in
-            self?.isApplyingProfile = false
         }
     }
 
@@ -1001,10 +1247,14 @@ final class AppState: ObservableObject {
     }
 
     private func handleSpaceChange() {
-        // Drop space-change events that fire during/just-after a profile switch —
-        // they're almost certainly Stage Manager's own stage transitions, not a
-        // genuine desktop change by the user.
-        guard !isApplyingProfile else { return }
+        // Space-change events during/just-after a profile switch are almost
+        // certainly Stage Manager's own stage transitions — but a genuine user
+        // change can land in the same window, so remember it and re-evaluate
+        // when the apply completes instead of dropping it.
+        guard !isApplyingProfile else {
+            pendingSpaceChangeDuringApply = true
+            return
+        }
         guard let spaceId = SpaceService.currentSpaceId,
               let profileId = store.profileForSpace(spaceId)
         else { return }
@@ -1021,6 +1271,12 @@ final class AppState: ObservableObject {
     deinit {
         for observer in workspaceObservers {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        if let observer = restoreLaunchObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        if let observer = screenParamsObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
         hotkeyService.stop()
     }

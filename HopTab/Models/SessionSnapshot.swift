@@ -35,9 +35,27 @@ struct SessionSnapshot: Codable, Equatable {
     /// Display configuration when this snapshot was taken. nil = legacy (pre-display-awareness).
     var displayConfigKey: String?
 
-    /// Compute a key representing the current display configuration.
-    /// Example: "1440x900" (laptop only), "1440x900+2560x1440" (laptop + external).
+    /// Compute a key representing the current display configuration, based on
+    /// each display's stable hardware UUID (sorted). Unlike the old
+    /// resolution-based key, this survives resolution changes and doesn't
+    /// collide when two different setups happen to share resolutions.
+    /// Falls back to the legacy key if no display UUID can be resolved.
     static var currentDisplayConfigKey: String {
+        let uuids = NSScreen.screens
+            .compactMap { screen -> String? in
+                guard let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+                      let cfUUID = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue()
+                else { return nil }
+                return CFUUIDCreateString(nil, cfUUID) as String
+            }
+            .sorted()
+        guard !uuids.isEmpty else { return legacyDisplayConfigKey }
+        return uuids.joined(separator: "+")
+    }
+
+    /// Legacy resolution-based key, kept so snapshots saved before the
+    /// UUID-based key aren't orphaned. Example: "1440x900+2560x1440".
+    static var legacyDisplayConfigKey: String {
         let screens = NSScreen.screens
             .sorted { $0.frame.origin.x < $1.frame.origin.x }
             .map { "\(Int($0.frame.width))x\(Int($0.frame.height))" }

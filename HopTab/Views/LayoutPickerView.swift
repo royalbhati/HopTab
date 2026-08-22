@@ -9,6 +9,7 @@ struct LayoutPickerContent: View {
     @State private var selectedTemplateId: UUID?
     @State private var showingEditor = false
     @State private var editingTemplate: LayoutTemplate?
+    @State private var showingProUpsell = false
 
     private var currentBinding: LayoutBinding? {
         profile.layoutBinding
@@ -16,6 +17,51 @@ struct LayoutPickerContent: View {
 
     private var templates: [LayoutTemplate] {
         appState.store.allTemplates
+    }
+
+    private var customLayoutUpsell: some View {
+        VStack(alignment: .leading, spacing: HopSpacing.md) {
+            HStack(spacing: HopSpacing.sm) {
+                Image(systemName: "star.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(.yellow)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Custom Layouts")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("Part of HopTab Pro \u{2014} $5 once")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text("Build layouts with exact width and height percentages \u{2014} any arrangement you want.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: HopSpacing.sm) {
+                Button {
+                    NSWorkspace.shared.open(ProLinks.purchaseURL)
+                } label: {
+                    Text("Get Pro")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, HopSpacing.md)
+                        .padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: HopRadius.control).fill(Color.accentColor))
+                }
+                .buttonStyle(.plain)
+
+                Button("I have a key") {
+                    showingProUpsell = false
+                    // License entry lives in Settings → About.
+                    NSApp.sendAction(#selector(AppDelegate.openSettings(_:)), to: nil, from: nil)
+                }
+                .controlSize(.small)
+            }
+        }
+        .padding(HopSpacing.lg)
+        .frame(width: 260)
     }
 
     var body: some View {
@@ -83,6 +129,8 @@ struct LayoutPickerContent: View {
                         if ProFeatureGate.isLicensed {
                             editingTemplate = nil
                             showingEditor = true
+                        } else {
+                            showingProUpsell = true
                         }
                     } label: {
                         VStack(spacing: 6) {
@@ -139,6 +187,9 @@ struct LayoutPickerContent: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .popover(isPresented: $showingProUpsell, arrowEdge: .bottom) {
+                        customLayoutUpsell
+                    }
                 }
             }
             if !ProFeatureGate.isLicensed {
@@ -149,7 +200,7 @@ struct LayoutPickerContent: View {
                     Text("Custom layouts with exact percentages")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                    Link("Unlock", destination: URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!)
+                    Link("Unlock", destination: ProLinks.purchaseURL)
                         .font(.system(size: 11))
                 }
             }

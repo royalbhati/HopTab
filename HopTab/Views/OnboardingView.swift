@@ -4,6 +4,7 @@ import SwiftUI
 
 final class OnboardingWindowController {
     private var window: NSWindow?
+    private var closeObserver: NSObjectProtocol?
 
     func show(appState: AppState) {
         guard window == nil else {
@@ -31,10 +32,29 @@ final class OnboardingWindowController {
         w.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         self.window = w
+
+        // Closing the window (red traffic light) counts as Skip — otherwise
+        // onboarding re-opens on every launch forever.
+        closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: w,
+            queue: .main
+        ) { [weak self] _ in
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+            self?.teardown()
+        }
     }
 
     func dismiss() {
         window?.close()
+        teardown()
+    }
+
+    private func teardown() {
+        if let closeObserver {
+            NotificationCenter.default.removeObserver(closeObserver)
+            self.closeObserver = nil
+        }
         window = nil
     }
 }
@@ -47,6 +67,8 @@ struct OnboardingView: View {
 
     @State private var currentPage = 0
     @State private var appeared = false
+    @State private var showAccessibilityWarning = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let totalPages = 6
 
@@ -98,6 +120,24 @@ struct OnboardingView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            // Inline accessibility warning on the final page
+            if showAccessibilityWarning {
+                HStack(spacing: HopSpacing.sm - 2) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("Accessibility isn't granted yet \u{2014} the switcher hotkey won't work until you enable it in System Settings. Click \"Let's Go\" again to finish anyway.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(HopSpacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.orange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: HopRadius.control))
+                .padding(.horizontal, 32)
+                .padding(.bottom, HopSpacing.sm)
+            }
 
             // Bottom bar
             HStack {
@@ -151,6 +191,13 @@ struct OnboardingView: View {
                     .buttonStyle(.plain)
                 } else {
                     Button {
+                        if !appState.permissions.isTrusted && !showAccessibilityWarning {
+                            // Non-blocking: surface the gap once, finish on the next click.
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
+                                showAccessibilityWarning = true
+                            }
+                            return
+                        }
                         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
                         onComplete()
                     } label: {
@@ -176,9 +223,18 @@ struct OnboardingView: View {
         .frame(width: 600, height: 640)
         .opacity(appeared ? 1 : 0)
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) {
+            if reduceMotion {
                 appeared = true
+            } else {
+                withAnimation(.easeOut(duration: 0.5)) {
+                    appeared = true
+                }
             }
+        }
+        .onDisappear {
+            // Closing the window with the traffic-light button is equivalent to
+            // Skip — otherwise onboarding re-triggers on every launch forever.
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
         }
     }
 }
@@ -191,6 +247,7 @@ private struct WelcomePage: View {
     @State private var textOpacity: Double = 0
     @State private var pillsOpacity: Double = 0
     @State private var shimmer = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 24) {
@@ -208,8 +265,8 @@ private struct WelcomePage: View {
                         )
                     )
                     .frame(width: 180, height: 180)
-                    .scaleEffect(shimmer ? 1.15 : 0.9)
-                    .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: shimmer)
+                    .scaleEffect(shimmer ? 1.15 : (reduceMotion ? 1.0 : 0.9))
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: shimmer)
 
                 // Inner circle
                 Circle()
@@ -251,6 +308,14 @@ private struct WelcomePage: View {
             Spacer()
         }
         .onAppear {
+            if reduceMotion {
+                // Static end-state — no decorative motion.
+                iconScale = 1.0
+                iconOpacity = 1.0
+                textOpacity = 1.0
+                pillsOpacity = 1.0
+                return
+            }
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
                 iconScale = 1.0
                 iconOpacity = 1.0
@@ -261,10 +326,9 @@ private struct WelcomePage: View {
             withAnimation(.easeOut(duration: 0.5).delay(0.55)) {
                 pillsOpacity = 1.0
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                shimmer = true
-            }
+            shimmer = true
         }
+        .onDisappear { shimmer = false }
     }
 }
 
@@ -409,6 +473,8 @@ private struct ShortcutPage: View {
     @State private var animateKeys = false
     @State private var showRelease = false
     @State private var animStep = 0
+    @State private var stepTimer: Timer?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 24) {
@@ -493,17 +559,27 @@ private struct ShortcutPage: View {
             Spacer()
         }
         .onAppear { startStepAnimation() }
+        .onDisappear {
+            stepTimer?.invalidate()
+            stepTimer = nil
+        }
     }
 
     private func startStepAnimation() {
+        if reduceMotion {
+            // Static end-state: keys and first step highlighted, no cycling.
+            animStep = 1
+            return
+        }
         animStep = 0
-        withAnimation(.easeInOut(duration: 0.3).delay(0.6)) { animStep = 1 }
-        withAnimation(.easeInOut(duration: 0.3).delay(1.6)) { animStep = 2 }
-        withAnimation(.easeInOut(duration: 0.3).delay(2.6)) { animStep = 3 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.2) {
-            withAnimation(.easeInOut(duration: 0.2)) { animStep = 0 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                startStepAnimation()
+        stepTimer?.invalidate()
+        // Cycle 0 → 1 → 2 → 3 → 0 … ; invalidated on disappear so it can't
+        // keep firing after the page changes or the window closes.
+        stepTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            Task { @MainActor in
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    animStep = (animStep + 1) % 4
+                }
             }
         }
     }
@@ -581,6 +657,9 @@ private struct ShortcutStep: View {
 private struct ProfilesSessionsPage: View {
     @State private var activeDemo = 0
     @State private var showRestore = false
+    @State private var demoTimer: Timer?
+    @State private var demoPhase = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 18) {
@@ -659,28 +738,29 @@ private struct ProfilesSessionsPage: View {
             Spacer()
         }
         .onAppear { startDemoAnimation() }
+        .onDisappear {
+            demoTimer?.invalidate()
+            demoTimer = nil
+        }
     }
 
     private func startDemoAnimation() {
-        withAnimation(.easeInOut(duration: 0.5).delay(1.0)) {
-            activeDemo = 1
-        }
-        withAnimation(.easeInOut(duration: 0.4).delay(1.5)) {
-            showRestore = false
-        }
-        withAnimation(.easeInOut(duration: 0.5).delay(2.5)) {
-            activeDemo = 2
-        }
-        withAnimation(.easeInOut(duration: 0.4).delay(3.5)) {
+        if reduceMotion {
+            // Static end-state: first profile active, no cycling.
+            activeDemo = 0
             showRestore = true
+            return
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                activeDemo = 0
-                showRestore = false
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                startDemoAnimation()
+        demoPhase = 0
+        demoTimer?.invalidate()
+        // Phases: Work → Research → Creative → Creative+Restore → back to Work.
+        demoTimer = Timer.scheduledTimer(withTimeInterval: 1.4, repeats: true) { _ in
+            Task { @MainActor in
+                demoPhase = (demoPhase + 1) % 4
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    activeDemo = min(demoPhase, 2)
+                    showRestore = demoPhase == 3
+                }
             }
         }
     }
@@ -765,6 +845,8 @@ private struct SessionFlowStep: View {
 private struct LayoutsPage: View {
     @State private var activeLayout = 0
     @State private var snapDemo = 0
+    @State private var demoTimer: Timer?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let layouts: [(String, [(Double, Double, Double, Double)])] = [
         ("Left + Right", [(0, 0, 0.5, 1), (0.5, 0, 0.5, 1)]),
@@ -860,44 +942,31 @@ private struct LayoutsPage: View {
 
             Spacer()
         }
-        .onAppear {
-            startLayoutAnimation()
-            startSnapAnimation()
+        .onAppear { startDemoAnimation() }
+        .onDisappear {
+            demoTimer?.invalidate()
+            demoTimer = nil
         }
     }
 
-    private func startLayoutAnimation() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation { activeLayout = 1 }
+    private func startDemoAnimation() {
+        if reduceMotion {
+            // Static end-state: show the first layout and no snap cycling.
+            activeLayout = 0
+            snapDemo = 0
+            return
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            withAnimation { activeLayout = 2 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
-            withAnimation { activeLayout = 3 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
-            withAnimation { activeLayout = 0 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                startLayoutAnimation()
-            }
-        }
-    }
-
-    private func startSnapAnimation() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            withAnimation(.easeInOut(duration: 0.3)) { snapDemo = 1 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-            withAnimation(.easeInOut(duration: 0.3)) { snapDemo = 2 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
-            withAnimation(.easeInOut(duration: 0.3)) { snapDemo = 3 }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
-            withAnimation(.easeInOut(duration: 0.2)) { snapDemo = 0 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                startSnapAnimation()
+        demoTimer?.invalidate()
+        // One driver for both demos; invalidated on disappear so it can't
+        // keep firing after the page changes or the window closes.
+        demoTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+            Task { @MainActor in
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    activeLayout = (activeLayout + 1) % layouts.count
+                }
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    snapDemo = (snapDemo + 1) % 4
+                }
             }
         }
     }
@@ -936,6 +1005,8 @@ private struct SnapHint: View {
 private struct ReadyPage: View {
     @ObservedObject var appState: AppState
     @State private var checkmarks: [Bool] = [false, false, false, false, false]
+    @State private var checkTimer: Timer?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 18) {
@@ -1007,13 +1078,29 @@ private struct ReadyPage: View {
             Spacer()
         }
         .onAppear {
-            for i in 0..<5 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.2 + 0.3) {
-                    withAnimation(.spring(response: 0.4)) {
-                        checkmarks[i] = true
+            if reduceMotion {
+                checkmarks = Array(repeating: true, count: checkmarks.count)
+                return
+            }
+            checkTimer?.invalidate()
+            var index = 0
+            checkTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { timer in
+                Task { @MainActor in
+                    guard index < checkmarks.count else {
+                        timer.invalidate()
+                        checkTimer = nil
+                        return
                     }
+                    withAnimation(.spring(response: 0.4)) {
+                        checkmarks[index] = true
+                    }
+                    index += 1
                 }
             }
+        }
+        .onDisappear {
+            checkTimer?.invalidate()
+            checkTimer = nil
         }
     }
 }

@@ -1,5 +1,6 @@
 import Cocoa
 import Carbon.HIToolbox
+import ApplicationServices
 
 final class HotkeyService {
     // App Switcher Callbacks
@@ -206,6 +207,14 @@ final class HotkeyService {
 
     // MARK: - Event Processing
 
+    /// Run a callback on the next main run-loop pass. Used for handlers that
+    /// perform AX / window-management work so the CGEvent tap callback only
+    /// classifies the event and returns immediately.
+    private func enqueue(_ callback: (() -> Void)?) {
+        guard let callback else { return }
+        DispatchQueue.main.async { callback() }
+    }
+
     fileprivate func handleEvent(type: CGEventType, event: CGEvent) -> CGEvent? {
         // Re-enable tap if macOS disabled it due to timeout
         if type == .tapDisabledByTimeout {
@@ -237,9 +246,13 @@ final class HotkeyService {
             return event
         }
 
-        // Route mouse events for drag-to-snap (always pass through, never consume)
+        // Route mouse events for drag-to-snap (always pass through, never consume).
+        // Handled asynchronously — the tap callback must never wait on AX work,
+        // so we hand off a copy of the event and return immediately.
         if type == .leftMouseDown || type == .leftMouseDragged || type == .leftMouseUp {
-            onMouseEvent?(type, event)
+            if let handler = onMouseEvent, let copy = event.copy() {
+                DispatchQueue.main.async { handler(type, copy) }
+            }
             return event
         }
 
@@ -363,32 +376,34 @@ final class HotkeyService {
                 if flags.contains(.maskCommand) {
                     switch keyCode {
                     case Int64(kVK_ANSI_Q):
-                        onQuitHighlighted?()
+                        enqueue(onQuitHighlighted)
                         return nil
                     case Int64(kVK_ANSI_H):
-                        onHideHighlighted?()
+                        enqueue(onHideHighlighted)
                         return nil
                     case Int64(kVK_ANSI_M):
-                        onMinimizeHighlighted?()
+                        enqueue(onMinimizeHighlighted)
                         return nil
                     default:
                         break
                     }
                 }
 
-                // Arrow key snapping while switcher is active
+                // Arrow key snapping while switcher is active.
+                // Snap handlers do AX work — enqueue and return so the tap
+                // callback never blocks on window moves.
                 switch keyCode {
                 case Int64(kVK_LeftArrow):
-                    onSnapLeft?()
+                    enqueue(onSnapLeft)
                     return nil
                 case Int64(kVK_RightArrow):
-                    onSnapRight?()
+                    enqueue(onSnapRight)
                     return nil
                 case Int64(kVK_UpArrow):
-                    onSnapFull?()
+                    enqueue(onSnapFull)
                     return nil
                 case Int64(kVK_DownArrow):
-                    onSnapBottom?()
+                    enqueue(onSnapBottom)
                     return nil
                 default:
                     break
@@ -471,7 +486,15 @@ final class HotkeyService {
                 for snap in snapShortcuts {
                     let requiredMods = snap.modifiers.intersection(snapMods)
                     if eventMods == requiredMods && keyCode == snap.keyCode {
-                        onGlobalSnap?(snap.direction)
+                        // If Accessibility was revoked, the snap can't do
+                        // anything — pass the keystroke through instead of
+                        // consuming it with zero effect.
+                        guard AXIsProcessTrusted() else { return event }
+                        // Enqueue the snap — the actual window move must not
+                        // run inside the tap callback.
+                        let direction = snap.direction
+                        let handler = onGlobalSnap
+                        DispatchQueue.main.async { handler?(direction) }
                         return nil
                     }
                 }

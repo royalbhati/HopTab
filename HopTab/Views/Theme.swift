@@ -25,6 +25,18 @@ enum HopRadius {
     static let panel: CGFloat = 20
 }
 
+/// Text-style aliases: use these (Dynamic Type) instead of `.system(size:)`.
+extension Font {
+    /// Section/group headings in settings forms.
+    static let hopHeading = Font.headline
+    /// Row labels and secondary headings.
+    static let hopSubheading = Font.subheadline
+    /// Explanatory helper text under controls.
+    static let hopCaption = Font.caption
+    /// Fine print / tertiary annotations.
+    static let hopFootnote = Font.footnote
+}
+
 /// Foreground levels and surfaces for HUD overlays. The `.hudWindow`
 /// material is dark in both light and dark appearance, so overlay text is
 /// always white-based — never `.primary`, which flips in light mode.

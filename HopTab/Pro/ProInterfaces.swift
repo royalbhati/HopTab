@@ -1,6 +1,13 @@
 import AppKit
 import SwiftUI
 
+// MARK: - Pro Links
+
+/// Single source of truth for Pro purchase links.
+enum ProLinks {
+    static let purchaseURL = URL(string: "https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7")!
+}
+
 // MARK: - Pro Provider Protocol
 
 /// The main interface that the closed-source HopTabPro module implements.
@@ -13,7 +20,7 @@ protocol HopTabProProvider: AnyObject {
     func deactivate()
 
     // Feature services — started after license validation
-    func startServices(profileSwitcher: @escaping (UUID) -> Void)
+    func startServices(profileSwitcher: @escaping (UUID) -> Void, currentProfile: (() -> UUID?)?)
     func stopServices()
 
     // Focus mode
@@ -40,10 +47,23 @@ protocol HopTabProProvider: AnyObject {
     /// End a running focus session because the user switched away from its profile. No-op if none.
     func endFocusSessionForProfileSwitch()
 
+    // Pomodoro (tied to a calendar event)
+    /// Start a cyclic Pomodoro for an event. `eventEndDate` auto-stops it when set.
+    func startPomodoro(eventTitle: String, eventEndDate: Date?)
+    func stopPomodoro()
+    /// Skip the current break and resume work. No-op outside a break.
+    func skipPomodoroBreak()
+    /// nil when no Pomodoro is running.
+    var pomodoroStatus: PomodoroStatusInfo? { get }
+
     // v2 Pro per-feature views
     func windowUndoSectionView() -> AnyView?
     func focusDimmingSectionView() -> AnyView?
     func screenBreaksSectionView() -> AnyView?
+    func focusBorderSectionView() -> AnyView?
+    func bspTilingSectionView() -> AnyView?
+    func ricePresetsSectionView() -> AnyView?
+    func profileVisualsSectionView(profiles: [ProProfileInfo]) -> AnyView?
 
     // Per-section views for sidebar settings
     func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView?
@@ -53,6 +73,14 @@ protocol HopTabProProvider: AnyObject {
     func displaysSectionView(profiles: [ProProfileInfo]) -> AnyView?
     func licenseSectionView() -> AnyView?
 
+}
+
+/// Defaults so future providers (or older builds of the Pro module) stay source-compatible.
+extension HopTabProProvider {
+    func focusBorderSectionView() -> AnyView? { nil }
+    func bspTilingSectionView() -> AnyView? { nil }
+    func ricePresetsSectionView() -> AnyView? { nil }
+    func profileVisualsSectionView(profiles: [ProProfileInfo]) -> AnyView? { nil }
 }
 
 // MARK: - Feature Service Protocols
@@ -132,6 +160,22 @@ protocol ProActiveMeetingProvider {
     var activeMeetingURL: URL? { get }
     /// Next matched meeting (for the menu-bar HUD), or nil.
     var nextMeeting: (title: String, start: Date, url: URL?)? { get }
+}
+
+// MARK: - Pomodoro Status
+
+/// Snapshot of the running Pomodoro for the menu bar. Mirrors the HopTabPro
+/// module's session so the main app doesn't depend on module types.
+struct PomodoroStatusInfo {
+    let eventTitle: String
+    /// True during a break interval, false during a work interval.
+    let isBreak: Bool
+    /// Seconds left in the current interval.
+    let secondsRemaining: Int
+    /// Work intervals completed so far this session.
+    let completedIntervals: Int
+
+    var phaseLabel: String { isBreak ? "Break" : "Focus" }
 }
 
 // MARK: - Time Tracking Bridge
