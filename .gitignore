@@ -42,3 +42,10 @@ hoptab-license-worker/node_modules/
 HopTab.app/
 
 .wrangler/
+# Internal — strategy, positioning, launch material. Not for the public repo.
+/PRODUCT.md
+/DESIGN.md
+/LAUNCH_KIT.md
+
+# Local demo recordings (large binaries — host these, do not commit)
+/HopTab_demo*.mp4

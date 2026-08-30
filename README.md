@@ -27,20 +27,18 @@ brew install --cask hoptab
 
 ### Manual
 
+Download from [Releases](../../releases/latest), unzip, and drag **HopTab.app** to `/Applications`.
+
+Or from the terminal:
+
 ```bash
 curl -sL "$(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/latest \
   | grep -o '"browser_download_url": *"[^"]*"' \
   | head -1 | cut -d '"' -f 4)" -o /tmp/HopTab.zip \
-  && unzip -o /tmp/HopTab.zip -d /Applications \
-  && xattr -c /Applications/HopTab.app
+  && unzip -o /tmp/HopTab.zip -d /Applications
 ```
 
-Or download from [Releases](../../releases/latest), unzip, drag to `/Applications`, and run:
-```bash
-xattr -c /Applications/HopTab.app
-```
-
-> **Why xattr?** HopTab is ad-hoc signed (not notarized). The command clears macOS's quarantine flag so it opens normally.
+> HopTab is signed with a Developer ID certificate and notarized by Apple, so it opens normally — no `xattr`, no Gatekeeper warning, no right-click workaround.
 
 ### First Launch
 

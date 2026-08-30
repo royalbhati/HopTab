@@ -3,6 +3,8 @@ name: Build
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   build:
@@ -17,3 +19,7 @@ jobs:
             -scheme HopTab \
             -configuration Debug \
             CODE_SIGN_IDENTITY="-"
+
+      - name: Test HopTabPro
+        working-directory: HopTabPro
+        run: swift test

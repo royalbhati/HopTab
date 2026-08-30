@@ -11,8 +11,31 @@ permissions:
 jobs:
   release:
     runs-on: macos-15
+    env:
+      TEAM_ID: GP4Y23ZTR6
     steps:
       - uses: actions/checkout@v4
+
+      # Releases are public downloads. Refuse to build one at all if the
+      # signing material is missing — an ad-hoc signed build that reaches
+      # users trips Gatekeeper and there is no way to recall it.
+      - name: Require signing secrets
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          missing=()
+          [ -n "$CERT_P12_BASE64" ]   || missing+=(MACOS_CERT_P12_BASE64)
+          [ -n "$CERT_PASSWORD" ]     || missing+=(MACOS_CERT_PASSWORD)
+          [ -n "$APPLE_ID" ]          || missing+=(APPLE_ID)
+          [ -n "$APPLE_APP_PASSWORD" ]|| missing+=(APPLE_APP_SPECIFIC_PASSWORD)
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required signing secrets: ${missing[*]}"
+            echo "Set them in Settings → Secrets and variables → Actions, then re-run."
+            exit 1
+          fi
 
       - name: Extract version from tag
         id: version
@@ -39,14 +62,84 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.build }}" \
             HopTab/Info.plist
 
-      - name: Build
+      - name: Import Developer ID certificate
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+          # Let codesign use the key without an interactive prompt.
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | grep 'Developer ID Application' | head -1 | awk -F'"' '{print $2}')"
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No 'Developer ID Application' identity in the imported certificate."
+            security find-identity -v -p codesigning "$KEYCHAIN" || true
+            exit 1
+          fi
+          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "Signing identity: $IDENTITY"
+
+      - name: Build (Developer ID, hardened runtime)
         run: |
           xcodebuild \
             -project HopTab.xcodeproj \
             -scheme HopTab \
             -configuration Release \
             -derivedDataPath build \
-            CODE_SIGN_IDENTITY="-"
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$SIGN_IDENTITY" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            ENABLE_HARDENED_RUNTIME=YES \
+            OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime"
+
+      - name: Notarize and staple
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          APP="build/Build/Products/Release/HopTab.app"
+
+          # notarytool takes an archive, not a bundle.
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/notarize.zip"
+
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait
+
+          # Staple the ticket onto the bundle so it validates offline.
+          xcrun stapler staple "$APP"
+
+      - name: Verify signature and notarization
+        run: |
+          APP="build/Build/Products/Release/HopTab.app"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          xcrun stapler validate "$APP"
+          # The gate: refuse to publish anything Gatekeeper would reject.
+          spctl -a -vvv -t exec "$APP" 2>&1 | tee /tmp/spctl.txt
+          grep -q "source=Notarized Developer ID" /tmp/spctl.txt || {
+            echo "::error::Build is not notarized — refusing to publish."
+            exit 1
+          }
 
       - name: Package
         run: |
@@ -65,10 +158,21 @@ jobs:
 
             ## Install
 
+            **Homebrew**
+            ```bash
+            brew install --cask royalbhati/tap/hoptab
+            ```
+
+            **Manual**
             1. Download **HopTab-${{ steps.version.outputs.version }}.zip** below
             2. Unzip and drag **HopTab.app** to `/Applications`
-            3. Run `xattr -d com.apple.quarantine /Applications/HopTab.app` to bypass Gatekeeper
-            4. Launch — grant **Accessibility** permission when prompted
-            5. Open **Settings** from the menu bar, pin your apps, and use **Option+Tab** to hop
+            3. Launch — grant **Accessibility** permission when prompted
+            4. Open **Settings** from the menu bar, pin your apps, and use **Option+Tab** to hop
+
+            Signed with a Developer ID certificate and notarized by Apple.
           files: HopTab-${{ steps.version.outputs.version }}.zip
           generate_release_notes: true
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "$KEYCHAIN" || true
