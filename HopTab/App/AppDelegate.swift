@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Combine
 
 #if canImport(HopTabPro)
@@ -28,6 +29,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Process-wide default for every AX call that doesn't set its own
+        // timeout. AXUIElementSetMessagingTimeout on the system-wide element
+        // sets the per-process default, so an unresponsive app can stall a
+        // window query for 0.3s instead of the 6s system default — which is
+        // what a hung Electron app used to cost us mid-snap. Individual call
+        // sites (LayoutService, DragSnapService, AppSwitcherService) still set
+        // their own; this is the floor for everything that forgets.
+        AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 0.3)
+
+        // Diagnostics first: anything that crashes during the rest of launch
+        // should still leave a local trace. Opt-in flag is
+        // CrashReporter.enabledDefaultsKey; nothing is ever transmitted.
+        CrashReporter.shared.start()
+
         if appState.permissions.isTrusted {
             appState.startHotkey()
         } else {

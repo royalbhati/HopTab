@@ -33,6 +33,8 @@
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>HopTab needs Accessibility access to detect global keyboard shortcuts and switch between your pinned apps.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>HopTab lists and switches Google Chrome tabs from the ⌥K palette.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>HopTab Pro uses your calendar to auto-switch profiles when events start and end.</string>
 </dict>

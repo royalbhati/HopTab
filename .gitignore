@@ -32,9 +32,14 @@ Package.resolved
 *.mobileprovision
 *.provisionprofile
 
-scripts/
+# Build/release scripts are tracked (CI runs scripts/generate-pro-stub.sh), but
+# the license minter stays local — it reads the Ed25519 signing key from the
+# maintainer's Keychain and has no business in a public repo.
+scripts/generate-license.sh
 
-# Pro module (separate private repo)
+# Pro module (separate private repo).
+# Still ignored on purpose — the open-source build gets a compile-only stub
+# from scripts/generate-pro-stub.sh instead.
 HopTabPro/
 
 # License worker (separate deployment)
@@ -42,3 +47,20 @@ hoptab-license-worker/node_modules/
 HopTab.app/
 
 .wrangler/
+
+# Internal strategy docs — never publish these to the open-source repo.
+PRODUCT.md
+DESIGN.md
+LAUNCH_KIT.md
+
+# Local demo recordings (large binaries, not source)
+HopTab_demo*.mp4
+
+# Local pre-commit checklist, not for the public repo
+SMOKE_TEST.md
+ROADMAP_WORKSPACES_FIRST.md
+
+# Agent skill installs (local tooling)
+.agents/
+.claude/
+skills-lock.json

@@ -11,8 +11,54 @@ permissions:
 jobs:
   release:
     runs-on: macos-15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+    env:
+      APP_NAME: HopTab
+      TEAM_ID: GP4Y23ZTR6
+      ENTITLEMENTS: HopTab/HopTab.entitlements
+
     steps:
       - uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------------
+      # Fail fast and loudly if the signing material is missing. Without this
+      # guard the pipeline would happily publish an ad-hoc signed, unnotarized
+      # build under a release tag — which is what shipped before.
+      # ---------------------------------------------------------------------
+      - name: Verify signing and notarization secrets
+        env:
+          APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          missing=""
+          for name in APPLE_CERT_P12_BASE64 APPLE_CERT_PASSWORD KEYCHAIN_PASSWORD \
+                      APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required repository secrets:$missing"
+            echo ""
+            echo "A HopTab release MUST be Developer ID signed and notarized."
+            echo "This job refuses to fall back to ad-hoc signing."
+            echo ""
+            echo "Add these under Settings -> Secrets and variables -> Actions:"
+            echo "  APPLE_CERT_P12_BASE64  base64 of the exported 'Developer ID Application' .p12"
+            echo "  APPLE_CERT_PASSWORD    password set when exporting that .p12"
+            echo "  KEYCHAIN_PASSWORD      any random string; unlocks the temporary CI keychain"
+            echo "  APPLE_ID               Apple ID email used for notarization"
+            echo "  APPLE_TEAM_ID          ${TEAM_ID}"
+            echo "  APPLE_APP_PASSWORD     app-specific password from appleid.apple.com"
+            exit 1
+          fi
+          echo "All signing secrets present."
 
       - name: Extract version from tag
         id: version
@@ -22,7 +68,55 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "→ Building release: $TAG"
+          echo "-> Building release: $TAG"
+
+      # ---------------------------------------------------------------------
+      # The closed-source Pro package is not in this repo. Generate the stub so
+      # the local Swift package reference resolves. (No-op if HopTabPro/ is
+      # already present.)
+      # ---------------------------------------------------------------------
+      - name: Generate HopTabPro stub
+        run: bash scripts/generate-pro-stub.sh
+
+      - name: Import Developer ID certificate into a temporary keychain
+        env:
+          APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/hoptab-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+          printf '%s' "$APPLE_CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERT_PATH" \
+            -P "$APPLE_CERT_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" > /dev/null
+
+          # Put the temp keychain first so xcodebuild finds the identity.
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          rm -f "$CERT_PATH"
+
+          echo "Identities available to codesign:"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          if ! security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+               | grep -q "Developer ID Application"; then
+            echo "::error::No 'Developer ID Application' identity found in the imported certificate."
+            exit 1
+          fi
 
       - name: Stamp version into Xcode project & Info.plist
         run: |
@@ -39,19 +133,118 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.build }}" \
             HopTab/Info.plist
 
-      - name: Build
+      # ---------------------------------------------------------------------
+      # Developer ID build. Manual signing + explicit entitlements, because the
+      # project has CODE_SIGN_STYLE = Automatic and CODE_SIGN_ENTITLEMENTS = ""
+      # (the real signing config only ever existed on the maintainer's Mac).
+      # ---------------------------------------------------------------------
+      - name: Build (Release, Developer ID, hardened runtime)
+        env:
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
+          set -euo pipefail
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          test -f "$ENTITLEMENTS" || { echo "::error::Missing $ENTITLEMENTS"; exit 1; }
+
           xcodebuild \
             -project HopTab.xcodeproj \
             -scheme HopTab \
             -configuration Release \
+            -destination 'generic/platform=macOS' \
             -derivedDataPath build \
-            CODE_SIGN_IDENTITY="-"
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            CODE_SIGN_ENTITLEMENTS="$ENTITLEMENTS" \
+            ENABLE_HARDENED_RUNTIME=YES \
+            OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES
 
-      - name: Package
+      - name: Package for notarization
         run: |
-          cd build/Build/Products/Release
-          ditto -c -k --sequesterRsrc --keepParent HopTab.app "$GITHUB_WORKSPACE/HopTab-${{ steps.version.outputs.version }}.zip"
+          set -euo pipefail
+          APP="$GITHUB_WORKSPACE/build/Build/Products/Release/${APP_NAME}.app"
+          ZIP="$GITHUB_WORKSPACE/${APP_NAME}-${{ steps.version.outputs.version }}.zip"
+          echo "APP_PATH=$APP" >> "$GITHUB_ENV"
+          echo "ZIP_PATH=$ZIP" >> "$GITHUB_ENV"
+
+          test -d "$APP" || { echo "::error::Build product not found at $APP"; exit 1; }
+
+          rm -f "$ZIP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+          echo "Created $ZIP"
+
+      - name: Notarize with Apple
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool submit "$ZIP_PATH" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait \
+            --timeout 30m
+
+      - name: Staple and re-zip
+        run: |
+          set -euo pipefail
+          xcrun stapler staple "$APP_PATH"
+          rm -f "$ZIP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
+          echo "Re-zipped stapled app: $ZIP_PATH"
+
+      # ---------------------------------------------------------------------
+      # Hard gate. If any of these fail the job fails and nothing is published,
+      # so a release asset can never be an unsigned or unnotarized build.
+      # ---------------------------------------------------------------------
+      - name: Verify signature, notarization and entitlements
+        run: |
+          set -euo pipefail
+
+          echo "--- codesign --verify ---"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+          echo "--- codesign -dvvv ---"
+          codesign -dvvv "$APP_PATH" 2>&1 | tee /tmp/codesign.txt
+          grep -q "Developer ID Application" /tmp/codesign.txt \
+            || { echo "::error::App is not signed with a Developer ID Application certificate"; exit 1; }
+          grep -q "flags=.*runtime" /tmp/codesign.txt \
+            || { echo "::error::Hardened runtime is not enabled"; exit 1; }
+          grep -q "TeamIdentifier=${TEAM_ID}" /tmp/codesign.txt \
+            || { echo "::error::Unexpected team identifier (expected ${TEAM_ID})"; exit 1; }
+
+          echo "--- entitlements ---"
+          codesign -d --entitlements - "$APP_PATH" 2>&1 | tee /tmp/entitlements.txt
+          grep -q "com.apple.security.personal-information.calendars" /tmp/entitlements.txt \
+            || { echo "::error::Calendar entitlement missing from the signed app"; exit 1; }
+
+          echo "--- spctl (Gatekeeper) ---"
+          spctl -a -vvv -t exec "$APP_PATH"
+
+          echo "--- stapler validate ---"
+          xcrun stapler validate "$APP_PATH"
+
+          echo "Verification passed: Developer ID signed, hardened, notarized and stapled."
+
+      - name: Compute SHA-256
+        id: package
+        run: |
+          set -euo pipefail
+          SHA256=$(shasum -a 256 "$ZIP_PATH" | awk '{print $1}')
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "SHA-256: $SHA256"
+          {
+            echo "### Release asset"
+            echo ""
+            echo "| File | SHA-256 |"
+            echo "|------|---------|"
+            echo "| \`${APP_NAME}-${{ steps.version.outputs.version }}.zip\` | \`$SHA256\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -61,14 +254,93 @@ jobs:
           body: |
             ## What's New
 
-            See the [commit log](https://github.com/${{ github.repository }}/commits/${{ steps.version.outputs.tag }}) for details.
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.tag }}/CHANGELOG.md) for the full list of changes.
 
             ## Install
 
+            ### Homebrew
+
+            ```bash
+            brew tap royalbhati/tap
+            brew install --cask hoptab
+            ```
+
+            ### Manual
+
             1. Download **HopTab-${{ steps.version.outputs.version }}.zip** below
-            2. Unzip and drag **HopTab.app** to `/Applications`
-            3. Run `xattr -d com.apple.quarantine /Applications/HopTab.app` to bypass Gatekeeper
-            4. Launch — grant **Accessibility** permission when prompted
-            5. Open **Settings** from the menu bar, pin your apps, and use **Option+Tab** to hop
-          files: HopTab-${{ steps.version.outputs.version }}.zip
+            2. Unzip it
+            3. Drag **HopTab.app** into your **Applications** folder
+            4. Launch it and grant **Accessibility** permission when prompted
+            5. Open **Settings** from the menu bar, pin your apps, and press **Option+Tab** to hop
+
+            HopTab is signed with a Developer ID certificate (Team `GP4Y23ZTR6`) and
+            notarized by Apple, so it opens normally — no Gatekeeper workaround needed.
+
+            ### Verify the download
+
+            ```
+            shasum -a 256 HopTab-${{ steps.version.outputs.version }}.zip
+            ```
+
+            `${{ steps.package.outputs.sha256 }}`
+          files: ${{ env.ZIP_PATH }}
           generate_release_notes: true
+
+      # The app verifies its download against this sha256 before opening it,
+      # so the feed must carry the hash of the artifact we just built.
+      # Publishing it by hand is how it drifts out of sync.
+      - name: Update the update feed
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD="${{ steps.version.outputs.build }}"
+          SHA256="${{ steps.package.outputs.sha256 }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/HopTab-${VERSION}.zip"
+          NOTES="$(git tag -l --format='%(contents:subject)' "v${VERSION}")"
+          [ -n "$NOTES" ] || NOTES="HopTab ${VERSION}"
+
+          python3 -c 'import json,sys; v,b,h,u,n=sys.argv[1:6]; open("website/update.json","w").write(json.dumps({"version":v,"build":int(b),"downloadURL":u,"sha256":h,"minimumSystemVersion":"14.0","releaseNotes":n}, indent=2)+"\n")' \
+            "$VERSION" "$BUILD" "$SHA256" "$URL" "$NOTES"
+
+          echo "--- website/update.json ---"
+          cat website/update.json
+          python3 -c 'import json; json.load(open("website/update.json"))'
+
+          {
+            echo "### Update feed"
+            echo ""
+            echo '```json'
+            cat website/update.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Cloudflare Pages is not git-connected, so the feed only goes live when
+      # the site is deployed. Runs only when the token is configured; otherwise
+      # it prints the command to run by hand and does not fail the release.
+      - name: Publish the update feed
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set - the update feed was NOT published."
+            {
+              echo ""
+              echo "> **Action needed:** the in-app updater still advertises the previous release."
+              echo "> Publish it with:"
+              echo '> ```'
+              echo "> npx wrangler pages deploy website --project-name=hoptab"
+              echo '> ```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npx --yes wrangler@latest pages deploy website --project-name=hoptab --commit-dirty=true
+
+      - name: Clean up temporary keychain
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
+          rm -f "$RUNNER_TEMP/developer-id.p12" || true

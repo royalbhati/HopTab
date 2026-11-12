@@ -65,7 +65,7 @@
     <div class="hero">
       <div class="hero-eyebrow"><span class="dot"></span>macOS workspace manager &middot; free &amp; open source</div>
       <h1>The workspace manager macOS should&apos;ve shipped with.</h1>
-      <p class="lead">One keystroke and your whole workspace rearranges itself &mdash; apps, windows, layout. Snap, tile, and switch from the keyboard. Then let HopTab run it for you.</p>
+      <p class="lead"><kbd>&#8984;</kbd>Tab shows every app, your workspace&apos;s first. <kbd>&#8997;</kbd>Tab cycles just that workspace. Press <kbd>P</kbd> to pin an app, <kbd>N</kbd> to start a new workspace with it. One keystroke and your whole setup &mdash; apps, windows, layout &mdash; is back. Then let HopTab switch it for you.</p>
       <div class="hero-actions">
         <a href="/download" class="primary" onclick="track('download_click',{location:'hero'})">Download for macOS</a>
         <a href="https://github.com/royalbhati/HopTab" class="secondary" onclick="track('github_click',{location:'hero'})">View on GitHub <span class="star-count">&#9733; 272</span></a>
@@ -124,30 +124,31 @@
           <h2>Everything HopTab does</h2>
           <span class="tag">One menu-bar app</span>
         </div>
-        <div class="section-desc">It started as a faster app switcher. It is now a full workspace layer: windows, profiles, automation, focus, and the way it all looks. Free covers the core; <span class="t-pro">PRO</span> marks the $5 automation layer.</div>
+        <div class="section-desc">Two switchers and the windows between them. Free covers all of it; <span class="t-pro">PRO</span> is the $5 layer that does the switching for you.</div>
 
         <div class="cap-grid">
           <div class="cap-card" style="--cat:var(--c-window)">
             <div class="cap-label"><span class="dot"></span>Window management</div>
             <ul>
-              <li><b>17 snap directions</b> &mdash; halves, thirds, two-thirds, quarters, max, center</li>
+              <li><b>Halves, thirds, quarters, max, center</b> up front; sixths, ninths and more under &ldquo;Rectangle extras&rdquo;</li>
               <li>Same-direction <b>size cycling</b> + two-key universal cycle</li>
               <li><b>Drag-to-snap</b> with a live preview overlay</li>
               <li>Throw windows <b>between monitors</b></li>
               <li>Layout templates + a custom layout editor</li>
-              <li>Per-snap undo &middot; configurable gaps</li>
+              <li>Undo &middot; grow/shrink a split &middot; configurable gaps</li>
             </ul>
           </div>
 
           <div class="cap-card" style="--cat:var(--c-space)">
-            <div class="cap-label"><span class="dot"></span>Workspaces &amp; profiles</div>
+            <div class="cap-label"><span class="dot"></span>Switcher &amp; workspaces</div>
             <ul>
-              <li><b>Pinned-app switcher</b> &mdash; Option+Tab cycles only your apps</li>
-              <li><b>Profiles</b> per workflow: apps, layout, hotkey, sticky note</li>
+              <li><b>&#8984;Tab, replaced</b> &mdash; your workspace&apos;s apps first, every other running app after <span class="t-new">NEW</span></li>
+              <li><b>&#8997;Tab</b> cycles only this workspace&apos;s apps</li>
+              <li><b>Build workspaces from the switcher</b>: <kbd>P</kbd> pin, <kbd>1</kbd>&ndash;<kbd>9</kbd> any, <kbd>N</kbd> new <span class="t-new">NEW</span></li>
+              <li><b>&#8997;` switches workspaces</b>: apps, layout, hotkey, desktop, session</li>
               <li><b>Space-aware</b> auto-switching as you swipe desktops</li>
               <li><b>Session save &amp; restore</b>, display-aware</li>
-              <li>Space-aware window picker</li>
-              <li>3 profiles free, <b>unlimited</b> <span class="t-pro">PRO</span></li>
+              <li>3 workspaces free, <b>unlimited</b> <span class="t-pro">PRO</span></li>
             </ul>
           </div>
 
@@ -164,14 +165,12 @@
           </div>
 
           <div class="cap-card" style="--cat:var(--c-focus)">
-            <div class="cap-label"><span class="dot"></span>Focus &amp; wellbeing <span class="t-pro">PRO</span></div>
+            <div class="cap-label"><span class="dot"></span>Labs <span class="t-pro">PRO</span></div>
             <ul>
-              <li><b>Time tracking</b> per profile, zero effort</li>
-              <li><b>Pomodoro on a calendar event</b> &mdash; time logs back to it <span class="t-new">NEW</span></li>
-              <li><b>Focus sessions</b> with gentle off-profile nudges</li>
-              <li>Per-app <b>usage budgets</b></li>
-              <li><b>Screen-break</b> reminders</li>
-              <li>Multi-level <b>window undo</b></li>
+              <li>Experimental, <b>off by default</b>, clearly marked</li>
+              <li>Time tracking &middot; Pomodoro &middot; focus sessions</li>
+              <li>Screen breaks &middot; per-app budgets &middot; focus sessions</li>
+              <li>BSP auto-tiling (Labs)</li>
             </ul>
           </div>
 
@@ -208,18 +207,21 @@
       <!-- App Switching -->
       <div class="feature-row">
         <div class="feature-text">
-          <h3>Focused App Switching</h3>
-          <p>Pin only the apps you care about. Press Option+Tab to cycle through your pinned list &mdash; not the 20 random apps macOS shows. Release to switch, Escape to cancel.</p>
-          <p>Click to switch works too. Cmd+Q/H/M while the switcher is open to quit, hide, or minimize the highlighted app.</p>
+          <h3>Two Switchers</h3>
+          <p><b>&#8984;Tab, all apps.</b> HopTab replaces the macOS switcher. Your workspace&apos;s apps come first, every other running app follows in recent order. Press <kbd>P</kbd> and the highlighted app slides into your workspace; <kbd>1</kbd>&ndash;<kbd>9</kbd> drops it into any; <kbd>N</kbd> starts a new workspace with it. You never open Settings to build one.</p>
+          <p><b>&#8997;Tab, this workspace.</b> Cycles only the apps you pinned here. Nothing to scan past. Prefer the native &#8984;Tab? Leave it off and &#8997;Tab alone is HopTab&apos;s.</p>
           <div class="shortcuts">
-            <span class="shortcut-tag"><kbd>&#8997;</kbd>+<kbd>Tab</kbd> Cycle</span>
-            <span class="shortcut-tag"><kbd>&#8679;</kbd>+<kbd>&#8997;</kbd>+<kbd>Tab</kbd> Reverse</span>
-            <span class="shortcut-tag"><kbd>Esc</kbd> Cancel</span>
+            <span class="shortcut-tag"><kbd>&#8984;</kbd>+<kbd>Tab</kbd> All apps</span>
+            <span class="shortcut-tag"><kbd>&#8997;</kbd>+<kbd>Tab</kbd> This workspace</span>
+            <span class="shortcut-tag"><kbd>P</kbd> Pin</span>
+            <span class="shortcut-tag"><kbd>N</kbd> New workspace</span>
+            <span class="shortcut-tag"><kbd>Space</kbd> Windows</span>
+            <span class="shortcut-tag"><kbd>&#8984;</kbd>Q/H/M</span>
           </div>
         </div>
         <div class="feature-img">
           <img src="/hoptab_pinned_apps.png" alt="Pinned apps settings" />
-          <div class="caption">Pin from running apps or browse all installed apps</div>
+          <div class="caption">Pinned apps first, everything else after &mdash; pin with one key</div>
         </div>
       </div>
 
@@ -228,7 +230,7 @@
         <div class="feature-text">
           <h3>Window Tiling</h3>
           <p>Global keyboard shortcuts snap any window to halves, thirds, quarters, or fullscreen. Works anytime &mdash; no switcher needed.</p>
-          <p>Press the same direction again to cycle sizes: &frac12; &rarr; &frac13; &rarr; &frac23;. Or use universal cycle shortcuts to step through all 15 positions with just two keys. Undo any snap instantly.</p>
+          <p>Press the same direction again to cycle sizes: &frac12; &rarr; &frac13; &rarr; &frac23;. Two universal cycle keys step through every position. Undo any snap instantly. Sixths, ninths and move-to-edge are there for Rectangle refugees, tucked under &ldquo;extras&rdquo;.</p>
           <p><strong>Drag-to-Snap:</strong> Drag any window to a screen edge or corner to snap it. A translucent preview overlay shows the target zone. Edges snap to halves (or maximize/bottom), corners snap to quarters. Toggle on/off in Settings &rarr; Snapping.</p>
           <div class="shortcuts">
             <span class="shortcut-tag"><kbd>&#8963;</kbd><kbd>&#8997;</kbd>+<kbd>Arrows</kbd> Halves</span>
@@ -241,7 +243,7 @@
         </div>
         <div class="feature-img">
           <img src="/hoptab_window_snapping.png" alt="Window snapping settings" />
-          <div class="caption">17 snap directions + drag-to-snap, all configurable</div>
+          <div class="caption">The everyday snaps up front, Rectangle extras one click away</div>
         </div>
       </div>
 
@@ -261,18 +263,18 @@
       <!-- Profiles -->
       <div class="feature-row reverse">
         <div class="feature-text">
-          <h3>Profiles</h3>
-          <p>Create profiles for different workflows &mdash; Coding, Design, Research. Each profile has its own pinned apps, layout, hotkey, and sticky note.</p>
-          <p>Assign profiles to macOS Spaces. Swipe between desktops and HopTab auto-switches the active profile. Save and restore full window sessions per profile.</p>
+          <h3>Workspaces</h3>
+          <p>A workspace is a named set of apps with its own layout, hotkey, desktop and saved window session. Coding, Design, Research. &#8997;` switches between them; release and HopTab launches what&apos;s missing, applies the layout, moves to the right Space.</p>
+          <p>The menu bar lists every workspace with its icons. One click to switch. One click to make a new one from whatever is open right now.</p>
           <div class="shortcuts">
-            <span class="shortcut-tag"><kbd>&#8997;</kbd>+<kbd>`</kbd> Switch profiles</span>
-            <span class="shortcut-tag">Per-profile hotkeys</span>
+            <span class="shortcut-tag"><kbd>&#8997;</kbd>+<kbd>`</kbd> Switch workspace</span>
+            <span class="shortcut-tag">Per-workspace hotkeys</span>
             <span class="shortcut-tag">Space auto-switch</span>
           </div>
         </div>
         <div class="feature-img">
           <img src="/hoptab_profiles.png" alt="Profiles" />
-          <div class="caption">Profiles with desktop assignment and per-profile hotkeys</div>
+          <div class="caption">Workspaces with desktop assignment and per-workspace hotkeys</div>
         </div>
       </div>
 
@@ -280,8 +282,8 @@
       <div class="feature-row">
         <div class="feature-text">
           <h3>Fully Customizable</h3>
-          <p>Every shortcut is configurable. The app switcher hotkey, profile switcher, all 17 snap directions, per-profile hotkeys &mdash; record whatever combo you want.</p>
-          <p>Want to replace macOS Cmd+Tab entirely? One-click preset. Supports Option, Control, Command, and any key. HyperKey compatible.</p>
+          <p>Every shortcut is configurable. The switcher key, the workspace key, every snap direction, per-workspace hotkeys &mdash; record whatever combo you want. Import a Rectangle setup in one click.</p>
+          <p>Settings is four panes: Workspaces, Shortcuts, Pro, General. HyperKey compatible.</p>
         </div>
         <div class="feature-img">
           <img src="/hoptab_shortuct_customisation.png" alt="Shortcut customization" />
@@ -323,11 +325,11 @@
           <h2>HopTab Pro</h2>
           <span class="tag">$5 One-Time</span>
         </div>
-        <div class="section-desc">Everything above is free. Pro adds automation features that let HopTab manage your workspace without you thinking about it. One-time purchase via <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" style="color:var(--accent);font-weight:600;" onclick="track('pro_click',{location:'pro_desc',provider:'polar'})">Polar</a> or <a href="https://github.com/sponsors/royalbhati" style="color:var(--muted);" onclick="track('pro_click',{location:'pro_desc',provider:'github_sponsors'})">GitHub Sponsors</a>.</div>
+        <div class="section-desc">Everything above is free. Pro does one thing: <b>it switches your workspace for you</b> &mdash; from your calendar, the clock, a Focus mode or the monitor you just plugged in. One-time purchase via <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" style="color:var(--accent);font-weight:600;" onclick="track('pro_click',{location:'pro_desc',provider:'polar'})">Polar</a> or <a href="https://github.com/sponsors/royalbhati" style="color:var(--muted);" onclick="track('pro_click',{location:'pro_desc',provider:'github_sponsors'})">GitHub Sponsors</a>.</div>
 
         <div style="margin:24px 0;">
           <img src="/hoptab_pro_features.png" alt="HopTab Pro features" style="width:100%;display:block;" />
-          <div class="caption" style="font-size:12px;color:var(--muted);margin-top:8px;">Calendar auto-switch, time tracking, and focus mode integration</div>
+          <div class="caption" style="font-size:12px;color:var(--muted);margin-top:8px;">Calendar auto-switch, schedules, and Focus mode integration</div>
         </div>
 
         <div class="pro-strip">
@@ -341,12 +343,12 @@
             </ul>
           </div>
           <div class="cap-card" style="--cat:var(--c-focus)">
-            <div class="cap-label"><span class="dot"></span>Focus &amp; wellbeing</div>
+            <div class="cap-label"><span class="dot"></span>Labs (off by default)</div>
             <ul>
-              <li><b>Pomodoro on a calendar event</b> &mdash; focused time logs back to it <span class="t-new">NEW</span></li>
-              <li><b>Focus sessions</b> + per-app <b>usage budgets</b></li>
-              <li><b>Time tracking</b> per profile, zero effort</li>
-              <li><b>Screen breaks</b> + multi-level <b>window undo</b></li>
+              <li>Experimental extras, included but not the product</li>
+              <li>Time tracking &middot; Pomodoro &middot; focus sessions &middot; budgets</li>
+              <li>Screen breaks &middot; per-app budgets</li>
+              <li>BSP tiling (Labs)</li>
             </ul>
           </div>
           <div class="cap-card" style="--cat:var(--c-space)">
@@ -355,6 +357,7 @@
               <li><b>Unlimited profiles</b> (free tier has 3)</li>
               <li><b>Unlimited window rules</b> (free tier has 2)</li>
               <li><b>Custom layouts</b> with exact zone percentages</li>
+              <li>Multi-level <b>window undo</b></li>
             </ul>
           </div>
         </div>
@@ -365,13 +368,13 @@
             <h3 style="font-size:18px;font-weight:700;margin-bottom:4px;">Free</h3>
             <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Open source &mdash; everything you need</p>
             <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-soft);line-height:2.2;">
-              <li>&#10003; App switching (Option+Tab)</li>
-              <li>&#10003; Window tiling (17 snap directions)</li>
+              <li>&#10003; &#8984;Tab / &#8997;Tab switcher, pin with one key</li>
+              <li>&#10003; Window tiling (halves, thirds, quarters + extras)</li>
               <li>&#10003; Drag-to-snap (edges &amp; corners)</li>
               <li>&#10003; Snap size cycling &amp; undo</li>
               <li>&#10003; Move between monitors</li>
               <li>&#10003; 5 built-in layout templates</li>
-              <li>&#10003; 3 profiles with hotkeys &amp; sticky notes</li>
+              <li>&#10003; 3 workspaces with hotkeys &amp; sticky notes</li>
               <li>&#10003; Session save/restore</li>
               <li>&#10003; 2 window rules</li>
               <li>&#10003; Configurable gaps</li>
@@ -383,15 +386,14 @@
               <span style="font-size:22px;font-weight:700;">$5</span>
               <span style="font-size:12px;color:var(--muted);">one-time, lifetime</span>
             </div>
-            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Everything in Free, plus automation</p>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Everything in Free, and HopTab switches for you</p>
             <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink);line-height:2.0;font-weight:500;">
               <li>&#10003; Calendar auto-switch + meeting reminders</li>
               <li>&#10003; Time-based scheduling</li>
               <li>&#10003; Focus mode + display auto-profiles</li>
-              <li>&#10003; Time tracking + per-app budgets</li>
-              <li>&#10003; Focus sessions + event Pomodoro</li>
-              <li>&#10003; Screen breaks + multi-level window undo</li>
-              <li>&#10003; Unlimited profiles, rules &amp; custom layouts</li>
+              <li>&#10003; Unlimited workspaces, rules &amp; custom layouts</li>
+              <li>&#10003; Multi-level window undo</li>
+              <li>&#10003; Labs: time tracking, Pomodoro, tiling, dimming &hellip;</li>
             </ul>
             <div style="margin-top:16px;display:flex;gap:12px;align-items:center;">
               <a href="https://buy.polar.sh/polar_cl_iKgZQ7w4AWRhnNzsnQBl80syKnFJGHJj1Pv6d2a9tD7" onclick="track('pro_click',{location:'pro_section',provider:'polar'})" style="padding:12px 28px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:14px;border-radius:var(--r-pill);">Get HopTab Pro</a>
@@ -501,7 +503,7 @@
         <h2>Keyboard Shortcuts</h2>
         <span class="tag">Default Bindings</span>
       </div>
-      <div class="section-desc">All shortcuts are configurable in Settings &rarr; Windows tab.</div>
+      <div class="section-desc">All shortcuts are configurable in Settings &rarr; Shortcuts. &#8984;Tab replacement is a toggle there and in onboarding.</div>
 
       <table class="shortcuts-table">
         <thead>
@@ -509,12 +511,18 @@
         </thead>
         <tbody>
           <tr class="group-header"><td colspan="2">App Switcher</td></tr>
-          <tr><td>Open &amp; cycle forward</td><td><kbd>&#8997;</kbd> + <kbd>Tab</kbd></td></tr>
-          <tr><td>Cycle backward</td><td><kbd>&#8679;</kbd> + <kbd>&#8997;</kbd> + <kbd>Tab</kbd></td></tr>
-          <tr><td>Activate selected</td><td>Release <kbd>&#8997;</kbd></td></tr>
+          <tr><td>All running apps, workspace first</td><td><kbd>&#8984;</kbd> + <kbd>Tab</kbd></td></tr>
+          <tr><td>Only this workspace&apos;s apps</td><td><kbd>&#8997;</kbd> + <kbd>Tab</kbd></td></tr>
+          <tr><td>Cycle backward</td><td><kbd>&#8679;</kbd> + the same combo</td></tr>
+          <tr><td>Activate selected</td><td>Release the modifier</td></tr>
           <tr><td>Cancel</td><td><kbd>Esc</kbd></td></tr>
 
           <tr class="group-header"><td colspan="2">While Switcher Open</td></tr>
+          <tr><td>Pin / unpin to current workspace</td><td><kbd>P</kbd></td></tr>
+          <tr><td>Toggle in workspace 1&ndash;9</td><td><kbd>1</kbd> &hellip; <kbd>9</kbd></td></tr>
+          <tr><td>New workspace containing it</td><td><kbd>N</kbd></td></tr>
+          <tr><td>Unpin from current workspace</td><td><kbd>&#9003;</kbd></td></tr>
+          <tr><td>Show the app&apos;s windows</td><td><kbd>Space</kbd></td></tr>
           <tr><td>Snap left / right / top / bottom</td><td><kbd>&#8592;</kbd> <kbd>&#8594;</kbd> <kbd>&#8593;</kbd> <kbd>&#8595;</kbd></td></tr>
           <tr><td>Quit / Hide / Minimize</td><td><kbd>&#8984;</kbd>+<kbd>Q</kbd> / <kbd>&#8984;</kbd>+<kbd>H</kbd> / <kbd>&#8984;</kbd>+<kbd>M</kbd></td></tr>
 
@@ -536,8 +544,8 @@
           <tr class="group-header"><td colspan="2">Monitors</td></tr>
           <tr><td>Next / Previous monitor</td><td><kbd>&#8963;</kbd><kbd>&#8997;</kbd><kbd>&#8984;</kbd> + <kbd>&#8594;</kbd> / <kbd>&#8592;</kbd></td></tr>
 
-          <tr class="group-header"><td colspan="2">Profiles</td></tr>
-          <tr><td>Switch profile</td><td><kbd>&#8997;</kbd> + <kbd>`</kbd></td></tr>
+          <tr class="group-header"><td colspan="2">Workspaces</td></tr>
+          <tr><td>Switch workspace</td><td><kbd>&#8997;</kbd> + <kbd>`</kbd></td></tr>
         </tbody>
       </table>
     </div>
@@ -554,7 +562,13 @@
           <span class="date">In development</span>
         </div>
         <ul class="changelog-list">
-          <li class="feat"><span class="changelog-label feat">New</span> Pomodoro on a calendar event &mdash; start a work/break cycle tied to a meeting or task; focused time logs back to that event, with a per-event breakdown in Time Tracking</li>
+          <li class="feat"><span class="changelog-label feat">New</span> &#8984;Tab replacement &mdash; the switcher lists your workspace&apos;s apps first and every other running app after, in recent order</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Build workspaces from inside the switcher: <kbd>P</kbd> pins to the current one, <kbd>1</kbd>&ndash;<kbd>9</kbd> to any, <kbd>N</kbd> creates a new one, <kbd>&#9003;</kbd> unpins. &#8997;Tab stays the workspace-only switcher.</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Menu bar rebuilt around workspaces, with &ldquo;New workspace from what&apos;s open&rdquo;</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Launch at login &middot; grow/shrink a split &middot; space-aware workspaces &middot; drag-away restore</li>
+          <li class="fix"><span class="changelog-label fix">Changed</span> Settings is four panes: Workspaces, Shortcuts, Pro, General. Onboarding is two screens.</li>
+          <li class="fix"><span class="changelog-label fix">Changed</span> Pro is now one promise &mdash; it switches your workspace for you. Time tracking, Pomodoro, focus sessions, screen breaks and auto-declutter moved to Labs, off by default.</li>
+          <li class="feat"><span class="changelog-label feat">New</span> Pomodoro on a calendar event (Labs) &mdash; focused time logs back to that event</li>
         </ul>
       </div>
 
@@ -629,15 +643,15 @@
 
       <div class="install-box">
         <button class="copy-btn" id="copy-btn">Copy</button>
-        <span class="comment"># Download latest release, unzip to Applications, clear quarantine</span><br />
-        <span class="cmd">curl -sL "$(curl -s https://api.github.com/repos/royalbhati/HopTab/releases/latest | grep -o '"browser_download_url": *"[^"]*"' | head -1 | cut -d '"' -f 4)" -o /tmp/HopTab.zip && unzip -o /tmp/HopTab.zip -d /Applications && xattr -c /Applications/HopTab.app</span>
+        <span class="comment"># Install with Homebrew (recommended)</span><br />
+        <span class="cmd">brew tap royalbhati/tap &amp;&amp; brew install --cask hoptab</span>
       </div>
 
       <div class="steps">
         <div class="step-item">
           <div class="step-num">01</div>
-          <strong>Run the command</strong>
-          <p>Or download from <a href="https://github.com/royalbhati/HopTab/releases/latest" onclick="track('download_click',{location:'install'})" style="color:var(--accent);font-weight:600;">GitHub Releases</a></p>
+          <strong>Install it</strong>
+          <p>Or download the zip from <a href="https://github.com/royalbhati/HopTab/releases/latest" onclick="track('download_click',{location:'install'})" style="color:var(--accent);font-weight:600;">GitHub Releases</a> and drag it to Applications</p>
         </div>
         <div class="step-item">
           <div class="step-num">02</div>
@@ -650,6 +664,7 @@
           <p>Pin some apps, set up profiles, start tiling</p>
         </div>
       </div>
+      <p style="margin-top:20px;font-size:13px;color:var(--muted);">Signed with an Apple Developer ID and notarized by Apple, so it opens without security warnings. No <code>xattr</code> workaround needed.</p>
     </div>
 
     <!-- Requirements -->
@@ -662,6 +677,7 @@
         <div><strong style="color:var(--ink);">Accessibility</strong> permission required</div>
         <div><strong style="color:var(--ink);">Architecture</strong> Universal (Apple Silicon + Intel)</div>
         <div><strong style="color:var(--ink);">Price</strong> Free &amp; open source. Pro: $5 one-time</div>
+        <div><strong style="color:var(--ink);">Telemetry</strong> None. <a href="/privacy/" style="color:var(--accent);">Privacy</a></div>
       </div>
     </div>
 
@@ -669,6 +685,7 @@
       <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
       <div style="display:flex;gap:16px;">
         <a href="/guides/">Guides</a>
+        <a href="/privacy/">Privacy</a>
         <a href="https://discord.gg/6pSMtzBGUr" onclick="track('discord_click',{location:'footer'})">Discord</a>
         <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'footer'})">GitHub</a>
       </div>

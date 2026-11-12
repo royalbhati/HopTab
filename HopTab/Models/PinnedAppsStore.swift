@@ -297,6 +297,14 @@ final class PinnedAppsStore: ObservableObject {
         save()
     }
 
+    // MARK: - Browser profile
+
+    func setBrowserProfile(profileId: UUID, _ browserProfile: BrowserProfile?) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
+        profiles[idx].browserProfile = browserProfile
+        save()
+    }
+
     // MARK: - Layout Binding
 
     func setLayoutBinding(profileId: UUID, binding: LayoutBinding?) {
@@ -380,7 +388,20 @@ final class PinnedAppsStore: ObservableObject {
     // MARK: - Pin CRUD (operates on active profile)
 
     func add(_ app: PinnedApp) {
-        guard let idx = activeProfileIndex else { return }
+        guard let profileId = activeProfileId else { return }
+        add(app, toProfile: profileId)
+    }
+
+    func remove(bundleIdentifier: String) {
+        guard let profileId = activeProfileId else { return }
+        remove(bundleIdentifier: bundleIdentifier, fromProfile: profileId)
+    }
+
+    /// Pin `app` into any profile, not just the active one. Used by the
+    /// switcher's number keys so a profile can be built without opening
+    /// Settings. No-op if the app is already pinned there.
+    func add(_ app: PinnedApp, toProfile profileId: UUID) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
         guard !profiles[idx].pinnedApps.contains(where: { $0.bundleIdentifier == app.bundleIdentifier }) else { return }
         var newApp = app
         newApp.sortOrder = profiles[idx].pinnedApps.count
@@ -388,19 +409,39 @@ final class PinnedAppsStore: ObservableObject {
         save()
     }
 
-    func remove(bundleIdentifier: String) {
-        guard let idx = activeProfileIndex else { return }
+    func remove(bundleIdentifier: String, fromProfile profileId: UUID) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
         profiles[idx].pinnedApps.removeAll { $0.bundleIdentifier == bundleIdentifier }
         reindex(profileIndex: idx)
         // Drop any launch options tied to the unpinned app
-        if let profileId = activeProfileId {
-            clearLaunchOptions(profileId: profileId, bundleId: bundleIdentifier)
-        }
+        clearLaunchOptions(profileId: profileId, bundleId: bundleIdentifier)
         save()
     }
 
+    func isPinned(_ bundleIdentifier: String, inProfile profileId: UUID) -> Bool {
+        profiles.first { $0.id == profileId }?
+            .pinnedApps.contains { $0.bundleIdentifier == bundleIdentifier } ?? false
+    }
+
+    /// Toggle membership of an app in a specific profile. Returns `true` if
+    /// the app is pinned there after the call.
+    @discardableResult
+    func togglePin(bundleIdentifier: String, displayName: String, inProfile profileId: UUID) -> Bool {
+        if isPinned(bundleIdentifier, inProfile: profileId) {
+            remove(bundleIdentifier: bundleIdentifier, fromProfile: profileId)
+            return false
+        }
+        add(PinnedApp(bundleIdentifier: bundleIdentifier, displayName: displayName, sortOrder: 0), toProfile: profileId)
+        return true
+    }
+
     func move(from source: IndexSet, to destination: Int) {
-        guard let idx = activeProfileIndex else { return }
+        guard let profileId = activeProfileId else { return }
+        move(from: source, to: destination, inProfile: profileId)
+    }
+
+    func move(from source: IndexSet, to destination: Int, inProfile profileId: UUID) {
+        guard let idx = profiles.firstIndex(where: { $0.id == profileId }) else { return }
         profiles[idx].pinnedApps.move(fromOffsets: source, toOffset: destination)
         reindex(profileIndex: idx)
         save()
@@ -418,7 +459,12 @@ final class PinnedAppsStore: ObservableObject {
 
     /// Assign an app to a specific display (by display name), or nil to clear.
     func setDisplayAssignment(bundleIdentifier: String, displayName: String?) {
-        guard let profileIdx = activeProfileIndex,
+        guard let profileId = activeProfileId else { return }
+        setDisplayAssignment(bundleIdentifier: bundleIdentifier, displayName: displayName, inProfile: profileId)
+    }
+
+    func setDisplayAssignment(bundleIdentifier: String, displayName: String?, inProfile profileId: UUID) {
+        guard let profileIdx = profiles.firstIndex(where: { $0.id == profileId }),
               let appIdx = profiles[profileIdx].pinnedApps.firstIndex(where: { $0.bundleIdentifier == bundleIdentifier })
         else { return }
         profiles[profileIdx].pinnedApps[appIdx].assignedDisplay = displayName

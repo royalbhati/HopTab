@@ -13,6 +13,10 @@ final class AppState: ObservableObject {
     private let overlayController = OverlayWindowController()
     private let profileOverlayController = ProfileOverlayWindowController()
     private let windowPickerController = WindowPickerOverlayController()
+    /// User-added ⌥K rows (Settings → Command Palette).
+    let customCommands = CustomCommandsStore()
+    /// The app that had focus when ⌥K opened; paste commands go back to it.
+    private var commandPaletteFrontmostApp: NSRunningApplication?
     private let stickyNoteController = StickyNoteOverlayController()
     private let toastController = ToastOverlayController()
 
@@ -20,11 +24,107 @@ final class AppState: ObservableObject {
     @Published private(set) var isSwitcherVisible: Bool = false
     @Published var runningApps: [NSRunningApplication] = []
     @Published var installedApps: [InstalledAppsService.AppInfo] = []
+    @Published private(set) var isLoadingInstalledApps = false
+
+    /// Mirrors `PermissionsService.isTrusted`. Views observing only `AppState`
+    /// never saw the nested object change, so permission banners did not
+    /// disappear when the user granted access.
+    @Published private(set) var isAccessibilityTrusted = false
+
+    /// True while macOS secure input is on (a password field, or Terminal's
+    /// Secure Keyboard Entry). The event tap receives no keys in that state,
+    /// so shortcuts stop working and used to do so silently.
+    @Published private(set) var isSecureInputActive = false
     @Published var recentAppFirst: Bool = UserDefaults.standard.bool(forKey: "recentAppFirst") {
         didSet {
             UserDefaults.standard.set(recentAppFirst, forKey: "recentAppFirst")
         }
     }
+
+    /// When on, ⌘Tab opens HopTab's all-apps switcher (pinned group first,
+    /// every other running app after) instead of the macOS one. The
+    /// configurable preset (⌥Tab by default) stays the pinned-only switcher.
+    @Published var replaceCommandTab: Bool = UserDefaults.standard.bool(forKey: "replaceCommandTab") {
+        didSet {
+            UserDefaults.standard.set(replaceCommandTab, forKey: "replaceCommandTab")
+            applyAllAppsTrigger()
+        }
+    }
+
+    /// When on, releasing the switcher on an app with two or more windows on
+    /// this Space opens the window picker. Off by default: the picker swallows
+    /// every key until a window is chosen, which reads as a nag on browsers
+    /// that always have several windows. Space in the switcher still drills in.
+    @Published var askWhichWindow: Bool = UserDefaults.standard.bool(forKey: "askWhichWindow") {
+        didSet {
+            UserDefaults.standard.set(askWhichWindow, forKey: "askWhichWindow")
+        }
+    }
+
+    // MARK: Command palette (⌥K)
+
+    /// ⌥K opens a search over workspaces, apps, Chrome tabs/bookmarks/history
+    /// and HopTab actions. Off → the key goes to the focused app.
+    @Published var commandPaletteEnabled: Bool =
+        UserDefaults.standard.object(forKey: "commandPaletteEnabled") == nil
+            ? true : UserDefaults.standard.bool(forKey: "commandPaletteEnabled") {
+        didSet {
+            UserDefaults.standard.set(commandPaletteEnabled, forKey: "commandPaletteEnabled")
+            applyCommandPaletteTrigger()
+        }
+    }
+
+    /// Custom palette shortcut; nil means the default ⌥K.
+    @Published var commandPaletteShortcut: CustomShortcut? = {
+        guard let data = UserDefaults.standard.data(forKey: "commandPaletteShortcut") else { return nil }
+        return try? JSONDecoder().decode(CustomShortcut.self, from: data)
+    }() {
+        didSet {
+            if let c = commandPaletteShortcut, let data = try? JSONEncoder().encode(c) {
+                UserDefaults.standard.set(data, forKey: "commandPaletteShortcut")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "commandPaletteShortcut")
+            }
+            applyCommandPaletteTrigger()
+        }
+    }
+
+    /// Include Google Chrome's open tabs, bookmarks and history in ⌥K.
+    /// The first tab read asks macOS for Automation access to Chrome.
+    @Published var commandPaletteIncludesChrome: Bool =
+        UserDefaults.standard.object(forKey: "commandPaletteIncludesChrome") == nil
+            ? true : UserDefaults.standard.bool(forKey: "commandPaletteIncludesChrome") {
+        didSet {
+            UserDefaults.standard.set(commandPaletteIncludesChrome, forKey: "commandPaletteIncludesChrome")
+            if !commandPaletteIncludesChrome { commandPaletteIndex.invalidateChromeCache() }
+        }
+    }
+
+    static let defaultCommandPaletteShortcut = CustomShortcut(
+        modifierFlagsRawValue: CGEventFlags.maskAlternate.rawValue,
+        keyCode: Int64(kVK_ANSI_K)
+    )
+
+    /// The palette shortcut in effect, for display.
+    var effectiveCommandPaletteShortcut: CustomShortcut {
+        commandPaletteShortcut ?? Self.defaultCommandPaletteShortcut
+    }
+
+    private let commandPaletteController = CommandPaletteController()
+    let commandPaletteIndex = CommandPaletteIndex()
+    @Published private(set) var isCommandPaletteVisible = false
+
+    /// Which list the open switcher is showing.
+    private var switcherShowsAllApps = false
+
+    /// Bundle identifiers, most recently activated first. Drives the order of
+    /// the "other running" group. Capped so it never grows unbounded.
+    private var recentActivationOrder: [String] = []
+
+    /// The list the switcher is currently showing. Built when the switcher
+    /// opens and rebuilt in place after a pin/unpin, so indices stay valid
+    /// for the whole gesture.
+    private var switcherEntries: [SwitcherEntry] = []
     @Published var dragSnapEnabled: Bool = UserDefaults.standard.object(forKey: "dragSnapEnabled") == nil ? false : UserDefaults.standard.bool(forKey: "dragSnapEnabled") {
         didSet {
             UserDefaults.standard.set(dragSnapEnabled, forKey: "dragSnapEnabled")
@@ -110,7 +210,7 @@ final class AppState: ObservableObject {
     /// Stage Manager fires `activeSpaceDidChangeNotification` on every stage transition,
     /// so this flag suppresses re-entrant space-driven switches that would oscillate
     /// between space-bound profiles.
-    private var isApplyingProfile: Bool = false
+    @Published private(set) var isApplyingProfile: Bool = false
     /// Target profile of the switch currently mid-apply, or nil. Guards against
     /// double-fires to the same target and profile deep links during a switch.
     private var inFlightProfileSwitchId: UUID?
@@ -147,13 +247,26 @@ final class AppState: ObservableObject {
             self.dismissAndActivate()
         }
 
+        // Migration: the old "⌘Tab" preset meant the pinned switcher lived on
+        // ⌘Tab. That is now the all-apps switcher's job, so flip the flag and
+        // put the pinned switcher back on ⌥Tab.
+        if case .preset(.commandTab) = appShortcutSelection {
+            replaceCommandTab = true
+            appShortcutSelection = .preset(.optionTab)
+            selectedPreset = .optionTab
+        }
+
         applyAppShortcut()
         applyProfileShortcut()
+        applyAllAppsTrigger()
+        applyCommandPaletteTrigger()
+        setupCommandPalette()
         syncProfileHotkeys()
         refreshRunningApps()
-        refreshInstalledApps()
         observeWorkspace()
         setupHotkeyCallbacks()
+        setupSnapFailureReporting()
+        setupStateRepublishing()
 
         // Wire drag-to-snap (only tap mouse events when enabled to avoid idle CPU)
         dragSnapService.isEnabled = dragSnapEnabled
@@ -210,6 +323,21 @@ final class AppState: ObservableObject {
         checkConflicts()
     }
 
+    private func applyAllAppsTrigger() {
+        hotkeyService.configureAllAppsSwitcher(
+            replaceCommandTab ? (modifierFlag: .maskCommand, keyCode: Int64(kVK_Tab)) : nil
+        )
+    }
+
+    private func applyCommandPaletteTrigger() {
+        guard commandPaletteEnabled else {
+            hotkeyService.configureCommandPalette(nil)
+            return
+        }
+        let shortcut = effectiveCommandPaletteShortcut
+        hotkeyService.configureCommandPalette((shortcut.modifierFlags, shortcut.keyCode))
+    }
+
     private func applyProfileShortcut() {
         let modFlag: CGEventFlags
         let keyCode: Int64
@@ -219,7 +347,9 @@ final class AppState: ObservableObject {
         if isCustomProfileShortcut, let c = customProfileShortcut {
             modFlag = c.modifierFlags
             keyCode = c.keyCode
-            modName = c.modifierName
+            // `modifierName` is glyph-prefixed ("⌥Option") for the recorder;
+            // the menu header already spells the word, so drop the glyphs.
+            modName = c.modifierName.filter { !"\u{2303}\u{2325}\u{21E7}\u{2318}".contains($0) }
             keyName = c.keyName
         } else {
             if appShortcutSelection.modifierFlags == .maskAlternate &&
@@ -268,7 +398,19 @@ final class AppState: ObservableObject {
 
     private func setupHotkeyCallbacks() {
         hotkeyService.onSwitcherActivated = { [weak self] in
-            self?.showSwitcher()
+            self?.showSwitcher(allApps: false)
+        }
+
+        hotkeyService.onAllAppsSwitcherActivated = { [weak self] in
+            self?.showSwitcher(allApps: true)
+        }
+
+        hotkeyService.onCommandPaletteActivated = { [weak self] in
+            self?.toggleCommandPalette()
+        }
+
+        hotkeyService.onCreateWorkspaceWithHighlighted = { [weak self] in
+            self?.createWorkspaceWithHighlightedApp()
         }
 
         hotkeyService.onCycleForward = { [weak self] in
@@ -317,7 +459,7 @@ final class AppState: ObservableObject {
             // switchToProfile applies its changes on the next main-queue turn;
             // enqueue the switcher behind it so the overlay shows the *new*
             // profile's apps rather than the outgoing one's.
-            DispatchQueue.main.async { self?.showSwitcher() }
+            DispatchQueue.main.async { self?.showSwitcher(allApps: false) }
         }
 
         hotkeyService.onProfileHotkeyCycleForward = { [weak self] _ in
@@ -388,6 +530,18 @@ final class AppState: ObservableObject {
         hotkeyService.onExpandWindows = { [weak self] in
             self?.expandSelectedAppWindows()
         }
+
+        hotkeyService.onToggleHighlightedInProfileSlot = { [weak self] slot in
+            self?.toggleHighlightedApp(inProfileSlot: slot)
+        }
+
+        hotkeyService.onToggleHighlightedInActiveProfile = { [weak self] in
+            self?.toggleHighlightedAppInActiveProfile()
+        }
+
+        hotkeyService.onUnpinHighlighted = { [weak self] in
+            self?.unpinHighlightedApp()
+        }
     }
 
     // MARK: - App Switcher Logic
@@ -403,60 +557,102 @@ final class AppState: ObservableObject {
     private func incrementSwitcherCount() {
         let count = UserDefaults.standard.integer(forKey: Self.switcherCountKey)
         UserDefaults.standard.set(count + 1, forKey: Self.switcherCountKey)
+        OnboardingProgress.bump(switcherShowsAllApps ? .allAppsSwitcher : .workspaceSwitcher)
     }
 
-    private func showSwitcher() {
-        let apps = store.apps
+    private func buildSwitcherEntries() -> [SwitcherEntry] {
+        // `runningApps` is kept current by launch/terminate notifications;
+        // asking NSWorkspace again here is one IPC per process on the
+        // keystroke path, ~20 ms with a busy Mac.
+        SwitcherEntry.build(
+            pinned: store.apps,
+            running: runningApps,
+            recentOrder: recentActivationOrder,
+            includeRunning: switcherShowsAllApps,
+            excluding: [Bundle.main.bundleIdentifier ?? ""]
+        )
+    }
+
+    private var switcherContext: SwitcherProfileContext {
+        SwitcherProfileContext(
+            profiles: store.profiles,
+            activeProfileId: store.activeProfileId,
+            canAddWorkspace: store.canAddProfile
+        )
+    }
+
+    /// Rebuild the list after a pin/unpin, keeping the highlight on the same
+    /// app even though it just moved between groups.
+    private func rebuildSwitcherEntries(keepingSelectionOn bundleId: String) {
+        switcherEntries = buildSwitcherEntries()
+        if let idx = switcherEntries.firstIndex(where: { $0.app.bundleIdentifier == bundleId }) {
+            selectedIndex = idx
+        } else {
+            selectedIndex = min(selectedIndex, max(0, switcherEntries.count - 1))
+        }
+        overlayController.update(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
+    }
+
+    private var highlightedEntry: SwitcherEntry? {
+        guard isSwitcherVisible, switcherEntries.indices.contains(selectedIndex) else { return nil }
+        return switcherEntries[selectedIndex]
+    }
+
+    private func showSwitcher(allApps: Bool) {
+        switcherShowsAllApps = allApps
+        switcherEntries = buildSwitcherEntries()
 
         selectedIndex = 0
-        if apps.count > 1 {
+        if switcherEntries.count > 1 {
             selectedIndex = 1
         }
 
         isSwitcherVisible = true
         overlayController.showHints = shouldShowHints
-        overlayController.show(apps: apps, selectedIndex: selectedIndex)
+        overlayController.show(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
         incrementSwitcherCount()
     }
 
     private func cycleForward() {
-        let apps = store.apps
-        guard !apps.isEmpty else { return }
-        selectedIndex = (selectedIndex + 1) % apps.count
-        overlayController.update(apps: apps, selectedIndex: selectedIndex)
+        guard !switcherEntries.isEmpty else { return }
+        selectedIndex = (selectedIndex + 1) % switcherEntries.count
+        overlayController.update(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
     }
 
     private func cycleBackward() {
-        let apps = store.apps
-        guard !apps.isEmpty else { return }
-        selectedIndex = (selectedIndex - 1 + apps.count) % apps.count
-        overlayController.update(apps: apps, selectedIndex: selectedIndex)
+        guard !switcherEntries.isEmpty else { return }
+        selectedIndex = (selectedIndex - 1 + switcherEntries.count) % switcherEntries.count
+        overlayController.update(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
     }
 
     private func dismissAndActivate() {
         guard isSwitcherVisible else { return }
-        let apps = store.apps
-        guard selectedIndex < apps.count else {
+        guard let entry = highlightedEntry else {
             cancelSwitcher()
             return
         }
 
-        let selectedApp = apps[selectedIndex]
+        let selectedApp = entry.app
         overlayController.dismiss()
         isSwitcherVisible = false
 
         // Activate the app first so its windows come forward
         AppSwitcherService.activate(selectedApp)
-        if recentAppFirst {
+        if recentAppFirst, entry.isPinned {
             store.moveToFront(bundleIdentifier: selectedApp.bundleIdentifier)
         }
 
-        // If the app has 2+ windows on the current Space, show the window picker
-        if let running = selectedApp.runningApplication {
-            let allWindows = AppSwitcherService.enumerateWindows(of: running)
-            let windows = AppSwitcherService.windowsOnCurrentSpace(allWindows)
-            if windows.count >= 2 {
-                showWindowPicker(app: selectedApp, windows: windows)
+        // If asked to, and the app has 2+ windows on the current Space, show
+        // the window picker. Enumeration is Accessibility work, so it runs off
+        // the main thread — this path is reached from the event-tap callback
+        // on every Option+Tab.
+        if askWhichWindow, let running = selectedApp.runningApplication {
+            AppSwitcherService.enumerateWindows(of: running) { [weak self] allWindows in
+                guard let self else { return }
+                let windows = AppSwitcherService.windowsOnCurrentSpace(allWindows)
+                if windows.count >= 2 {
+                    self.showWindowPicker(app: selectedApp, windows: windows)
+                }
             }
         }
     }
@@ -469,26 +665,27 @@ final class AppState: ObservableObject {
     /// Space pressed on a highlighted app while the switcher is open —
     /// drill into that app's windows on the current Space.
     private func expandSelectedAppWindows() {
-        guard isSwitcherVisible else { return }
-        let apps = store.apps
-        guard selectedIndex < apps.count else { return }
+        guard let entry = highlightedEntry else { return }
 
-        let selectedApp = apps[selectedIndex]
+        let selectedApp = entry.app
         guard let running = selectedApp.runningApplication else { return }
 
-        let allWindows = AppSwitcherService.enumerateWindows(of: running)
-        let windows = AppSwitcherService.windowsOnCurrentSpace(allWindows)
-        guard !windows.isEmpty else { return }
+        AppSwitcherService.enumerateWindows(of: running) { [weak self] allWindows in
+            guard let self else { return }
+            let windows = AppSwitcherService.windowsOnCurrentSpace(allWindows)
+            // No windows on this Space — leave the switcher exactly as it was.
+            guard !windows.isEmpty else { return }
 
-        AppSwitcherService.activate(selectedApp)
-        if recentAppFirst {
-            store.moveToFront(bundleIdentifier: selectedApp.bundleIdentifier)
+            AppSwitcherService.activate(selectedApp)
+            if self.recentAppFirst, entry.isPinned {
+                self.store.moveToFront(bundleIdentifier: selectedApp.bundleIdentifier)
+            }
+
+            self.overlayController.dismiss()
+            self.isSwitcherVisible = false
+
+            self.showWindowPicker(app: selectedApp, windows: windows)
         }
-
-        overlayController.dismiss()
-        isSwitcherVisible = false
-
-        showWindowPicker(app: selectedApp, windows: windows)
     }
 
     // MARK: - Window Picker
@@ -565,6 +762,7 @@ final class AppState: ObservableObject {
 
         isProfileSwitcherVisible = true
         profileOverlayController.show(profiles: profiles, selectedIndex: profileSelectedIndex)
+        OnboardingProgress.bump(.workspacePicker)
     }
 
     private func cycleProfileForward() {
@@ -607,55 +805,291 @@ final class AppState: ObservableObject {
     // MARK: - App Actions (Q/H/M)
 
     private func quitHighlightedApp() {
-        let apps = store.apps
-        guard selectedIndex < apps.count else { return }
-        let app = apps[selectedIndex]
-        app.runningApplication?.terminate()
-        // Adjust selection after quit
-        if apps.count > 1 {
-            if selectedIndex >= apps.count - 1 {
-                selectedIndex = max(0, apps.count - 2)
+        guard let entry = highlightedEntry else { return }
+        entry.app.runningApplication?.terminate()
+        // Pinned apps stay listed (not running); an unpinned app disappears.
+        if entry.isPinned {
+            if switcherEntries.count > 1 {
+                selectedIndex = (selectedIndex + 1) % switcherEntries.count
+                overlayController.update(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
+            } else {
+                cancelSwitcher()
             }
-            overlayController.update(apps: store.apps, selectedIndex: selectedIndex)
         } else {
-            cancelSwitcher()
+            switcherEntries.remove(at: selectedIndex)
+            if switcherEntries.isEmpty {
+                cancelSwitcher()
+            } else {
+                selectedIndex = min(selectedIndex, switcherEntries.count - 1)
+                overlayController.update(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
+            }
         }
     }
 
     private func hideHighlightedApp() {
-        let apps = store.apps
-        guard selectedIndex < apps.count else { return }
-        let app = apps[selectedIndex]
-        app.runningApplication?.hide()
+        guard let entry = highlightedEntry else { return }
+        entry.app.runningApplication?.hide()
         // Move to next app
-        if apps.count > 1 {
-            selectedIndex = (selectedIndex + 1) % apps.count
-            overlayController.update(apps: apps, selectedIndex: selectedIndex)
+        if switcherEntries.count > 1 {
+            selectedIndex = (selectedIndex + 1) % switcherEntries.count
+            overlayController.update(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
         }
     }
 
     private func minimizeHighlightedApp() {
-        let apps = store.apps
-        guard selectedIndex < apps.count else { return }
-        let app = apps[selectedIndex]
-        if let running = app.runningApplication {
+        guard let entry = highlightedEntry else { return }
+        if let running = entry.app.runningApplication {
             AppSwitcherService.minimizeFirstWindow(of: running)
         }
         // Move to next app
-        if apps.count > 1 {
-            selectedIndex = (selectedIndex + 1) % apps.count
-            overlayController.update(apps: apps, selectedIndex: selectedIndex)
+        if switcherEntries.count > 1 {
+            selectedIndex = (selectedIndex + 1) % switcherEntries.count
+            overlayController.update(entries: switcherEntries, selectedIndex: selectedIndex, context: switcherContext)
+        }
+    }
+
+    // MARK: - Pin / unpin from inside the switcher
+
+    /// 1–9: toggle the highlighted app's membership in the Nth profile.
+    private func toggleHighlightedApp(inProfileSlot slot: Int) {
+        guard let entry = highlightedEntry, store.profiles.indices.contains(slot) else { return }
+        let profile = store.profiles[slot]
+        let pinned = store.togglePin(
+            bundleIdentifier: entry.app.bundleIdentifier,
+            displayName: entry.app.displayName,
+            inProfile: profile.id
+        )
+        overlayController.flashPinFeedback(pinned: pinned, profileName: profile.name)
+        rebuildSwitcherEntries(keepingSelectionOn: entry.app.bundleIdentifier)
+    }
+
+    /// P: toggle the highlighted app in the active profile.
+    private func toggleHighlightedAppInActiveProfile() {
+        guard let activeId = store.activeProfileId,
+              let slot = store.profiles.firstIndex(where: { $0.id == activeId })
+        else { return }
+        toggleHighlightedApp(inProfileSlot: slot)
+    }
+
+    /// N: a new workspace containing just the highlighted app. Does not
+    /// activate it — the user is mid-switch; the new workspace shows up in
+    /// the digit map immediately.
+    private func createWorkspaceWithHighlightedApp() {
+        guard let entry = highlightedEntry else { return }
+        guard store.canAddProfile else {
+            overlayController.flashPinFeedback(message: "Workspace limit reached \u{2014} Pro removes it")
+            return
+        }
+        let existing = Set(store.profiles.map(\.name))
+        var n = store.profiles.count + 1
+        var name = "Workspace \(n)"
+        while existing.contains(name) { n += 1; name = "Workspace \(n)" }
+        store.addProfile(name: name)
+        guard let created = store.profiles.last else { return }
+        store.add(entry.app, toProfile: created.id)
+        overlayController.flashPinFeedback(message: "Created \(name) with \(entry.app.displayName)")
+        rebuildSwitcherEntries(keepingSelectionOn: entry.app.bundleIdentifier)
+    }
+
+    /// Delete: remove the highlighted app from the active profile. Does
+    /// nothing for an app that is not pinned there — Delete must never add.
+    private func unpinHighlightedApp() {
+        guard let entry = highlightedEntry, entry.isPinned, let activeId = store.activeProfileId else { return }
+        store.remove(bundleIdentifier: entry.app.bundleIdentifier, fromProfile: activeId)
+        overlayController.flashPinFeedback(pinned: false, profileName: store.activeProfile?.name ?? "")
+        rebuildSwitcherEntries(keepingSelectionOn: entry.app.bundleIdentifier)
+    }
+
+    // MARK: - Command palette
+
+    private func setupCommandPalette() {
+        let vm = commandPaletteController.viewModel
+        // Build the palette window once launch has settled, not on first use.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self else { return }
+            self.overlayController.prewarm()
+            if self.commandPaletteEnabled { self.commandPaletteController.prewarm() }
+        }
+        vm.onClose = { [weak self] in self?.dismissCommandPalette() }
+        vm.onPerform = { [weak self] item, alternate in
+            self?.performCommandPaletteAction(item, alternate: alternate)
+        }
+        vm.onSaveAsCommand = { [weak self] query in
+            guard let self else { return }
+            self.dismissCommandPalette()
+            SettingsNavigation.shared.pendingCommandDraft = query
+            SettingsNavigation.open(.palette)
+        }
+        vm.onCloseTab = { [weak self] item in
+            guard let self, case .activateChromeTab(let w, let t) = item.action else { return }
+            DispatchQueue.global(qos: .userInitiated).async {
+                ChromeDataService.closeTab(windowIndex: w, tabIndex: t)
+                DispatchQueue.main.async { self.refreshCommandPaletteIndex() }
+            }
+        }
+        commandPaletteIndex.$items
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] items in self?.commandPaletteController.viewModel.setItems(items) }
+            .store(in: &cancellables)
+        commandPaletteIndex.$isLoadingChrome
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] loading in self?.commandPaletteController.viewModel.isLoading = loading }
+            .store(in: &cancellables)
+    }
+
+    func toggleCommandPalette() {
+        if commandPaletteController.isVisible {
+            dismissCommandPalette()
+        } else {
+            showCommandPalette()
+        }
+    }
+
+    func showCommandPalette() {
+        // Never over an open switcher gesture.
+        guard !isSwitcherVisible, !isProfileSwitcherVisible, !isWindowPickerVisible else { return }
+        ensureInstalledAppsLoaded()
+        // Capture focus *before* the panel takes it: this is what makes ⌥K
+        // in Chrome show tabs first and ⌥K in VSCodium show projects first.
+        let mine = Bundle.main.bundleIdentifier
+        let frontApp = NSWorkspace.shared.frontmostApplication
+        let front = frontApp?.bundleIdentifier
+        commandPaletteFrontmostApp = front == mine ? nil : frontApp
+        commandPaletteController.viewModel.frontmostBundleIdentifier = front == mine ? nil : front
+        refreshCommandPaletteIndex(frontmostApp: front == mine ? nil : frontApp)
+        commandPaletteController.viewModel.shortcutHint = effectiveCommandPaletteShortcut.displayName
+        commandPaletteController.show()
+        isCommandPaletteVisible = true
+        OnboardingProgress.bump(.commandPalette)
+    }
+
+    func dismissCommandPalette() {
+        commandPaletteController.dismiss()
+        isCommandPaletteVisible = false
+    }
+
+    private func refreshCommandPaletteIndex(frontmostApp: NSRunningApplication? = nil) {
+        commandPaletteIndex.refresh(with: CommandPaletteIndex.Context(
+            profiles: store.profiles,
+            activeProfileId: store.activeProfileId,
+            installedApps: installedApps,
+            runningApps: runningApps,
+            recentOrder: recentActivationOrder,
+            canAddWorkspace: store.canAddProfile,
+            includeChrome: commandPaletteIncludesChrome,
+            frontmostApp: frontmostApp,
+            customCommands: customCommands.commands
+        ))
+    }
+
+    private func performCommandPaletteAction(_ item: CommandPaletteItem, alternate: Bool) {
+        dismissCommandPalette()
+        switch item.action {
+        case .switchWorkspace(let id):
+            activateProfile(id: id)
+        case .activateApp(let app):
+            AppSwitcherService.activate(app)
+        case .activateChromeTab(let w, let t):
+            DispatchQueue.global(qos: .userInitiated).async {
+                ChromeDataService.activateTab(windowIndex: w, tabIndex: t)
+            }
+        case .openURL(let url, let profileDirectory):
+            if alternate {
+                ChromeDataService.open(url, inProfileDirectory: profileDirectory, newWindow: true)
+            } else {
+                ChromeDataService.open(url, inProfileDirectory: profileDirectory)
+            }
+        case .openProject(let url, let editorBundleId):
+            if let editor = EditorProjectsService.editors.first(where: { $0.bundleIdentifier == editorBundleId }) {
+                EditorProjectsService.open(.init(name: url.lastPathComponent, url: url, editor: editor, lastOpened: 0))
+            } else {
+                NSWorkspace.shared.open(url)
+            }
+        case .switchChromeProfile(let directory, let name):
+            ChromeDataService.switchToProfile(directory: directory, name: name)
+        case .switchSafariProfile(let name):
+            SafariProfilesService.switchToProfile(name: name)
+        case .selectNativeTab(let bundleId, let windowID, let index):
+            if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first {
+                // Activation (and the palette's own key-window handoff) raise
+                // the app's current key window, i.e. the old tab. Let that
+                // settle before pressing the new tab, or it is undone.
+                app.activate(options: .activateIgnoringOtherApps)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    AppSwitcherService.selectNativeTab(of: app, windowID: windowID, index: index)
+                }
+            }
+        case .raiseWindow(let bundleId, let windowID):
+            if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first {
+                app.activate(options: .activateIgnoringOtherApps)
+                AppSwitcherService.raiseWindow(of: app, windowID: windowID)
+            }
+        case .snap(let direction):
+            // Give focus back to the app that had it before the panel.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                self?.performSnapAction(direction)
+            }
+        case .newWorkspaceFromRunning:
+            _ = createProfileFromRunningApps()
+        case .openSettings:
+            NSApp.sendAction(#selector(AppDelegate.openSettings(_:)), to: nil, from: nil)
+        case .openOnboarding:
+            NSApp.sendAction(#selector(AppDelegate.showOnboarding(_:)), to: nil, from: nil)
+        case .runCustomCommand(let id):
+            guard let command = customCommands.command(id: id) else { return }
+            let front = commandPaletteFrontmostApp
+            // Let the panel finish handing key focus back before keys fly.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                CustomCommandRunner.run(command, frontmostBefore: front)
+            }
         }
     }
 
     func refreshRunningApps() {
+        // `localizedName` is an IPC round trip; read it once per app, not
+        // once per comparison.
         runningApps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
-            .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
+            .map { ($0, $0.localizedName ?? "") }
+            .sorted { $0.1 < $1.1 }
+            .map(\.0)
     }
 
+    /// Load the installed-app list off the main thread, once, on demand.
+    ///
+    /// This used to run synchronously in `init`, scanning four directories and
+    /// loading a full-resolution icon for every installed app before the
+    /// menu-bar item existed — 0.3-1.5s of launch for a list whose only
+    /// consumer is the Settings app picker.
+    func ensureInstalledAppsLoaded() {
+        guard installedApps.isEmpty, !isLoadingInstalledApps else { return }
+        isLoadingInstalledApps = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let apps = InstalledAppsService.discoverInstalledApps()
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.installedApps = apps
+                self.isLoadingInstalledApps = false
+            }
+        }
+    }
+
+    /// Force a rescan (e.g. after the user installs an app while Settings is open).
     func refreshInstalledApps() {
-        installedApps = InstalledAppsService.discoverInstalledApps()
+        isLoadingInstalledApps = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let apps = InstalledAppsService.discoverInstalledApps()
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.installedApps = apps
+                self.isLoadingInstalledApps = false
+            }
+        }
+    }
+
+    /// Release the picker's icon memory when Settings closes.
+    func releaseInstalledAppsCache() {
+        InstalledAppsService.flushIconCache()
     }
 
     private func observeWorkspace() {
@@ -672,6 +1106,24 @@ final class AppState: ObservableObject {
             }
             workspaceObservers.append(observer)
         }
+
+        // Most-recently-used order for the switcher's "other running" group.
+        if let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
+            recentActivationOrder = [front]
+        }
+        let activateObserver = center.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  let bundleId = app.bundleIdentifier
+            else { return }
+            Task { @MainActor in
+                self?.noteActivation(of: bundleId)
+            }
+        }
+        workspaceObservers.append(activateObserver)
 
         // Auto-switch profile when the active Space changes.
         // Route through `spaceChangeSubject` so the debounce in init() can coalesce
@@ -700,6 +1152,12 @@ final class AppState: ObservableObject {
         }
     }
 
+    private func noteActivation(of bundleId: String) {
+        recentActivationOrder.removeAll { $0 == bundleId }
+        recentActivationOrder.insert(bundleId, at: 0)
+        if recentActivationOrder.count > 64 { recentActivationOrder.removeLast() }
+    }
+
     private func handleScreenParametersChanged() {
         guard isApplyingProfile else { return }
         cancelPendingProfileWork()
@@ -711,6 +1169,7 @@ final class AppState: ObservableObject {
     /// Perform a snap action on the frontmost window. Shared by the global
     /// hotkeys and hoptab:// deep links.
     func performSnapAction(_ direction: SnapDirection) {
+        OnboardingProgress.bump(.snap)
         switch direction {
         case .nextMonitor:
             LayoutService.moveFrontmostToNextMonitor()
@@ -724,8 +1183,13 @@ final class AppState: ObservableObject {
                 LayoutService.undoSnap()
             }
         case .redo:
+            // Pro tracks every window move; the free tier tracks snaps. Either
+            // way Ctrl+Opt+Shift+Z must do something — it ships as a default
+            // binding and used to be a dead key without Pro.
             if let provider = ProServiceRegistry.shared.provider, provider.canWindowRedo {
                 provider.windowRedo()
+            } else {
+                LayoutService.redoSnap()
             }
         case .cycleNext:
             LayoutService.snapFrontmostCycle(forward: true)
@@ -733,6 +1197,68 @@ final class AppState: ObservableObject {
             LayoutService.snapFrontmostCycle(forward: false)
         default:
             LayoutService.snapFrontmost(to: direction)
+        }
+    }
+
+
+
+    /// Republish nested/opaque state that views need, so nothing has to poll.
+    private func setupStateRepublishing() {
+        isAccessibilityTrusted = permissions.isTrusted
+        permissions.$isTrusted
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] trusted in
+                guard let self else { return }
+                self.isAccessibilityTrusted = trusted
+                // The tap caches the trust flag to keep an XPC call off the
+                // input path; tell it the moment the grant changes.
+                self.hotkeyService.refreshTrust()
+            }
+            .store(in: &cancellables)
+
+        isSecureInputActive = hotkeyService.isSecureInputActive
+        hotkeyService.onSecureInputChange = { [weak self] active in
+            self?.isSecureInputActive = active
+        }
+    }
+
+    /// Nudge SwiftUI after Pro focus/Pomodoro transitions, which are otherwise
+    /// invisible to observers of `AppState`.
+    func proSessionStateDidChange() {
+        objectWillChange.send()
+    }
+
+    // MARK: - Snap feedback
+
+    /// Snaps used to fail silently: no permission, no window, an app that
+    /// refuses to resize. The keystroke did nothing and said nothing.
+    private func setupSnapFailureReporting() {
+        LayoutService.onSnapFailure = { [weak self] failure, appName in
+            guard let self else { return }
+            switch failure {
+            case .notTrusted:
+                self.toastController.show(
+                    icon: "exclamationmark.triangle.fill",
+                    message: "Grant Accessibility in System Settings"
+                )
+            case .noFocusedApp:
+                self.toastController.show(icon: "macwindow.badge.plus", message: failure.message)
+            case .noSnappableWindow:
+                let name = appName.map { "\($0) has no snappable window" }
+                self.toastController.show(
+                    icon: "macwindow.badge.plus",
+                    message: name ?? failure.message
+                )
+            case .noScreen:
+                self.toastController.show(icon: "display.trianglebadge.exclamationmark", message: failure.message)
+            case .windowRefusedResize:
+                let name = appName.map { "\($0) refused to resize" }
+                self.toastController.show(
+                    icon: "exclamationmark.circle",
+                    message: name ?? failure.message
+                )
+            }
         }
     }
 
@@ -751,6 +1277,11 @@ final class AppState: ObservableObject {
     }
 
     private func updateMeetingHUD() {
+        // Piggyback the tap watchdog on this existing 30s tick rather than
+        // adding a timer: re-enables a tap macOS disabled, refreshes the
+        // cached trust flag, and updates the secure-input state.
+        hotkeyService.verifyTapAlive()
+
         guard let provider = ProServiceRegistry.shared.provider,
               provider.isLicensed,
               let meetings = provider as? ProActiveMeetingProvider
@@ -822,6 +1353,13 @@ final class AppState: ObservableObject {
             performSnapAction(.redo)
         case "focus":
             startFocusSession(minutes: Int(argument ?? "") ?? 25)
+        case "settings":
+            // hoptab://settings/calendar — section names match the sidebar.
+            let section = HopSettingsSection.allCases.first {
+                $0.rawValue.lowercased() == (argument ?? "").lowercased()
+                    || $0.deepLinkName == (argument ?? "").lowercased()
+            }
+            SettingsNavigation.open(section ?? SettingsNavigation.shared.section ?? .workspaces)
         default:
             break
         }
@@ -830,6 +1368,76 @@ final class AppState: ObservableObject {
     // MARK: - Session-Aware Profile Switching
 
     /// Public entry point for all UI-triggered profile switches.
+    /// Menu bar "New workspace from what's open": a profile pinned with the
+    /// regular apps running right now, most recently used first, then made
+    /// active. Returns the new profile's id, or nil when the free limit holds.
+    @discardableResult
+    /// Running regular apps, most recently used first, that a new workspace
+    /// could pin. HopTab and the Finder are left out.
+    func runningAppCandidates() -> [NSRunningApplication] {
+        let mine = Bundle.main.bundleIdentifier ?? ""
+        let rank = Dictionary(uniqueKeysWithValues: recentActivationOrder.enumerated().map { ($1, $0) })
+        return NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != mine && $0.bundleIdentifier != "com.apple.finder" }
+            .sorted { (rank[$0.bundleIdentifier ?? ""] ?? Int.max) < (rank[$1.bundleIdentifier ?? ""] ?? Int.max) }
+    }
+
+    /// Create a workspace pinned with exactly `bundleIdentifiers`, named
+    /// `name` (or the next free "Workspace N" when blank), and switch to it.
+    @discardableResult
+    func createProfile(named name: String, bundleIdentifiers: [String]) -> UUID? {
+        guard store.canAddProfile else { return nil }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let finalName: String
+        if trimmed.isEmpty {
+            let existing = Set(store.profiles.map(\.name))
+            var n = store.profiles.count + 1
+            var candidate = "Workspace \(n)"
+            while existing.contains(candidate) { n += 1; candidate = "Workspace \(n)" }
+            finalName = candidate
+        } else {
+            finalName = trimmed
+        }
+        store.addProfile(name: finalName)
+        guard let profile = store.profiles.last else { return nil }
+        let running = Dictionary(
+            NSWorkspace.shared.runningApplications.compactMap { app in app.bundleIdentifier.map { ($0, app) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+        for bundleId in bundleIdentifiers {
+            let display = running[bundleId]?.localizedName ?? bundleId
+            store.add(PinnedApp(bundleIdentifier: bundleId, displayName: display, sortOrder: 0), toProfile: profile.id)
+        }
+        store.setActiveProfile(id: profile.id)
+        return profile.id
+    }
+
+    func createProfileFromRunningApps() -> UUID? {
+        guard store.canAddProfile else { return nil }
+        let existing = Set(store.profiles.map(\.name))
+        var n = store.profiles.count + 1
+        var name = "Workspace \(n)"
+        while existing.contains(name) { n += 1; name = "Workspace \(n)" }
+        store.addProfile(name: name)
+        guard let profile = store.profiles.last else { return nil }
+
+        let mine = Bundle.main.bundleIdentifier ?? ""
+        let rank = Dictionary(uniqueKeysWithValues: recentActivationOrder.enumerated().map { ($1, $0) })
+        let apps = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != mine && $0.bundleIdentifier != "com.apple.finder" }
+            .sorted { (rank[$0.bundleIdentifier ?? ""] ?? Int.max) < (rank[$1.bundleIdentifier ?? ""] ?? Int.max) }
+            .prefix(8)
+        for app in apps {
+            guard let bundleId = app.bundleIdentifier else { continue }
+            store.add(
+                PinnedApp(bundleIdentifier: bundleId, displayName: app.localizedName ?? bundleId, sortOrder: 0),
+                toProfile: profile.id
+            )
+        }
+        store.setActiveProfile(id: profile.id)
+        return profile.id
+    }
+
     func activateProfile(id: UUID) {
         switchToProfile(id: id)
     }
@@ -943,6 +1551,12 @@ final class AppState: ObservableObject {
                 }
             }
 
+            // 5c. Browser profile tied to this workspace: raise its window
+            // after unhide, before layout so the window is there to place.
+            if let browserProfile = incoming.browserProfile {
+                self.scheduleProfileWork(delay: 0.1) { browserProfile.activate() }
+            }
+
             // 6. Apply layout or restore window positions after a small delay (let unhide take effect)
             if let binding = incoming.layoutBinding,
                let template = self.store.allTemplates.first(where: { $0.id == binding.templateId }),
@@ -979,16 +1593,37 @@ final class AppState: ObservableObject {
     /// skipped. On verifiable failure (macOS restricted the call), records
     /// `spaceMoveUnsupported` and silently leaves hide-based behavior in place.
     private func moveProfileWindows(_ profile: Profile, toSpaceId spaceId: Int) {
+        // Enumerating every pinned app's windows is Accessibility work. Done
+        // serially on the main thread it stacked one bounded wait per app, so
+        // a profile with several apps could stall input for seconds. Fan out,
+        // then finish on main once every app has reported.
+        let running = profile.pinnedApps.compactMap { $0.runningApplication }
+        guard !running.isEmpty else { return }
+
+        let group = DispatchGroup()
+        let lock = NSLock()
         var windowIDs: [CGWindowID] = []
-        for app in profile.pinnedApps {
-            guard let running = app.runningApplication else { continue }
-            for window in AppSwitcherService.enumerateWindows(of: running)
-            where !window.isMinimized && window.spaceID != spaceId {
-                windowIDs.append(window.id)
+
+        for app in running {
+            group.enter()
+            AppSwitcherService.enumerateWindows(of: app) { windows in
+                let ids = windows
+                    .filter { !$0.isMinimized && $0.spaceID != spaceId }
+                    .map(\.id)
+                lock.lock()
+                windowIDs.append(contentsOf: ids)
+                lock.unlock()
+                group.leave()
             }
         }
-        guard !windowIDs.isEmpty else { return }
 
+        group.notify(queue: .main) { [weak self] in
+            guard let self, !windowIDs.isEmpty else { return }
+            self.finishMovingProfileWindows(windowIDs, toSpaceId: spaceId)
+        }
+    }
+
+    private func finishMovingProfileWindows(_ windowIDs: [CGWindowID], toSpaceId spaceId: Int) {
         let success = SpaceService.moveWindows(windowIDs, toSpaceId: spaceId)
         if success {
             if spaceMoveUnsupported {
@@ -1240,10 +1875,8 @@ final class AppState: ObservableObject {
 
     /// Quick-snap the currently highlighted app in the switcher.
     func snapSelectedApp(direction: SnapDirection) {
-        let apps = store.apps
-        guard selectedIndex < apps.count else { return }
-        let app = apps[selectedIndex]
-        LayoutService.snapApp(bundleIdentifier: app.bundleIdentifier, to: direction)
+        guard let entry = highlightedEntry else { return }
+        LayoutService.snapApp(bundleIdentifier: entry.app.bundleIdentifier, to: direction)
     }
 
     private func handleSpaceChange() {

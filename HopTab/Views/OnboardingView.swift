@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - Onboarding Window Controller
@@ -9,6 +10,7 @@ final class OnboardingWindowController {
     func show(appState: AppState) {
         guard window == nil else {
             window?.makeKeyAndOrderFront(nil)
+            NSApp.activate()
             return
         }
 
@@ -18,19 +20,23 @@ final class OnboardingWindowController {
         let hostingView = NSHostingView(rootView: view)
 
         let w = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 640),
-            styleMask: [.titled, .closable, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: 680, height: 720),
+            // Resizable: at large accessibility text sizes a fixed 600×640 box
+            // clipped its own content with no way to reach it.
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: true
         )
         w.contentView = hostingView
+        w.contentMinSize = NSSize(width: 520, height: 460)
         w.titlebarAppearsTransparent = true
         w.titleVisibility = .hidden
+        w.title = "Set Up HopTab"
         w.isMovableByWindowBackground = true
         w.center()
         w.isReleasedWhenClosed = false
         w.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         self.window = w
 
         // Closing the window (red traffic light) counts as Skip — otherwise
@@ -59,177 +65,92 @@ final class OnboardingWindowController {
     }
 }
 
+// MARK: - Steps
+
+/// Three steps. The grant nothing works without; a real workspace from the
+/// apps already running; then a guided tour where every HopTab key is
+/// pressed for real and ticked off as it happens.
+private enum OnboardingStep: Int, CaseIterable, Identifiable {
+    /// The Accessibility grant — nothing below works without it.
+    case access
+    /// A real workspace from what's running.
+    case workspace
+    /// Press each key once; HopTab watches and ticks them off.
+    case tour
+
+    var id: Int { rawValue }
+}
+
+// MARK: - Progress signals
+
+/// Counters the app bumps when a feature is actually used, so the tour can
+/// tick a step off because the user performed it, not because they read it.
+enum OnboardingProgress {
+    enum Event: String, CaseIterable {
+        case allAppsSwitcher, workspaceSwitcher, workspacePicker, commandPalette, snap
+    }
+
+    static let didChange = Notification.Name("com.hoptab.onboardingProgress")
+
+    static func bump(_ event: Event) {
+        let key = storageKey(event)
+        UserDefaults.standard.set(UserDefaults.standard.integer(forKey: key) + 1, forKey: key)
+        NotificationCenter.default.post(name: didChange, object: event)
+    }
+
+    static func count(_ event: Event) -> Int {
+        UserDefaults.standard.integer(forKey: storageKey(event))
+    }
+
+    private static func storageKey(_ event: Event) -> String { "onboarding.count.\(event.rawValue)" }
+}
+
 // MARK: - Onboarding Container
 
 struct OnboardingView: View {
     @ObservedObject var appState: AppState
+    /// Observed separately: `AppState` forwards its store's changes but not the
+    /// permission service's, and several steps are driven by `isTrusted`.
+    @ObservedObject private var permissions: PermissionsService
     let onComplete: () -> Void
 
-    @State private var currentPage = 0
+    init(appState: AppState, onComplete: @escaping () -> Void) {
+        _appState = ObservedObject(wrappedValue: appState)
+        _permissions = ObservedObject(wrappedValue: appState.permissions)
+        self.onComplete = onComplete
+    }
+
+    @State private var step: OnboardingStep = .access
+    @State private var goingBack = false
     @State private var appeared = false
-    @State private var showAccessibilityWarning = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let totalPages = 6
+    private var steps: [OnboardingStep] { OnboardingStep.allCases }
+    private var stepIndex: Int { steps.firstIndex(of: step) ?? 0 }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Content
-            ZStack {
-                if currentPage == 0 {
-                    WelcomePage()
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
+            GeometryReader { geo in
+                ScrollView(.vertical) {
+                    pageContent
+                        .padding(.horizontal, HopSpacing.xxl)
+                        .padding(.vertical, HopSpacing.lg)
+                        .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .center)
                 }
-                if currentPage == 1 {
-                    PinAppsPage(appState: appState)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
-                }
-                if currentPage == 2 {
-                    ShortcutPage(appState: appState)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
-                }
-                if currentPage == 3 {
-                    ProfilesSessionsPage()
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
-                }
-                if currentPage == 4 {
-                    LayoutsPage()
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
-                }
-                if currentPage == 5 {
-                    ReadyPage(appState: appState)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
-                        ))
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            // Inline accessibility warning on the final page
-            if showAccessibilityWarning {
-                HStack(spacing: HopSpacing.sm - 2) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text("Accessibility isn't granted yet \u{2014} the switcher hotkey won't work until you enable it in System Settings. Click \"Let's Go\" again to finish anyway.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(HopSpacing.sm)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.orange.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: HopRadius.control))
-                .padding(.horizontal, 32)
-                .padding(.bottom, HopSpacing.sm)
+                .scrollBounceBehavior(.basedOnSize)
             }
 
-            // Bottom bar
-            HStack {
-                // Page dots
-                HStack(spacing: 8) {
-                    ForEach(0..<totalPages, id: \.self) { i in
-                        Capsule()
-                            .fill(i == currentPage ? Color.accentColor : Color.secondary.opacity(0.25))
-                            .frame(width: i == currentPage ? 20 : 8, height: 8)
-                            .animation(.spring(response: 0.35), value: currentPage)
-                    }
-                }
-
-                Spacer()
-
-                // Skip button (pages 0-3 only, not near the end)
-                if currentPage < totalPages - 2 {
-                    Button("Skip") {
-                        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-                        onComplete()
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.tertiary)
-                    .font(.system(size: 12))
-                }
-
-                if currentPage > 0 {
-                    Button("Back") {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            currentPage -= 1
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                }
-
-                if currentPage < totalPages - 1 {
-                    Button {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                            currentPage += 1
-                        }
-                    } label: {
-                        Text(currentPage == 0 ? "Get Started" : "Next")
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
-                            .background(Color.accentColor)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Button {
-                        if !appState.permissions.isTrusted && !showAccessibilityWarning {
-                            // Non-blocking: surface the gap once, finish on the next click.
-                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
-                                showAccessibilityWarning = true
-                            }
-                            return
-                        }
-                        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-                        onComplete()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("Let's Go")
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 12, weight: .bold))
-                        }
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 8)
-                        .background(Color.accentColor)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 28)
+            bottomBar
+                .padding(.horizontal, HopSpacing.xxl)
+                .padding(.top, HopSpacing.md)
+                .padding(.bottom, HopSpacing.xl)
         }
-        .padding(.top, 28)
-        .frame(width: 600, height: 640)
+        .padding(.top, HopSpacing.xl)
+        .frame(minWidth: 520, minHeight: 460)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(appeared ? 1 : 0)
         .onAppear {
-            if reduceMotion {
-                appeared = true
-            } else {
-                withAnimation(.easeOut(duration: 0.5)) {
-                    appeared = true
-                }
-            }
+            withAnimation(HopMotion.panel) { appeared = true }
         }
         .onDisappear {
             // Closing the window with the traffic-light button is equivalent to
@@ -237,906 +158,905 @@ struct OnboardingView: View {
             UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
         }
     }
-}
 
-// MARK: - Page 1: Welcome
+    // MARK: Pages
 
-private struct WelcomePage: View {
-    @State private var iconScale: CGFloat = 0.5
-    @State private var iconOpacity: Double = 0
-    @State private var textOpacity: Double = 0
-    @State private var pillsOpacity: Double = 0
-    @State private var shimmer = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-
-            ZStack {
-                // Outer glow ring
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color.accentColor.opacity(0.25), Color.accentColor.opacity(0.08), Color.clear],
-                            center: .center,
-                            startRadius: 20,
-                            endRadius: 90
-                        )
-                    )
-                    .frame(width: 180, height: 180)
-                    .scaleEffect(shimmer ? 1.15 : (reduceMotion ? 1.0 : 0.9))
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: shimmer)
-
-                // Inner circle
-                Circle()
-                    .fill(Color.accentColor.opacity(0.08))
-                    .frame(width: 100, height: 100)
-                    .scaleEffect(iconScale)
-
-                Image(systemName: "arrow.2.squarepath")
-                    .font(.system(size: 52, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.accentColor, .accentColor.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .scaleEffect(iconScale)
-                    .opacity(iconOpacity)
+    @ViewBuilder
+    private var pageContent: some View {
+        ZStack {
+            if step == .access {
+                AccessibilityPage(permissions: permissions)
+                    .transition(pageTransition)
             }
-
-            VStack(spacing: 10) {
-                Text("Welcome to HopTab")
-                    .font(.system(size: 28, weight: .bold))
-
-                Text("Your workspace, one hop away.")
-                    .font(.system(size: 16))
-                    .foregroundStyle(.secondary)
+            if step == .workspace {
+                PinAppsPage(appState: appState)
+                    .transition(pageTransition)
             }
-            .opacity(textOpacity)
-
-            VStack(spacing: 10) {
-                FeaturePill(icon: "pin.fill", text: "Pin your most-used apps")
-                FeaturePill(icon: "keyboard", text: "Switch instantly with a hotkey")
-                FeaturePill(icon: "person.2.fill", text: "Workflow profiles with session memory")
-                FeaturePill(icon: "rectangle.3.group", text: "Snap windows into layout templates")
+            if step == .tour {
+                TourPage(
+                    appState: appState,
+                    permissions: permissions,
+                    onNeedsAccess: { go(to: .access, backwards: true) }
+                )
+                .transition(pageTransition)
             }
-            .opacity(pillsOpacity)
-
-            Spacer()
         }
-        .onAppear {
-            if reduceMotion {
-                // Static end-state — no decorative motion.
-                iconScale = 1.0
-                iconOpacity = 1.0
-                textOpacity = 1.0
-                pillsOpacity = 1.0
-                return
+    }
+
+    /// Slide in the direction of travel — but a plain cross-fade under
+    /// Reduce Motion, and driven by `HopMotion`, which collapses to near-zero
+    /// duration there.
+    private var pageTransition: AnyTransition {
+        if reduceMotion { return .opacity }
+        let incoming: Edge = goingBack ? .leading : .trailing
+        let outgoing: Edge = goingBack ? .trailing : .leading
+        return .asymmetric(
+            insertion: .move(edge: incoming).combined(with: .opacity),
+            removal: .move(edge: outgoing).combined(with: .opacity)
+        )
+    }
+
+    // MARK: Bottom bar
+
+    private var bottomBar: some View {
+        HStack(spacing: HopSpacing.md) {
+            stepDots
+
+            Spacer(minLength: HopSpacing.md)
+
+            if step != .tour {
+                Button("Skip Setup") { finish() }
+                    .buttonStyle(.link)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityHint("Close onboarding and use HopTab right away")
             }
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) {
-                iconScale = 1.0
-                iconOpacity = 1.0
+
+            if step != .access {
+                Button("Back") { back() }
             }
-            withAnimation(.easeOut(duration: 0.5).delay(0.35)) {
-                textOpacity = 1.0
-            }
-            withAnimation(.easeOut(duration: 0.5).delay(0.55)) {
-                pillsOpacity = 1.0
-            }
-            shimmer = true
+
+            Button(primaryTitle) { primaryAction() }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
         }
-        .onDisappear { shimmer = false }
+    }
+
+    private var stepDots: some View {
+        HStack(spacing: HopSpacing.sm) {
+            ForEach(steps) { s in
+                Capsule()
+                    .fill(s == step ? Color.accentColor : Color.secondary.opacity(0.25))
+                    .frame(width: s == step ? 20 : 8, height: 8)
+                    .animation(HopMotion.snappy, value: step)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Step \(stepIndex + 1) of \(steps.count)")
+    }
+
+    private var primaryTitle: String {
+        switch step {
+        case .access: return permissions.isTrusted ? "Continue" : "Continue Anyway"
+        case .workspace: return "Next: Try the Keys"
+        case .tour: return "Finish"
+        }
+    }
+
+    // MARK: Navigation
+
+    private func primaryAction() {
+        if step == .tour {
+            finish()
+            return
+        }
+        let next = steps.firstIndex(of: step).map { $0 + 1 } ?? 0
+        guard next < steps.count else {
+            finish()
+            return
+        }
+        go(to: steps[next])
+    }
+
+    private func back() {
+        let prev = (steps.firstIndex(of: step) ?? 0) - 1
+        guard prev >= 0 else { return }
+        go(to: steps[prev], backwards: true)
+    }
+
+    private func go(to target: OnboardingStep, backwards: Bool = false) {
+        goingBack = backwards
+        withAnimation(HopMotion.snappy) { step = target }
+    }
+
+    private func finish() {
+        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+        onComplete()
     }
 }
 
-private struct FeaturePill: View {
-    let icon: String
-    let text: String
+// MARK: - Shared pieces
+
+/// Calm page mark: a single SF Symbol on a tinted plate. Sized by padding, not
+/// a fixed frame, so it grows with accessibility text sizes instead of clipping.
+private struct PageMark: View {
+    let symbol: String
+    var tint: Color = .accentColor
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 11))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 18)
-            Text(text)
-                .font(.system(size: 13))
+        Image(systemName: symbol)
+            .font(.largeTitle)
+            .imageScale(.large)
+            .foregroundStyle(tint)
+            .padding(HopSpacing.lg)
+            .background(
+                RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                    .fill(tint.opacity(0.10))
+            )
+            .accessibilityHidden(true)
+    }
+}
+
+private struct PageTitle: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(spacing: HopSpacing.sm) {
+            Text(title)
+                .font(.title2.weight(.semibold))
+                .multilineTextAlignment(.center)
+            Text(subtitle)
+                .font(.hopSubheading)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
-// MARK: - Page 2: Pin Apps
+/// Status line with a semantic color. Never color-only — the icon and the text
+/// both carry the meaning.
+private struct StatusLine: View {
+    let symbol: String
+    let text: String
+    var tint: Color = HopColor.success
+
+    var body: some View {
+        HStack(spacing: HopSpacing.sm) {
+            Image(systemName: symbol)
+                .foregroundStyle(tint)
+                .accessibilityHidden(true)
+            Text(text)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.hopCaption)
+    }
+}
+
+
+// MARK: - Step 1: Accessibility
+
+private struct AccessibilityPage: View {
+    @ObservedObject var permissions: PermissionsService
+    @State private var didRequest = false
+
+    var body: some View {
+        VStack(spacing: HopSpacing.xl) {
+            PageMark(
+                symbol: permissions.isTrusted ? "lock.open.fill" : "lock.shield",
+                tint: permissions.isTrusted ? HopColor.success : Color.accentColor
+            )
+
+            PageTitle(
+                title: permissions.isTrusted ? "Accessibility Is On" : "Let HopTab See Your Hotkey",
+                subtitle: permissions.isTrusted
+                    ? "HopTab can watch for your hotkey and move windows. Nothing leaves your Mac."
+                    : "macOS gates keyboard shortcuts and window moves behind Accessibility. Without it, the hotkey does nothing."
+            )
+
+            if permissions.isTrusted {
+                VStack(spacing: HopSpacing.sm) {
+                    StatusLine(symbol: "checkmark.circle.fill", text: "Permission granted \u{2014} your hotkey is live.")
+                }
+                .transition(.opacity)
+            } else {
+                VStack(spacing: HopSpacing.lg) {
+                    Button(permissions.canShowSystemPrompt ? "Grant Access" : "Open System Settings") {
+                        didRequest = true
+                        permissions.requestAccessibility()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+
+                    if !didRequest {
+                        // The system dialog is a one-shot. Say which of the two
+                        // worlds we're in before the click, not after it.
+                        Text(permissions.canShowSystemPrompt
+                             ? "macOS shows its permission dialog once per install. Choose Open System Settings in it, then switch HopTab on."
+                             : "That one-time dialog has already been used, so it can't appear again. Switch HopTab on under Privacy & Security \u{203A} Accessibility.")
+                            .font(.hopFootnote)
+                            .foregroundStyle(.tertiary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if didRequest || permissions.hasPromptedBefore {
+                        HStack(spacing: HopSpacing.sm) {
+                            ProgressView()
+                                .controlSize(.small)
+                                .accessibilityHidden(true)
+                            Text("Waiting for permission\u{2026} this page updates the moment you flip the switch.")
+                                .font(.hopCaption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+                .frame(maxWidth: 420)
+            }
+
+            Text("HopTab uses Accessibility only to read its own shortcut and to move and resize windows.")
+                .font(.hopFootnote)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 420)
+
+            FeatureStrip()
+        }
+        .animation(HopMotion.emphasis, value: permissions.isTrusted)
+        .onAppear {
+            permissions.refresh()
+            permissions.startPolling()
+        }
+    }
+}
+
+/// Three things HopTab does, on the first screen, so the permission ask has
+/// a reason attached. Each one is pressed for real on the last step.
+private struct FeatureStrip: View {
+    private let items: [(symbol: String, title: String, detail: String)] = [
+        ("square.stack.3d.up.fill", "Workspaces", "Named sets of apps. Switch one, the rest get out of the way."),
+        ("rectangle.on.rectangle", "A better \u{2318}Tab", "Your workspace first, everything else after. Pin with one key."),
+        ("magnifyingglass", "\u{2325}K palette", "Apps, Chrome tabs, projects, workspaces and actions in one search."),
+    ]
+
+    var body: some View {
+        HStack(alignment: .top, spacing: HopSpacing.md) {
+            ForEach(items, id: \.title) { item in
+                VStack(alignment: .leading, spacing: HopSpacing.xs) {
+                    Image(systemName: item.symbol)
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
+                    Text(item.title)
+                        .font(.hopCaption.weight(.semibold))
+                    Text(item.detail)
+                        .font(.hopFootnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(HopSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                        .fill(Color.primary.opacity(0.03))
+                )
+            }
+        }
+        .frame(maxWidth: 520)
+        .padding(.top, HopSpacing.sm)
+    }
+}
+
+// MARK: - Step 2: A workspace from what's already running
+
+/// One row's worth of data, snapshotted so the list doesn't re-query
+/// `NSWorkspace` on every redraw.
+private struct OnboardingCandidate: Identifiable {
+    let bundleID: String
+    let name: String
+    let icon: NSImage
+    var id: String { bundleID }
+}
 
 private struct PinAppsPage: View {
     @ObservedObject var appState: AppState
 
+    /// How many running apps get pre-selected on a fresh install.
+    private static let suggestionLimit = 5
+
+    @State private var candidates: [OnboardingCandidate] = []
+    @State private var seeded = false
+    @State private var profileName = ""
+    @State private var userNamedIt = false
+    @FocusState private var nameFocused: Bool
+
+    private var pinnedCount: Int { appState.store.apps.count }
+
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        VStack(spacing: HopSpacing.xl) {
+            PageMark(symbol: "square.stack.3d.up.fill")
 
-            Image(systemName: "pin.fill")
-                .font(.system(size: 36))
-                .foregroundStyle(Color.accentColor)
-
-            VStack(spacing: 8) {
-                Text("Pin Your Apps")
-                    .font(.system(size: 22, weight: .bold))
-                Text("Pick the apps you switch between most.\nThey'll appear in your quick switcher.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    let regularApps = appState.runningApps.filter { $0.bundleIdentifier != nil && $0.localizedName != nil && $0.activationPolicy == .regular }
-                    if regularApps.isEmpty {
-                        VStack(spacing: 8) {
-                            Image(systemName: "app.dashed")
-                                .font(.system(size: 24))
-                                .foregroundStyle(.tertiary)
-                            Text("No running apps found")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
-                            Text("Open some apps and come back, or skip and pin them later in Settings.")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.tertiary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                    } else {
-                        ForEach(regularApps, id: \.bundleIdentifier) { app in
-                            if let bundleID = app.bundleIdentifier,
-                               let name = app.localizedName {
-                                OnboardingAppRow(
-                                    bundleID: bundleID,
-                                    name: name,
-                                    icon: app.icon ?? NSImage(),
-                                    isPinned: appState.store.isPinned(bundleID),
-                                    onToggle: {
-                                        withAnimation(.spring(response: 0.3)) {
-                                            appState.store.togglePin(bundleIdentifier: bundleID, displayName: name)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: 380, maxHeight: 220)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            PageTitle(
+                title: "Your First Workspace",
+                subtitle: candidates.isEmpty
+                    ? "A workspace is a named set of apps. Nothing is running right now, so there's nothing to add yet."
+                    : "Built from the apps you're already using. Untick anything that doesn't belong, then try the key below."
             )
 
-            if !appState.store.apps.isEmpty {
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.system(size: 12))
-                    Text("\(appState.store.apps.count) app\(appState.store.apps.count == 1 ? "" : "s") pinned")
-                        .font(.system(size: 12))
+            if !candidates.isEmpty {
+                VStack(alignment: .leading, spacing: HopSpacing.sm) {
+                    Text("Workspace name")
+                        .font(.hopCaption)
                         .foregroundStyle(.secondary)
+                    TextField("Workspace name", text: $profileName)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($nameFocused)
+                        .onSubmit {
+                            userNamedIt = true
+                            commitName()
+                        }
+                        .onChange(of: nameFocused) { wasFocused, isFocused in
+                            if wasFocused && !isFocused {
+                                userNamedIt = true
+                                commitName()
+                            }
+                        }
+                        .accessibilityLabel("Workspace name")
                 }
-                .transition(.opacity.combined(with: .scale))
+                .frame(maxWidth: 420)
             }
 
-            Spacer()
+            if candidates.isEmpty {
+                VStack(spacing: HopSpacing.sm) {
+                    Image(systemName: "app.dashed")
+                        .font(.title)
+                        .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
+                    Text("No other apps are running")
+                        .font(.hopSubheading)
+                    Text("Open the apps you work in and come back, or add them any time from Settings \u{203A} Apps.")
+                        .font(.hopCaption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: 380)
+                .padding(.vertical, HopSpacing.lg)
+            } else {
+                VStack(spacing: HopSpacing.sm) {
+                    StatusLine(
+                        symbol: pinnedCount > 0 ? "checkmark.circle.fill" : "exclamationmark.circle.fill",
+                        text: pinnedCount > 0
+                            ? "\(pinnedCount) app\(pinnedCount == 1 ? "" : "s") pinned \u{2014} saved as you go."
+                            : "Nothing pinned yet \u{2014} pick at least one app to hop between.",
+                        tint: pinnedCount > 0 ? HopColor.success : HopColor.warning
+                    )
+
+                    VStack(spacing: 2) {
+                        ForEach(candidates) { candidate in
+                            OnboardingAppRow(
+                                candidate: candidate,
+                                isPinned: appState.store.isPinned(candidate.bundleID),
+                                onToggle: { toggle(candidate) }
+                            )
+                        }
+                    }
+                    .padding(.vertical, HopSpacing.xs)
+                    .background(
+                        RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                            .fill(Color.primary.opacity(0.03))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+                }
+                .frame(maxWidth: 420)
+            }
+
+            Toggle(isOn: Binding(
+                get: { appState.replaceCommandTab },
+                set: { appState.replaceCommandTab = $0 }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Use \u{2318}Tab for all apps")
+                        .font(.hopSubheading.weight(.medium))
+                    Text("Replaces the macOS switcher: this workspace\u{2019}s apps first, everything else after. \(appState.appShortcutSelection.modifierName) + \(appState.appShortcutSelection.keyName) cycles only the workspace.")
+                        .font(.hopCaption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .toggleStyle(.switch)
+            .padding(HopSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                    .fill(Color.primary.opacity(0.03))
+            )
+            .frame(maxWidth: 420)
         }
+        .onAppear {
+            if UserDefaults.standard.object(forKey: "replaceCommandTab") == nil {
+                appState.replaceCommandTab = true
+            }
+            seedIfNeeded()
+        }
+        .onChange(of: appState.runningApps.count) { _, _ in
+            candidates = Self.gatherCandidates(from: appState.runningApps)
+        }
+        .onChange(of: appState.store.apps) { _, _ in
+            if !userNamedIt { profileName = suggestedName }
+        }
+        .onDisappear { commitName() }
+    }
+
+    // MARK: Actions
+
+    private func toggle(_ candidate: OnboardingCandidate) {
+        withAnimation(HopMotion.snappy) {
+            appState.store.togglePin(bundleIdentifier: candidate.bundleID, displayName: candidate.name)
+        }
+    }
+
+    /// Pre-pin what the user is already running, so the default state is useful
+    /// and they un-pick rather than start from an empty list. Only ever seeds an
+    /// empty profile — re-running onboarding never overwrites existing pins.
+    private func seedIfNeeded() {
+        guard !seeded else { return }
+        seeded = true
+
+        appState.refreshRunningApps()
+        candidates = Self.gatherCandidates(from: appState.runningApps)
+
+        if appState.store.apps.isEmpty {
+            for candidate in candidates.prefix(Self.suggestionLimit) {
+                appState.store.add(
+                    PinnedApp(bundleIdentifier: candidate.bundleID, displayName: candidate.name, sortOrder: 0)
+                )
+            }
+        }
+
+        let existing = appState.store.activeProfile?.name ?? ""
+        if existing.isEmpty || existing == "Default" {
+            profileName = suggestedName
+        } else {
+            profileName = existing
+            userNamedIt = true
+        }
+    }
+
+    /// Name the profile after what's in it, until the user names it themselves.
+    private var suggestedName: String {
+        let names = appState.store.apps.prefix(2).map { $0.displayName }
+        guard !names.isEmpty else { return "Main" }
+        return names.joined(separator: " + ")
+    }
+
+    private func commitName() {
+        guard let profile = appState.store.activeProfile else { return }
+        let trimmed = profileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != profile.name else { return }
+        appState.store.renameProfile(id: profile.id, to: trimmed)
+    }
+
+    // MARK: Candidates
+
+    private static func gatherCandidates(from running: [NSRunningApplication]) -> [OnboardingCandidate] {
+        let ownBundle = Bundle.main.bundleIdentifier
+        // Finder is always running and is never what someone pins first.
+        let excluded: Set<String> = ["com.apple.finder"]
+        let zOrder = frontToBackRanks()
+
+        var seen = Set<String>()
+        var result: [(rank: Int, candidate: OnboardingCandidate)] = []
+
+        for app in running {
+            guard app.activationPolicy == .regular,
+                  let bundleID = app.bundleIdentifier, !bundleID.isEmpty,
+                  let name = app.localizedName, !name.isEmpty,
+                  bundleID != ownBundle,
+                  !excluded.contains(bundleID),
+                  !seen.contains(bundleID)
+            else { continue }
+            seen.insert(bundleID)
+            result.append((
+                zOrder[app.processIdentifier] ?? Int.max,
+                OnboardingCandidate(bundleID: bundleID, name: name, icon: app.icon ?? NSImage())
+            ))
+        }
+
+        return result
+            .sorted { lhs, rhs in
+                if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
+                return lhs.candidate.name.localizedStandardCompare(rhs.candidate.name) == .orderedAscending
+            }
+            .map { $0.candidate }
+    }
+
+    /// Front-to-back window order as a recency proxy: the app whose window is
+    /// on top was used most recently. Needs no extra permission — only the
+    /// owning PID and layer are read, never window titles.
+    private static func frontToBackRanks() -> [pid_t: Int] {
+        guard let infoList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else { return [:] }
+
+        var ranks: [pid_t: Int] = [:]
+        var next = 0
+        for info in infoList {
+            guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
+                  let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+                  ranks[pid] == nil
+            else { continue }
+            ranks[pid] = next
+            next += 1
+        }
+        return ranks
     }
 }
 
 private struct OnboardingAppRow: View {
-    let bundleID: String
-    let name: String
-    let icon: NSImage
+    let candidate: OnboardingCandidate
     let isPinned: Bool
     let onToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(nsImage: icon)
-                .resizable()
-                .frame(width: 28, height: 28)
-            Text(name)
-                .font(.system(size: 13))
-            Spacer()
-            Image(systemName: isPinned ? "pin.fill" : "pin")
-                .font(.system(size: 13))
-                .foregroundColor(isPinned ? .accentColor : .secondary)
-                .scaleEffect(isPinned ? 1.1 : 1.0)
-                .animation(.spring(response: 0.2), value: isPinned)
+        Button(action: onToggle) {
+            HStack(spacing: HopSpacing.md) {
+                Image(nsImage: candidate.icon)
+                    .resizable()
+                    .frame(width: 26, height: 26)
+                    .accessibilityHidden(true)
+                Text(candidate.name)
+                    .font(.hopSubheading)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: HopSpacing.sm)
+                Image(systemName: isPinned ? "pin.fill" : "pin")
+                    .foregroundStyle(isPinned ? Color.accentColor : .secondary)
+                    .scaleEffect(isPinned ? 1.1 : 1.0)
+                    .animation(HopMotion.emphasis, value: isPinned)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, HopSpacing.md)
+            .padding(.vertical, HopSpacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isPinned ? Color.accentColor.opacity(0.08) : Color.clear)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(isPinned ? Color.accentColor.opacity(0.08) : Color.clear)
-        .contentShape(Rectangle())
-        .onTapGesture { onToggle() }
+        .buttonStyle(.plain)
+        .accessibilityLabel(candidate.name)
+        .accessibilityValue(isPinned ? "Pinned" : "Not pinned")
+        .accessibilityHint(isPinned ? "Removes this app from the switcher" : "Adds this app to the switcher")
+        .accessibilityAddTraits(isPinned ? [.isSelected] : [])
     }
 }
 
-// MARK: - Page 3: Your Shortcut
+// MARK: - Step 3: the tour
 
-private struct ShortcutPage: View {
+/// One thing to press per row. The row is "waiting" until the app reports
+/// the gesture happened, then it is done for good. Nothing here simulates
+/// anything: the switcher, palette and snap really open over this window.
+private struct TourTask: Identifiable {
+    enum Requirement {
+        case none
+        case accessibility
+        case secondWorkspace
+    }
+
+    let id: String
+    let event: OnboardingProgress.Event
+    let symbol: String
+    let title: String
+    let keys: [String]
+    let instruction: String
+    let doneText: String
+    let requirement: Requirement
+}
+
+private struct TourPage: View {
     @ObservedObject var appState: AppState
-    @State private var animateKeys = false
-    @State private var showRelease = false
-    @State private var animStep = 0
-    @State private var stepTimer: Timer?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject var permissions: PermissionsService
+    let onNeedsAccess: () -> Void
+
+    /// Counts at the moment the page appeared. A step is done when its
+    /// counter has moved since, so earlier sessions don't pre-tick the tour.
+    @State private var baseline: [OnboardingProgress.Event: Int] = [:]
+    @State private var completed: Set<OnboardingProgress.Event> = []
+
+    private var tasks: [TourTask] {
+        var out: [TourTask] = []
+        let modifier = appState.appShortcutSelection.modifierName
+        let key = appState.appShortcutSelection.keyName
+        let workspaceKeys = [KeyGlyph.modifier(modifier), key]
+
+        if appState.replaceCommandTab {
+            out.append(TourTask(
+                id: "all",
+                event: .allAppsSwitcher,
+                symbol: "rectangle.on.rectangle",
+                title: "Switch between apps",
+                keys: ["\u{2318}", "Tab"],
+                instruction: "Hold \u{2318}, tap Tab, let go. Your workspace\u{2019}s apps come first, everything else after. While it\u{2019}s open, P pins the highlighted app to this workspace.",
+                doneText: "That\u{2019}s your new \u{2318}Tab.",
+                requirement: .accessibility
+            ))
+            out.append(TourTask(
+                id: "workspace",
+                event: .workspaceSwitcher,
+                symbol: "square.stack.3d.up",
+                title: "Cycle just this workspace",
+                keys: workspaceKeys,
+                instruction: "Hold \(modifier), tap \(key). Only the apps you pinned appear, so you never scroll past Slack to reach your editor.",
+                doneText: "Pinned apps only. Nothing else gets in the way.",
+                requirement: .accessibility
+            ))
+        } else {
+            out.append(TourTask(
+                id: "workspace",
+                event: .workspaceSwitcher,
+                symbol: "square.stack.3d.up",
+                title: "Switch between your apps",
+                keys: workspaceKeys,
+                instruction: "Hold \(modifier), tap \(key), let go. Only the apps you pinned appear. P pins the highlighted app, \u{232B} unpins it.",
+                doneText: "That\u{2019}s a hop.",
+                requirement: .accessibility
+            ))
+        }
+
+        out.append(TourTask(
+            id: "picker",
+            event: .workspacePicker,
+            symbol: "arrow.left.arrow.right.square",
+            title: "Jump to another workspace",
+            keys: [KeyGlyph.modifier(appState.profileShortcutModifierName), appState.profileShortcutKeyName],
+            instruction: "Hold \(appState.profileShortcutModifierName), tap \(appState.profileShortcutKeyName). Switching hides the old workspace\u{2019}s windows and brings the new one\u{2019}s back where they were.",
+            doneText: "Workspaces swap in one key.",
+            requirement: .secondWorkspace
+        ))
+
+        if appState.commandPaletteEnabled {
+            let palette = appState.effectiveCommandPaletteShortcut
+            out.append(TourTask(
+                id: "palette",
+                event: .commandPalette,
+                symbol: "magnifyingglass",
+                title: "Find anything",
+                keys: [KeyGlyph.modifier(palette.modifierName), palette.keyName],
+                instruction: "Press \(palette.displayName), type a few letters of an app, a Chrome tab, a project or a workspace, then Enter. Esc closes it.",
+                doneText: "Apps, tabs, history, projects, actions: one box.",
+                requirement: .accessibility
+            ))
+        }
+
+        if let left = SnapShortcutConfig.current.bindings[.left] {
+            out.append(TourTask(
+                id: "snap",
+                event: .snap,
+                symbol: "rectangle.lefthalf.inset.filled",
+                title: "Snap a window",
+                keys: [KeyGlyph.modifier(left.modifierName), left.keyName],
+                instruction: "Click any window, then press \(left.displayName) to fill the left half. Every other half, quarter and third has a key in Settings \u{203A} Shortcuts.",
+                doneText: "Snapped. Drag a window to a screen edge for the same thing.",
+                requirement: .accessibility
+            ))
+        }
+        return out
+    }
+
+    private var doneCount: Int { tasks.filter { completed.contains($0.event) }.count }
+    private var hasSecondWorkspace: Bool { appState.store.profiles.count > 1 }
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        VStack(spacing: HopSpacing.xl) {
+            PageMark(symbol: doneCount == tasks.count ? "checkmark.seal.fill" : "hand.tap.fill",
+                     tint: doneCount == tasks.count ? HopColor.success : Color.accentColor)
 
-            Image(systemName: "keyboard")
-                .font(.system(size: 36))
-                .foregroundStyle(Color.accentColor)
+            PageTitle(
+                title: doneCount == tasks.count ? "You Know HopTab" : "Try Each Key Once",
+                subtitle: doneCount == tasks.count
+                    ? "Every shortcut is yours to change under Settings \u{203A} Shortcuts. Finish to close this window."
+                    : "This window stays put. Press each key for real and the row ticks itself off."
+            )
 
-            VStack(spacing: 8) {
-                Text("Meet Your Shortcut")
-                    .font(.system(size: 22, weight: .bold))
-                Text("This is how you'll switch apps instantly.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+            if !permissions.isTrusted {
+                HStack(alignment: .firstTextBaseline, spacing: HopSpacing.sm) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(HopColor.warning)
+                        .accessibilityHidden(true)
+                    Text("Accessibility isn\u{2019}t granted, so none of these keys work yet.")
+                        .font(.hopCaption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Button("Fix") { onNeedsAccess() }
+                        .controlSize(.small)
+                }
+                .padding(HopSpacing.md)
+                .background(
+                    RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                        .fill(HopColor.tint(HopColor.warning))
+                )
+                .frame(maxWidth: 460)
+            } else if appState.hotkeyStatus == .failed {
+                StatusLine(symbol: "exclamationmark.triangle.fill",
+                           text: "HopTab couldn\u{2019}t install its key listener. Quit and reopen HopTab.",
+                           tint: HopColor.warning)
             }
 
-            // Animated key demo
-            VStack(spacing: 18) {
-                HStack(spacing: 6) {
-                    KeyCap(label: appState.appShortcutSelection.modifierName, isHighlighted: animStep >= 1)
-                    Text("+")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    KeyCap(label: appState.appShortcutSelection.keyName, isHighlighted: animStep >= 1)
+            VStack(spacing: HopSpacing.sm) {
+                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                    TourRow(
+                        task: task,
+                        index: index + 1,
+                        isDone: completed.contains(task.event),
+                        isCurrent: !completed.contains(task.event)
+                            && tasks.first(where: { !completed.contains($0.event) })?.id == task.id,
+                        blocker: blocker(for: task),
+                        onAddWorkspace: addSecondWorkspace
+                    )
                 }
-
-                VStack(spacing: 10) {
-                    ShortcutStep(number: "1", text: "Hold \(appState.appShortcutSelection.modifierName) + tap \(appState.appShortcutSelection.keyName)", highlighted: animStep == 1)
-                    ShortcutStep(number: "2", text: "Keep tapping to cycle through apps", highlighted: animStep == 2)
-                    ShortcutStep(number: "3", text: "Release \(appState.appShortcutSelection.modifierName) to activate", highlighted: animStep == 3)
-                }
-
-                Divider()
-
-                // Quick action hints
-                HStack(spacing: 16) {
-                    QuickActionHint(keys: "\u{2318}Q", label: "Quit")
-                    QuickActionHint(keys: "\u{2318}H", label: "Hide")
-                    QuickActionHint(keys: "\u{2318}M", label: "Minimize")
-                    QuickActionHint(keys: "\u{2190}\u{2192}", label: "Snap")
-                }
-                .padding(.top, 2)
             }
-            .padding(24)
-            .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .frame(maxWidth: 380)
+            .frame(maxWidth: 460)
 
-            if !appState.permissions.isTrusted {
-                VStack(spacing: 10) {
-                    Text("HopTab needs Accessibility permission to detect your hotkey.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                    Button {
-                        appState.permissions.requestAccessibility()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "lock.shield")
-                            Text("Enable Accessibility")
+            ProgressView(value: Double(doneCount), total: Double(max(tasks.count, 1)))
+                .progressViewStyle(.linear)
+                .frame(maxWidth: 460)
+                .accessibilityLabel("\(doneCount) of \(tasks.count) tried")
+                .animation(HopMotion.snappy, value: doneCount)
+        }
+        .animation(HopMotion.emphasis, value: completed)
+        .onAppear {
+            permissions.refresh()
+            if !permissions.isTrusted { permissions.startPolling() }
+            if baseline.isEmpty {
+                for event in OnboardingProgress.Event.allCases {
+                    baseline[event] = OnboardingProgress.count(event)
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: OnboardingProgress.didChange)) { note in
+            guard let event = note.object as? OnboardingProgress.Event,
+                  OnboardingProgress.count(event) > (baseline[event] ?? 0)
+            else { return }
+            completed.insert(event)
+        }
+    }
+
+    private func blocker(for task: TourTask) -> String? {
+        switch task.requirement {
+        case .none: return nil
+        case .accessibility: return permissions.isTrusted ? nil : "Needs Accessibility"
+        case .secondWorkspace:
+            if !permissions.isTrusted { return "Needs Accessibility" }
+            return hasSecondWorkspace ? nil : "Needs a second workspace"
+        }
+    }
+
+    /// The picker needs somewhere to go. Make an empty second workspace the
+    /// user can fill later; it is just a named list.
+    private func addSecondWorkspace() {
+        guard appState.store.canAddProfile else { return }
+        appState.store.addProfile(name: "Workspace 2")
+    }
+}
+
+/// Keycap glyphs for modifier names coming out of `ShortcutSelection`.
+private enum KeyGlyph {
+    static func modifier(_ name: String) -> String {
+        name.split(separator: "+")
+            .map { part -> String in
+                switch part.trimmingCharacters(in: .whitespaces) {
+                case "Option": return "\u{2325}"
+                case "Control": return "\u{2303}"
+                case "Command": return "\u{2318}"
+                case "Shift": return "\u{21E7}"
+                case "fn", "Fn", "Globe": return "\u{1F310}"
+                case let other: return other
+                }
+            }
+            .joined()
+    }
+}
+
+private struct TourRow: View {
+    let task: TourTask
+    let index: Int
+    let isDone: Bool
+    let isCurrent: Bool
+    let blocker: String?
+    let onAddWorkspace: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: HopSpacing.md) {
+            ZStack {
+                Circle()
+                    .fill(isDone ? HopColor.success : (isCurrent ? Color.accentColor : Color.secondary.opacity(0.2)))
+                    .frame(width: 24, height: 24)
+                if isDone {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                } else {
+                    Text("\(index)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isCurrent ? Color.white : Color.secondary)
+                }
+            }
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: HopSpacing.xs) {
+                HStack(spacing: HopSpacing.sm) {
+                    Image(systemName: task.symbol)
+                        .foregroundStyle(isDone ? HopColor.success : Color.accentColor)
+                        .accessibilityHidden(true)
+                    Text(task.title)
+                        .font(.hopSubheading.weight(.semibold))
+                    Spacer(minLength: HopSpacing.sm)
+                    HStack(spacing: 3) {
+                        ForEach(Array(task.keys.enumerated()), id: \.offset) { _, k in
+                            MiniKeyCap(label: k, isHighlighted: isCurrent && !isDone && blocker == nil)
                         }
-                        .font(.system(size: 12, weight: .medium))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 6)
-                        .background(Color.orange.opacity(0.15))
-                        .foregroundStyle(.orange)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Shortcut: \(task.keys.joined(separator: " "))")
                 }
-            } else {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("Accessibility enabled")
-                        .foregroundStyle(.secondary)
-                }
-                .font(.system(size: 12))
-            }
 
-            Spacer()
-        }
-        .onAppear { startStepAnimation() }
-        .onDisappear {
-            stepTimer?.invalidate()
-            stepTimer = nil
-        }
-    }
+                Text(isDone ? task.doneText : task.instruction)
+                    .font(.hopCaption)
+                    .foregroundStyle(isDone ? HopColor.success : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
-    private func startStepAnimation() {
-        if reduceMotion {
-            // Static end-state: keys and first step highlighted, no cycling.
-            animStep = 1
-            return
-        }
-        animStep = 0
-        stepTimer?.invalidate()
-        // Cycle 0 → 1 → 2 → 3 → 0 … ; invalidated on disappear so it can't
-        // keep firing after the page changes or the window closes.
-        stepTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            Task { @MainActor in
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    animStep = (animStep + 1) % 4
+                if !isDone, let blocker {
+                    HStack(spacing: HopSpacing.sm) {
+                        Image(systemName: "info.circle")
+                            .accessibilityHidden(true)
+                        Text(blocker)
+                        if task.requirement == .secondWorkspace {
+                            Button("Add one") { onAddWorkspace() }
+                                .controlSize(.mini)
+                        }
+                    }
+                    .font(.hopFootnote)
+                    .foregroundStyle(.tertiary)
                 }
             }
         }
+        .padding(HopSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                .fill(isCurrent && !isDone ? HopColor.tint(Color.accentColor) : Color.primary.opacity(0.03))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: HopRadius.card, style: .continuous)
+                .stroke(isCurrent && !isDone ? HopColor.edge(Color.accentColor) : Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(isDone ? "Done" : (blocker ?? "Not yet tried"))
     }
 }
 
-private struct QuickActionHint: View {
-    let keys: String
+private struct MiniKeyCap: View {
     let label: String
-
-    var body: some View {
-        VStack(spacing: 3) {
-            Text(keys)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
-        }
-    }
-}
-
-private struct KeyCap: View {
-    let label: String
-    var isHighlighted: Bool = false
+    let isHighlighted: Bool
 
     var body: some View {
         Text(label)
-            .font(.system(size: 15, weight: .semibold, design: .rounded))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .font(.system(.caption, design: .rounded).weight(.semibold))
+            .padding(.horizontal, HopSpacing.sm)
+            .padding(.vertical, HopSpacing.xs)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: HopRadius.control, style: .continuous)
                     .fill(isHighlighted ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.06))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                RoundedRectangle(cornerRadius: HopRadius.control, style: .continuous)
                     .stroke(isHighlighted ? Color.accentColor.opacity(0.5) : Color.primary.opacity(0.1), lineWidth: 1)
             )
-            .foregroundColor(isHighlighted ? .accentColor : .primary)
-            .scaleEffect(isHighlighted ? 1.05 : 1.0)
-            .animation(.spring(response: 0.3), value: isHighlighted)
-    }
-}
-
-private struct ShortcutStep: View {
-    let number: String
-    let text: String
-    var highlighted: Bool = false
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Text(number)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(highlighted ? .white : .secondary)
-                .frame(width: 22, height: 22)
-                .background(
-                    Circle()
-                        .fill(highlighted ? Color.accentColor : Color.primary.opacity(0.08))
-                )
-            Text(text)
-                .font(.system(size: 13))
-                .foregroundStyle(highlighted ? .primary : .secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(.easeInOut(duration: 0.3), value: highlighted)
-    }
-}
-
-// MARK: - Page 4: Profiles & Sessions
-
-private struct ProfilesSessionsPage: View {
-    @State private var activeDemo = 0
-    @State private var showRestore = false
-    @State private var demoTimer: Timer?
-    @State private var demoPhase = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        VStack(spacing: 18) {
-            Spacer()
-
-            Image(systemName: "person.2.crop.square.stack")
-                .font(.system(size: 36))
-                .foregroundStyle(Color.accentColor)
-
-            VStack(spacing: 8) {
-                Text("Profiles & Sessions")
-                    .font(.system(size: 22, weight: .bold))
-                Text("Group apps by workflow. HopTab remembers\nwhere you left off in each one.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            // Visual demo: three profile cards
-            HStack(spacing: 12) {
-                ProfileDemoCard(
-                    name: "Work",
-                    apps: ["Slack", "Notion", "Chrome"],
-                    icon: "briefcase",
-                    isActive: activeDemo == 0
-                )
-                ProfileDemoCard(
-                    name: "Research",
-                    apps: ["Safari", "Notes", "Preview"],
-                    icon: "magnifyingglass",
-                    isActive: activeDemo == 1
-                )
-                ProfileDemoCard(
-                    name: "Creative",
-                    apps: ["Figma", "Music", "Photos"],
-                    icon: "paintbrush",
-                    isActive: activeDemo == 2
-                )
-            }
-            .frame(maxWidth: 480)
-
-            // Session flow
-            VStack(spacing: 10) {
-                SessionFlowStep(
-                    icon: "tray.and.arrow.down",
-                    title: "Save & Close",
-                    description: "Saves window positions and quits all apps",
-                    highlighted: !showRestore
-                )
-                Image(systemName: "arrow.down")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.quaternary)
-                SessionFlowStep(
-                    icon: "arrow.counterclockwise",
-                    title: "Restore Session",
-                    description: "Relaunches apps with windows right where they were",
-                    highlighted: showRestore
-                )
-            }
-            .frame(maxWidth: 380)
-
-            // Sticky note mention
-            HStack(spacing: 8) {
-                Image(systemName: "note.text")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.accentColor)
-                Text("Add a sticky note to any profile \u{2014} it pops up when you switch.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .background(Color.accentColor.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            Spacer()
-        }
-        .onAppear { startDemoAnimation() }
-        .onDisappear {
-            demoTimer?.invalidate()
-            demoTimer = nil
-        }
-    }
-
-    private func startDemoAnimation() {
-        if reduceMotion {
-            // Static end-state: first profile active, no cycling.
-            activeDemo = 0
-            showRestore = true
-            return
-        }
-        demoPhase = 0
-        demoTimer?.invalidate()
-        // Phases: Work → Research → Creative → Creative+Restore → back to Work.
-        demoTimer = Timer.scheduledTimer(withTimeInterval: 1.4, repeats: true) { _ in
-            Task { @MainActor in
-                demoPhase = (demoPhase + 1) % 4
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    activeDemo = min(demoPhase, 2)
-                    showRestore = demoPhase == 3
-                }
-            }
-        }
-    }
-}
-
-private struct ProfileDemoCard: View {
-    let name: String
-    let apps: [String]
-    let icon: String
-    var isActive: Bool
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(isActive ? .accentColor : .secondary)
-
-            Text(name)
-                .font(.system(size: 13, weight: .semibold))
-
-            VStack(alignment: .leading, spacing: 3) {
-                ForEach(apps, id: \.self) { app in
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(isActive ? Color.green : Color.gray.opacity(0.3))
-                            .frame(width: 5, height: 5)
-                        Text(app)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isActive ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.03))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isActive ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1.5)
-        )
-        .scaleEffect(isActive ? 1.02 : 0.98)
-        .animation(.spring(response: 0.4), value: isActive)
-    }
-}
-
-private struct SessionFlowStep: View {
-    let icon: String
-    let title: String
-    let description: String
-    var highlighted: Bool
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(highlighted ? .accentColor : .secondary)
-                .frame(width: 28, height: 28)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(highlighted ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
-                )
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 12, weight: .semibold))
-                Text(description)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(.easeInOut(duration: 0.3), value: highlighted)
-    }
-}
-
-// MARK: - Page 5: Layouts & Window Snap
-
-private struct LayoutsPage: View {
-    @State private var activeLayout = 0
-    @State private var snapDemo = 0
-    @State private var demoTimer: Timer?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private let layouts: [(String, [(Double, Double, Double, Double)])] = [
-        ("Left + Right", [(0, 0, 0.5, 1), (0.5, 0, 0.5, 1)]),
-        ("IDE (60/40)", [(0, 0, 0.6, 1), (0.6, 0, 0.4, 0.5), (0.6, 0.5, 0.4, 0.5)]),
-        ("Three Columns", [(0, 0, 0.333, 1), (0.333, 0, 0.334, 1), (0.667, 0, 0.333, 1)]),
-        ("Grid 2\u{00d7}2", [(0, 0, 0.5, 0.5), (0.5, 0, 0.5, 0.5), (0, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5)]),
-    ]
-
-    private let zoneColors: [Color] = [.blue, .purple, .orange, .green]
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-
-            Image(systemName: "rectangle.3.group")
-                .font(.system(size: 36))
-                .foregroundStyle(Color.accentColor)
-
-            VStack(spacing: 8) {
-                Text("Layout Templates")
-                    .font(.system(size: 22, weight: .bold))
-                Text("Arrange windows into predefined zones.\nPick a template, assign apps, and go.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            // Animated layout carousel
-            VStack(spacing: 12) {
-                // Layout preview
-                ZStack {
-                    let current = layouts[activeLayout]
-                    ForEach(Array(current.1.enumerated()), id: \.offset) { idx, zone in
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(zoneColors[idx % zoneColors.count].opacity(0.15))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(zoneColors[idx % zoneColors.count].opacity(0.4), lineWidth: 1.5)
-                            )
-                            .frame(
-                                width: 260 * zone.2 - 4,
-                                height: 140 * zone.3 - 4
-                            )
-                            .position(
-                                x: 260 * (zone.0 + zone.2 / 2),
-                                y: 140 * (zone.1 + zone.3 / 2)
-                            )
-                    }
-                }
-                .frame(width: 260, height: 140)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.primary.opacity(0.03))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                )
-                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: activeLayout)
-
-                Text(layouts[activeLayout].0)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.accentColor)
-                    .animation(.none, value: activeLayout)
-
-                // Dot indicators
-                HStack(spacing: 6) {
-                    ForEach(0..<layouts.count, id: \.self) { i in
-                        Circle()
-                            .fill(i == activeLayout ? Color.accentColor : Color.secondary.opacity(0.25))
-                            .frame(width: 6, height: 6)
-                    }
-                }
-            }
-            .padding(20)
-            .background(Color.primary.opacity(0.02))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .frame(maxWidth: 340)
-
-            // Arrow key snap hint
-            VStack(spacing: 10) {
-                HStack(spacing: 20) {
-                    SnapHint(icon: "arrow.left", label: "Snap Left", active: snapDemo == 1)
-                    SnapHint(icon: "arrow.up", label: "Fullscreen", active: snapDemo == 2)
-                    SnapHint(icon: "arrow.right", label: "Snap Right", active: snapDemo == 3)
-                }
-
-                Text("Use arrow keys while the switcher is open to snap windows")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-            }
-
-            Spacer()
-        }
-        .onAppear { startDemoAnimation() }
-        .onDisappear {
-            demoTimer?.invalidate()
-            demoTimer = nil
-        }
-    }
-
-    private func startDemoAnimation() {
-        if reduceMotion {
-            // Static end-state: show the first layout and no snap cycling.
-            activeLayout = 0
-            snapDemo = 0
-            return
-        }
-        demoTimer?.invalidate()
-        // One driver for both demos; invalidated on disappear so it can't
-        // keep firing after the page changes or the window closes.
-        demoTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
-            Task { @MainActor in
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    activeLayout = (activeLayout + 1) % layouts.count
-                }
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    snapDemo = (snapDemo + 1) % 4
-                }
-            }
-        }
-    }
-}
-
-private struct SnapHint: View {
-    let icon: String
-    let label: String
-    var active: Bool
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(active ? Color.accentColor : .secondary)
-                .frame(width: 32, height: 32)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(active ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.05))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .stroke(active ? Color.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
-                )
-                .scaleEffect(active ? 1.1 : 1.0)
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundColor(active ? .accentColor : .gray)
-        }
-        .animation(.spring(response: 0.3), value: active)
-    }
-}
-
-// MARK: - Page 6: Ready
-
-private struct ReadyPage: View {
-    @ObservedObject var appState: AppState
-    @State private var checkmarks: [Bool] = [false, false, false, false, false]
-    @State private var checkTimer: Timer?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        VStack(spacing: 18) {
-            Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(Color.green.opacity(0.1))
-                    .frame(width: 72, height: 72)
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.green)
-            }
-
-            VStack(spacing: 6) {
-                Text("You're All Set")
-                    .font(.system(size: 22, weight: .bold))
-                Text("HopTab is ready. Here's what you can do:")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                TipRow(
-                    icon: "keyboard",
-                    title: appState.appShortcutSelection.displayName,
-                    subtitle: "Hold modifier, tap key to cycle, release to switch",
-                    checked: checkmarks[0]
-                )
-                TipRow(
-                    icon: "person.2.fill",
-                    title: "Workflow Profiles",
-                    subtitle: "Create separate app sets for each workflow",
-                    checked: checkmarks[1]
-                )
-                TipRow(
-                    icon: "tray.and.arrow.down",
-                    title: "Save & Close / Restore",
-                    subtitle: "Quit a profile's apps, bring them back exactly",
-                    checked: checkmarks[2]
-                )
-                TipRow(
-                    icon: "rectangle.3.group",
-                    title: "Layout Templates",
-                    subtitle: "Snap windows into zones like Left+Right, IDE, Grid",
-                    checked: checkmarks[3]
-                )
-                TipRow(
-                    icon: "note.text",
-                    title: "Sticky Notes",
-                    subtitle: "Leave a note that shows when switching profiles",
-                    checked: checkmarks[4]
-                )
-            }
-            .padding(16)
-            .background(Color.primary.opacity(0.03))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .frame(maxWidth: 440)
-
-            HStack(spacing: 6) {
-                Image(systemName: "arrow.2.squarepath")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Text("Find HopTab in your menu bar")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-        }
-        .onAppear {
-            if reduceMotion {
-                checkmarks = Array(repeating: true, count: checkmarks.count)
-                return
-            }
-            checkTimer?.invalidate()
-            var index = 0
-            checkTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { timer in
-                Task { @MainActor in
-                    guard index < checkmarks.count else {
-                        timer.invalidate()
-                        checkTimer = nil
-                        return
-                    }
-                    withAnimation(.spring(response: 0.4)) {
-                        checkmarks[index] = true
-                    }
-                    index += 1
-                }
-            }
-        }
-        .onDisappear {
-            checkTimer?.invalidate()
-            checkTimer = nil
-        }
-    }
-}
-
-private struct TipRow: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    var checked: Bool = false
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                if checked {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.system(size: 18))
-                        .transition(.scale.combined(with: .opacity))
-                } else {
-                    Image(systemName: icon)
-                        .foregroundStyle(Color.accentColor)
-                        .font(.system(size: 16))
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .frame(width: 24, height: 24)
-            .animation(.spring(response: 0.3), value: checked)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                Text(subtitle)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
+            .foregroundStyle(isHighlighted ? Color.accentColor : Color.primary)
     }
 }

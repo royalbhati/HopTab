@@ -7,7 +7,20 @@ compatibility_date = "2024-01-01"
 binding = "LICENSE_KV"
 id = "5393ca708e8a4ac48586f865d40b2172"
 
+# Plain vars (not secret).
+[vars]
+# Comma-separated allowlist of Polar product ids permitted to mint a Pro
+# license. Find it in the Polar dashboard under Products (a UUID), or in a
+# webhook delivery body at data.product_id.
+# If this is left empty, ANY product sold through the Polar organisation —
+# including a $0 test product — can mint a perpetual Pro license.
+POLAR_PRODUCT_ID = ""
+
 # Secrets (set via `wrangler secret put`):
 # - GITHUB_WEBHOOK_SECRET: GitHub webhook secret for signature verification
-# - ED25519_PRIVATE_KEY: Base64-encoded 32-byte Ed25519 private key
-# - RESEND_API_KEY: API key for Resend email service (optional)
+#                          REQUIRED — POST /webhook returns 500 without it.
+# - POLAR_WEBHOOK_SECRET:  Polar.sh webhook signing secret (Standard Webhooks).
+#                          REQUIRED — POST /polar/webhook returns 500 without it.
+#                          Copy it from Polar → Settings → Webhooks → your endpoint.
+# - ED25519_PRIVATE_KEY:   Base64-encoded 32-byte Ed25519 private key
+# - RESEND_API_KEY:        API key for Resend email service (optional)

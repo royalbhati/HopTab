@@ -2,5 +2,7 @@
   "version": "1.4.0",
   "build": 8,
   "downloadURL": "https://github.com/royalbhati/HopTab/releases/download/v1.4.0/HopTab-1.4.0.zip",
+  "sha256": "b03651533efa10f515eedc3e4a9fe5bb77d8529f371201a5c650d632dbb2a00a",
+  "minimumSystemVersion": "14.0",
   "releaseNotes": "Redesigned app switcher and settings. New Pro features: focus sessions, per-app time tracking, meeting HUD, and weekly digest. Fixed drag-to-snap and undo/redo."
 }

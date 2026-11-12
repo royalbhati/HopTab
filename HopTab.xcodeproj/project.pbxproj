@@ -39,6 +39,24 @@
 		A10026 /* LayoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10026 /* LayoutService.swift */; };
 		A10027 /* LayoutPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10027 /* LayoutPickerView.swift */; };
 		A10028 /* UpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10028 /* UpdateService.swift */; };
+		A10029 /* CrashReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10029 /* CrashReporter.swift */; };
+		A10096 /* SwitcherEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10096 /* SwitcherEntry.swift */; };
+		A1009C /* EditorProjectsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1009C /* EditorProjectsService.swift */; };
+		A1009D /* SafariProfilesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1009D /* SafariProfilesService.swift */; };
+		A100A1 /* CustomCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100A1 /* CustomCommandRunner.swift */; };
+		A1009E /* BrowserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1009E /* BrowserProfile.swift */; };
+		A100A0 /* CustomCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100A0 /* CustomCommand.swift */; };
+		A1009B /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1009B /* CommandPaletteView.swift */; };
+		A1009A /* CommandPaletteIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1009A /* CommandPaletteIndex.swift */; };
+		A10098 /* ChromeDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10098 /* ChromeDataService.swift */; };
+		A10097 /* CommandPaletteItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10097 /* CommandPaletteItem.swift */; };
+		A1S001 /* SettingsShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1S001 /* SettingsShared.swift */; };
+		A1S002 /* SettingsGeneralPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1S002 /* SettingsGeneralPane.swift */; };
+		A1S003 /* SettingsWorkspacesPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1S003 /* SettingsWorkspacesPane.swift */; };
+		A1S004 /* SettingsShortcutsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1S004 /* SettingsShortcutsPane.swift */; };
+		A1S005 /* SettingsProPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1S005 /* SettingsProPane.swift */; };
+		A1S006 /* SettingsFeaturePanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1S006 /* SettingsFeaturePanes.swift */; };
+		A1S007 /* SettingsPalettePane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1S007 /* SettingsPalettePane.swift */; };
 		A10095 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10095 /* Theme.swift */; };
 		B62FDCA03A63757AF4FD5FAA /* ProInterfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F1C33077834094398FDD13 /* ProInterfaces.swift */; };
 		BC2E4D65367C19EDC9B22B1D /* DragSnapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B61D2B25ADBF683674D4A6 /* DragSnapService.swift */; };
@@ -76,6 +94,24 @@
 		B10026 /* LayoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutService.swift; sourceTree = "<group>"; };
 		B10027 /* LayoutPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutPickerView.swift; sourceTree = "<group>"; };
 		B10028 /* UpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateService.swift; sourceTree = "<group>"; };
+		B10029 /* CrashReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporter.swift; sourceTree = "<group>"; };
+		B10096 /* SwitcherEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherEntry.swift; sourceTree = "<group>"; };
+		B1009C /* EditorProjectsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorProjectsService.swift; sourceTree = "<group>"; };
+		B1009D /* SafariProfilesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariProfilesService.swift; sourceTree = "<group>"; };
+		B100A1 /* CustomCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomCommandRunner.swift; sourceTree = "<group>"; };
+		B1009E /* BrowserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserProfile.swift; sourceTree = "<group>"; };
+		B100A0 /* CustomCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomCommand.swift; sourceTree = "<group>"; };
+		B1009B /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
+		B1009A /* CommandPaletteIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteIndex.swift; sourceTree = "<group>"; };
+		B10098 /* ChromeDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeDataService.swift; sourceTree = "<group>"; };
+		B10097 /* CommandPaletteItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteItem.swift; sourceTree = "<group>"; };
+		B1S001 /* SettingsShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsShared.swift; sourceTree = "<group>"; };
+		B1S002 /* SettingsGeneralPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsGeneralPane.swift; sourceTree = "<group>"; };
+		B1S003 /* SettingsWorkspacesPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWorkspacesPane.swift; sourceTree = "<group>"; };
+		B1S004 /* SettingsShortcutsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsShortcutsPane.swift; sourceTree = "<group>"; };
+		B1S005 /* SettingsProPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsProPane.swift; sourceTree = "<group>"; };
+		B1S006 /* SettingsFeaturePanes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsFeaturePanes.swift; sourceTree = "<group>"; };
+		B1S007 /* SettingsPalettePane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPalettePane.swift; sourceTree = "<group>"; };
 		B10095 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		B10099 /* HopTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HopTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE6E742B24C5D97FB6BF1BDE /* ProFeatureGate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProFeatureGate.swift; path = HopTab/Pro/ProFeatureGate.swift; sourceTree = SOURCE_ROOT; };
@@ -131,6 +167,10 @@
 			isa = PBXGroup;
 			children = (
 				B10004 /* PinnedApp.swift */,
+				B10096 /* SwitcherEntry.swift */,
+				B10097 /* CommandPaletteItem.swift */,
+				B1009E /* BrowserProfile.swift */,
+				B100A0 /* CustomCommand.swift */,
 				B10005 /* PinnedAppsStore.swift */,
 				B10015 /* ShortcutConfig.swift */,
 				B10016 /* Profile.swift */,
@@ -145,6 +185,11 @@
 		D10004 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				B10098 /* ChromeDataService.swift */,
+				B1009C /* EditorProjectsService.swift */,
+				B1009D /* SafariProfilesService.swift */,
+				B100A1 /* CustomCommandRunner.swift */,
+				B1009A /* CommandPaletteIndex.swift */,
 				B10006 /* HotkeyService.swift */,
 				B10007 /* AppSwitcherService.swift */,
 				B10008 /* PermissionsService.swift */,
@@ -153,14 +198,31 @@
 				B10023 /* SessionSnapshotService.swift */,
 				B10026 /* LayoutService.swift */,
 				B10028 /* UpdateService.swift */,
+				B10029 /* CrashReporter.swift */,
 				43B61D2B25ADBF683674D4A6 /* DragSnapService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
 		};
+		D10006 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				B1S001 /* SettingsShared.swift */,
+				B1S002 /* SettingsGeneralPane.swift */,
+				B1S003 /* SettingsWorkspacesPane.swift */,
+				B1S004 /* SettingsShortcutsPane.swift */,
+				B1S005 /* SettingsProPane.swift */,
+				B1S006 /* SettingsFeaturePanes.swift */,
+				B1S007 /* SettingsPalettePane.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
 		D10005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				B1009B /* CommandPaletteView.swift */,
+				D10006 /* Settings */,
 				B10009 /* OverlayPanel.swift */,
 				B10010 /* OverlayView.swift */,
 				B10011 /* AppIconView.swift */,
@@ -287,6 +349,24 @@
 				A10026 /* LayoutService.swift in Sources */,
 				A10027 /* LayoutPickerView.swift in Sources */,
 				A10028 /* UpdateService.swift in Sources */,
+				A10029 /* CrashReporter.swift in Sources */,
+				A10096 /* SwitcherEntry.swift in Sources */,
+				A1009C /* EditorProjectsService.swift in Sources */,
+				A1009D /* SafariProfilesService.swift in Sources */,
+				A100A1 /* CustomCommandRunner.swift in Sources */,
+				A1009E /* BrowserProfile.swift in Sources */,
+				A100A0 /* CustomCommand.swift in Sources */,
+				A1009B /* CommandPaletteView.swift in Sources */,
+				A1009A /* CommandPaletteIndex.swift in Sources */,
+				A10098 /* ChromeDataService.swift in Sources */,
+				A10097 /* CommandPaletteItem.swift in Sources */,
+				A1S001 /* SettingsShared.swift in Sources */,
+				A1S002 /* SettingsGeneralPane.swift in Sources */,
+				A1S003 /* SettingsWorkspacesPane.swift in Sources */,
+				A1S004 /* SettingsShortcutsPane.swift in Sources */,
+				A1S005 /* SettingsProPane.swift in Sources */,
+				A1S006 /* SettingsFeaturePanes.swift in Sources */,
+				A1S007 /* SettingsPalettePane.swift in Sources */,
 				202A3B2F2717FE0BEA3F530B /* SnapShortcutConfig.swift in Sources */,
 				B62FDCA03A63757AF4FD5FAA /* ProInterfaces.swift in Sources */,
 				64CA62C22A78968E80DA5393 /* ProServiceRegistry.swift in Sources */,
@@ -407,7 +487,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
-				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_ENTITLEMENTS = HopTab/HopTab.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -449,7 +529,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				AUTOMATION_APPLE_EVENTS = NO;
-				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_ENTITLEMENTS = HopTab/HopTab.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;

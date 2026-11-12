@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy — HopTab</title>
+  <meta name="description" content="HopTab sends no telemetry. The app makes exactly one network request: an update check. Your windows, profiles, calendar and usage data never leave your Mac." />
+  <link rel="canonical" href="https://hoptab.app/privacy/" />
+  <link rel="icon" href="/hoptab_icon.png" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="HopTab" />
+  <meta property="og:title" content="Privacy — HopTab" />
+  <meta property="og:description" content="No telemetry. One network request in the whole app. Your data stays on your Mac." />
+  <meta property="og:url" content="https://hoptab.app/privacy/" />
+  <meta property="og:image" content="https://hoptab.app/hoptab-og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Privacy — HopTab" />
+  <meta name="twitter:description" content="No telemetry. One network request in the whole app. Your data stays on your Mac." />
+  <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
+
+  <link rel="stylesheet" href="/styles.css?v=20260714d" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "Privacy — HopTab",
+        "description": "HopTab sends no telemetry. The app makes exactly one network request: an update check.",
+        "url": "https://hoptab.app/privacy/",
+        "publisher": { "@type": "Organization", "name": "HopTab", "logo": { "@type": "ImageObject", "url": "https://hoptab.app/hoptab_icon.png" } }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://hoptab.app/" },
+          { "@type": "ListItem", "position": 2, "name": "Privacy", "item": "https://hoptab.app/privacy/" }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-9SCWYZ03TN');
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="13cd20c2-cfbe-40e7-8897-b67e68517286"></script>
+</head>
+<body>
+  <div class="ht">
+    <header>
+      <a href="/" class="logo">
+        <img src="/hoptab_icon.png" alt="HopTab" />
+        HopTab
+      </a>
+      <div class="header-links">
+        <a href="/#features">Features</a>
+        <a href="/#pro">Pro</a>
+        <a href="/guides/">Guides</a>
+        <a href="/#install">Install</a>
+        <a href="/download" class="dl-btn" onclick="track('download_click',{location:'privacy_header'})">Download</a>
+      </div>
+    </header>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span>&rsaquo;</span>Privacy
+    </nav>
+
+    <article class="guide">
+      <div class="eyebrow">Privacy</div>
+      <h1>HopTab does not collect anything</h1>
+
+      <p class="lede">No analytics, no telemetry, no account, no crash uploads, no phone-home. The app makes exactly one network request in its entire codebase, and it is the update check described below. Everything else stays on your Mac.</p>
+
+      <p>HopTab is <a href="https://github.com/royalbhati/HopTab">open source under the MIT licence</a>, so you do not have to take this on faith. Search the source for <code>URLSession</code> and you will find a single call site, in <code>HopTab/Services/UpdateService.swift</code>.</p>
+
+      <h2>The one network request</h2>
+      <p>Every four hours, and when you click Check for Updates, HopTab fetches <code>https://hoptab.app/update.json</code>. That is a plain static file. The request contains no identifier, no licence key, no usage data, and no information about your apps, windows or profiles. Like any web request it reaches our host, Cloudflare, with your IP address, a user agent and a timestamp in standard access logs. You can turn the check off in Settings under About, and you can point it at a different URL entirely.</p>
+
+      <h2>What stays on your Mac</h2>
+      <p>All of the following is written to your local preferences file at <code>~/Library/Preferences/com.hoptab.app.plist</code> and is never transmitted anywhere:</p>
+      <ul>
+        <li>Your profiles, pinned apps, layouts, custom layout templates and window rules</li>
+        <li>Saved sessions, including window positions, sizes and titles</li>
+        <li>Your keyboard shortcuts and all app settings</li>
+        <li>Pro time tracking, per-app usage totals, focus sessions and Pomodoro history</li>
+        <li>Which Space or display maps to which profile</li>
+      </ul>
+      <p>Deleting the app and that preferences file removes all of it. The Homebrew cask does this for you with <code>brew uninstall --zap --cask hoptab</code>.</p>
+
+      <h2>Permissions, and why each one is needed</h2>
+      <p><strong>Accessibility.</strong> Required. macOS only lets an app move another app's windows, and only lets it see global keyboard shortcuts, through the Accessibility API. HopTab uses it to read window positions and titles, to move and resize windows, and to receive its shortcuts. It does not read window contents, and it does not log your keystrokes: the event tap matches your configured shortcut combinations and passes every other key straight through untouched.</p>
+      <p><strong>Calendar (HopTab Pro only, optional).</strong> If you enable calendar auto-switching, HopTab reads your events locally through EventKit to find meeting times and video-call links. Calendar content is never uploaded, never leaves the device, and the permission is never requested unless you turn the feature on.</p>
+
+      <h2>Buying Pro</h2>
+      <p>Payment is handled entirely by <a href="https://polar.sh">Polar</a> or GitHub Sponsors. We never see your card details. To deliver your licence key we receive and store your email address and the order identifier. Licence keys are signed with Ed25519 and are validated <strong>offline</strong> inside the app, so activating Pro makes no network request and we cannot see when or where you use it. Email <a href="mailto:rawyelll@gmail.com">rawyelll@gmail.com</a> to have your address deleted after delivery.</p>
+
+      <h2>This website</h2>
+      <p>The app collects nothing; this site is not as pure, and it would be dishonest to imply otherwise. hoptab.app loads Google Analytics 4 and <a href="https://umami.is">Umami</a> to count page views and download clicks. Those measure pages, not people, and both are blocked by any content blocker without breaking the site. There is scaffolding for an X advertising pixel in <code>app.js</code>, but no pixel ID is configured, so it does not load. The site sets no advertising cookies of its own.</p>
+
+      <h2>Children</h2>
+      <p>HopTab is a developer utility and is not directed at children under 13. It collects no personal information from anyone, of any age.</p>
+
+      <h2>Changes</h2>
+      <p>If HopTab ever adds anything that transmits data, including opt-in crash reporting, this page will say so before that version ships, and it will be opt-in. Last updated 13 September 2026.</p>
+
+      <h2>Contact</h2>
+      <p>Questions, or a request to delete your purchase email: <a href="mailto:rawyelll@gmail.com">rawyelll@gmail.com</a>, or open an issue on <a href="https://github.com/royalbhati/HopTab/issues">GitHub</a>.</p>
+    </article>
+
+    <footer>
+      <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
+      <div style="display:flex;gap:16px;">
+        <a href="/">Home</a>
+        <a href="/guides/">Guides</a>
+        <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'privacy_footer'})">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

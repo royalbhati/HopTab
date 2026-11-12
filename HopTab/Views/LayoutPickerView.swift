@@ -54,8 +54,10 @@ struct LayoutPickerContent: View {
 
                 Button("I have a key") {
                     showingProUpsell = false
-                    // License entry lives in Settings → About.
-                    NSApp.sendAction(#selector(AppDelegate.openSettings(_:)), to: nil, from: nil)
+                    // Deep-link to the Pro section's license field. Sending
+                    // openSettings alone reopened whatever section was last
+                    // shown, so the user landed nowhere near the key field.
+                    SettingsNavigation.open(.pro)
                 }
                 .controlSize(.small)
             }

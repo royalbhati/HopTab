@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Matches the entitlements carried by the shipped 1.4.0 binary exactly, as
+	  read back with:
+
+	      codesign -d --entitlements - /Applications/HopTab.app
+
+	  Calendar access backs the Pro "Calendar Auto-Switch" feature (EventKit).
+
+	  HopTab is deliberately NOT sandboxed — CGEvent.tapCreate and the
+	  Accessibility (AXUIElement) APIs are unavailable inside the App Sandbox.
+	  Do not add com.apple.security.app-sandbox here.
+
+	  NOTE: HopTab.xcodeproj currently has CODE_SIGN_ENTITLEMENTS = "" in both
+	  build configurations, so this file is applied by the release workflow on
+	  the xcodebuild command line. Point the project setting at
+	  "HopTab/HopTab.entitlements" to remove that drift.
+	-->
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
+	<!-- ⌥K palette: list and switch Chrome tabs over Apple Events. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>

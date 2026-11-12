@@ -7,7 +7,7 @@ import HopTabPro
 import SwiftUI
 
 @MainActor
-final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetingProvider {
+final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetingProvider, ProMenuStatusProvider {
     let module = HopTabProModule()
     /// Long-lived toast — a throwaway controller would deallocate its panel
     /// before the toast finishes displaying.
@@ -143,72 +143,62 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         module.stopServices()
     }
 
+    // MARK: - Menu status
+
+    var menuStatus: ProMenuStatus? {
+        guard module.isLicensed else { return nil }
+        var meeting: ProMenuStatus.Meeting?
+        if let active = ActiveMeetingState.shared.activeMeeting, active.endDate > Date() {
+            meeting = .init(title: active.title, url: active.meetingURL, start: nil)
+        } else if let next = module.calendar.nextUpcomingMeeting(),
+                  next.startDate.timeIntervalSinceNow < 2 * 3600 {
+            meeting = .init(title: next.title, url: next.url, start: next.startDate)
+        }
+        let focus = module.focusSession.current
+        let today = module.timeTracking.todaySummary()
+        let total = today.reduce(0) { $0 + $1.totalSeconds }
+        let top = today.max(by: { $0.totalSeconds < $1.totalSeconds })
+        return ProMenuStatus(
+            meeting: meeting,
+            focusSessionSecondsRemaining: focus.map { max(0, Int($0.endsAt.timeIntervalSinceNow)) },
+            focusSessionProfileName: focus?.profileName,
+            pomodoro: pomodoroStatus,
+            screenBreaksEnabled: module.screenBreak.isEnabled,
+            isOnBreak: module.screenBreak.isOnBreak,
+            secondsUntilNextBreak: module.screenBreak.secondsUntilNextBreak,
+            trackedTodaySeconds: total,
+            topWorkspaceToday: top.map { ($0.profileName, $0.totalSeconds) }
+        )
+    }
+
+    func takeBreakNow() { module.screenBreak.takeBreakNow() }
+    func skipBreak() { module.screenBreak.skipBreak() }
+
     var focusModeService: FocusModeServiceProtocol? { nil }
     var displayAutoProfileService: DisplayAutoProfileServiceProtocol? { nil }
     var windowRulesService: WindowRulesServiceProtocol? { nil }
 
-    // MARK: - v2 Pro Feature Operations
+    // MARK: - Window undo
 
     func windowUndo() { module.windowUndo.undo() }
     func windowRedo() { module.windowUndo.redo() }
     var canWindowUndo: Bool { module.windowUndo.canUndo }
     var canWindowRedo: Bool { module.windowUndo.canRedo }
 
-    func declutterNow() -> Int { module.autoDeclutter.declutterNow() }
+    // MARK: - Per-feature settings views
+
+    private func proProfiles(_ profiles: [ProProfileInfo]) -> [HopTabPro.ProProfileInfo] {
+        profiles.map { HopTabPro.ProProfileInfo(id: $0.id, name: $0.name) }
+    }
 
     func windowUndoSectionView() -> AnyView? {
         guard module.isLicensed else { return nil }
         return AnyView(WindowUndoConfigView(service: module.windowUndo))
     }
 
-    // DISABLED: Focus Dimming, Focus Border, BSP tiling (and the rice presets /
-    // profile visuals built on them) are commented out for this release.
-    // Uncomment here and in HopTabProModule.swift / SettingsView.swift to restore.
-    func focusDimmingSectionView() -> AnyView? {
-        // guard module.isLicensed else { return nil }
-        // return AnyView(FocusDimmingConfigView(service: module.focusDimming))
-        nil
-    }
-
-    func focusBorderSectionView() -> AnyView? {
-        // guard module.isLicensed else { return nil }
-        // return AnyView(FocusBorderConfigView(service: module.focusBorder))
-        nil
-    }
-
     func bspTilingSectionView() -> AnyView? {
-        // guard module.isLicensed else { return nil }
-        // return AnyView(BSPTilingConfigView(service: module.bspTiling))
-        nil
-    }
-
-    func ricePresetsSectionView() -> AnyView? {
-        // guard module.isLicensed else { return nil }
-        // return AnyView(
-        //     RicePresetsView(
-        //         bsp: module.bspTiling,
-        //         border: module.focusBorder,
-        //         dimming: module.focusDimming,
-        //         userPresets: module.userPresets
-        //     )
-        // )
-        nil
-    }
-
-    func profileVisualsSectionView(profiles: [ProProfileInfo]) -> AnyView? {
-        // guard module.isLicensed else { return nil }
-        // let proProfiles = profiles.map { HopTabPro.ProProfileInfo(id: $0.id, name: $0.name) }
-        // return AnyView(
-        //     ProfileVisualsConfigView(
-        //         profiles: proProfiles,
-        //         store: module.profileVisualsStore,
-        //         userPresets: module.userPresets,
-        //         bsp: module.bspTiling,
-        //         border: module.focusBorder,
-        //         dimming: module.focusDimming
-        //     )
-        // )
-        nil
+        guard module.isLicensed else { return nil }
+        return AnyView(BSPTilingConfigView(service: module.bspTiling))
     }
 
     func screenBreaksSectionView() -> AnyView? {
@@ -216,76 +206,57 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         return AnyView(ScreenBreakConfigView(service: module.screenBreak))
     }
 
+    func calendarSectionView(profiles: [ProProfileInfo]) -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(
+            CalendarConfigView(calendarService: module.calendar, profiles: proProfiles(profiles), pomodoro: module.pomodoro)
+        )
+    }
+
+    func scheduleSectionView(profiles: [ProProfileInfo]) -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(ScheduleConfigView(scheduleService: module.schedule, profiles: proProfiles(profiles)))
+    }
+
+    func focusModeSectionView(profiles: [ProProfileInfo]) -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(FocusModeConfigView(focusModeService: module.focusMode, profiles: proProfiles(profiles)))
+    }
+
+    func timeTrackingSectionView() -> AnyView? {
+        guard module.isLicensed else { return nil }
+        return AnyView(
+            TimeTrackingView(timeTracking: module.timeTracking, appUsage: module.appUsage, pomodoro: module.pomodoro)
+        )
+    }
+
+    // MARK: - Section Descriptors
+
+    /// Which Pro cards exist, where they go, and which are experimental.
+    /// Settings derives its Labs group from `labsSectionViews(in:)` and the
+    /// rest from `stableSectionViews(in:)`.
+    func proSectionDescriptors() -> [ProSectionDescriptor] {
+        guard module.isLicensed else { return [] }
+
+        var out: [ProSectionDescriptor] = []
+        if let view = windowUndoSectionView() {
+            out.append(ProSectionDescriptor(
+                id: "window-undo", title: "Window Undo",
+                systemImage: "arrow.uturn.backward",
+                placement: .windows, isLabs: false, view: view
+            ))
+        }
+        if let view = bspTilingSectionView() {
+            out.append(ProSectionDescriptor(
+                id: "bsp-tiling", title: "Auto-tiling (BSP)",
+                systemImage: "rectangle.split.2x2",
+                placement: .layouts, isLabs: true, view: view
+            ))
+        }
+        return out
+    }
+
     // MARK: - Per-Section Views
-
-    func profileSectionViews(profiles: [ProProfileInfo]) -> AnyView? {
-        // Pro features no longer piggyback on the Profiles section — they
-        // live in the dedicated Automation section.
-        nil
-    }
-
-    func automationSectionView(profiles: [ProProfileInfo]) -> AnyView? {
-        let proProfiles = profiles.map {
-            HopTabPro.ProProfileInfo(id: $0.id, name: $0.name)
-        }
-        if module.isLicensed {
-            return AnyView(
-                VStack(alignment: .leading, spacing: 20) {
-                    TimeTrackingView(timeTracking: module.timeTracking, appUsage: module.appUsage, pomodoro: module.pomodoro)
-                    CalendarConfigView(calendarService: module.calendar, profiles: proProfiles, pomodoro: module.pomodoro)
-                    ScheduleConfigView(scheduleService: module.schedule, profiles: proProfiles)
-                    FocusModeConfigView(focusModeService: module.focusMode, profiles: proProfiles)
-                }
-            )
-        } else {
-            return AnyView(
-                VStack(alignment: .leading, spacing: 16) {
-                    // Upgrade banner
-                    HStack(spacing: 12) {
-                        Image(systemName: "star.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(.yellow)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("HopTab Pro")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("Automate your workspace — let HopTab switch for you")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Link(destination: ProLinks.purchaseURL) {
-                            Text("$5 one-time")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.accentColor))
-                        }
-                    }
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.yellow.opacity(0.06))
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.yellow.opacity(0.15), lineWidth: 1))
-                    )
-
-                    // Actual views rendered disabled with lock overlay
-                    lockedView {
-                        TimeTrackingView(timeTracking: module.timeTracking)
-                    }
-                    lockedView {
-                        CalendarConfigView(calendarService: module.calendar, profiles: proProfiles, pomodoro: module.pomodoro)
-                    }
-                    lockedView {
-                        ScheduleConfigView(scheduleService: module.schedule, profiles: proProfiles)
-                    }
-                    lockedView {
-                        FocusModeConfigView(focusModeService: module.focusMode, profiles: proProfiles)
-                    }
-                }
-            )
-        }
-    }
 
     func windowsSectionView() -> AnyView? {
         // Always show Window Rules — free tier gets 2 rules, Pro gets unlimited
@@ -299,12 +270,9 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
     }
 
     func displaysSectionView(profiles: [ProProfileInfo]) -> AnyView? {
-        let proProfiles = profiles.map {
-            HopTabPro.ProProfileInfo(id: $0.id, name: $0.name)
-        }
         if module.isLicensed {
             return AnyView(
-                DisplayProfileConfigView(displayService: module.displayAutoProfile, profiles: proProfiles)
+                DisplayProfileConfigView(displayService: module.displayAutoProfile, profiles: proProfiles(profiles))
             )
         } else {
             return AnyView(
@@ -329,30 +297,6 @@ final class ProBridge: HopTabProProvider, ProBridgeTimeTracking, ProActiveMeetin
         AnyView(
             LicenseEntryView(licenseState: module.licenseState)
         )
-    }
-
-    // MARK: - Locked View Overlay
-
-    private func lockedView<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        ZStack {
-            content()
-                .disabled(true)
-                .opacity(0.4)
-                .allowsHitTesting(false)
-
-            // Lock overlay — click opens purchase link
-            Color.clear
-                .contentShape(Rectangle())
-                .overlay(alignment: .topTrailing) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                        .padding(8)
-                }
-                .onTapGesture {
-                    NSWorkspace.shared.open(ProLinks.purchaseURL)
-                }
-        }
     }
 }
 #endif

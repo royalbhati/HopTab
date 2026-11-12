@@ -7,6 +7,8 @@ struct Profile: Codable, Identifiable, Equatable {
     var hotkey: CustomShortcut?
     var stickyNote: String?
     var layoutBinding: LayoutBinding?
+    /// Browser profile raised when this workspace activates.
+    var browserProfile: BrowserProfile?
 
     init(id: UUID = UUID(), name: String, pinnedApps: [PinnedApp] = [], hotkey: CustomShortcut? = nil, stickyNote: String? = nil, layoutBinding: LayoutBinding? = nil) {
         self.id = id

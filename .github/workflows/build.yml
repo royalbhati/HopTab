@@ -10,10 +10,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # HopTab.xcodeproj references a local Swift package at ./HopTabPro, whose
+      # real implementation is closed source and not in this repo. Without this
+      # step every build fails with: The folder "HopTabPro" doesn't exist.
+      - name: Generate HopTabPro stub
+        run: bash scripts/generate-pro-stub.sh
+
+      # Compile check only — this artifact is never published, so ad-hoc
+      # signing is fine here. Release builds are Developer ID signed and
+      # notarized in release.yml.
       - name: Build
         run: |
           xcodebuild \
             -project HopTab.xcodeproj \
             -scheme HopTab \
             -configuration Debug \
-            CODE_SIGN_IDENTITY="-"
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO

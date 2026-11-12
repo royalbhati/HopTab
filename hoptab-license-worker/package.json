@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/verify-signature-check.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240117.0",
