@@ -110,31 +110,31 @@ enum AppSwitcherService {
             app.unhide()
         }
 
+        // 2. Activate right away. This is the visible switch, and it must not
+        //    wait behind any Accessibility round trip to the target app:
+        //    Electron and Chrome can take 100-300 ms to answer one attribute
+        //    read, which used to be felt as lag on every ⌘Tab / ⌥Tab.
+        //    The older activate(options:) API is deliberate — the macOS 14+
+        //    parameterless activate() is weaker and doesn't always raise
+        //    windows for apps like Simulator or Terminal.
+        app.activate(options: .activateIgnoringOtherApps)
+
         let pid = app.processIdentifier
 
         axQueue.async {
-            // 2. If the app has no visible window at all (everything minimized),
-            //    restore just the frontmost one so activation has something to
-            //    show — don't yank every minimized window out of the Dock.
-            unminimizeFrontWindowIfAllMinimized(pid: pid)
+            // 3. If every window is minimized, restore just the frontmost one
+            //    so activation has something to show, then activate again so
+            //    the restored window comes forward.
+            if unminimizeFrontWindowIfAllMinimized(pid: pid) {
+                onMain { app.activate(options: .activateIgnoringOtherApps) }
+            }
 
-            onMain {
-                // 3. Use the older, more aggressive activate API.
-                //    The macOS 14+ parameterless activate() is weaker and doesn't
-                //    always raise windows for apps like Simulator, Terminal, etc.
-                app.activate(options: .activateIgnoringOtherApps)
-
-                axQueue.async {
-                    // 4. Raise the frontmost window via Accessibility API as a
-                    //    fallback. This forces the window to the top of the
-                    //    window stack, solving the issue where activate()
-                    //    updates the menu bar but leaves the window behind
-                    //    other apps.
-                    raiseFrontWindow(pid: pid)
-                    if let completion {
-                        DispatchQueue.main.async(execute: completion)
-                    }
-                }
+            // 4. Raise the frontmost window via Accessibility as a fallback.
+            //    activate() sometimes updates the menu bar but leaves the
+            //    window behind other apps.
+            raiseFrontWindow(pid: pid)
+            if let completion {
+                DispatchQueue.main.async(execute: completion)
             }
         }
     }
@@ -159,11 +159,13 @@ enum AppSwitcherService {
 
     /// If every window of the app is minimized, unminimize only the frontmost
     /// (most recently used) one. If the app already has at least one visible
-    /// window, leave all minimized windows alone.
+    /// window, leave all minimized windows alone. Returns true when a window
+    /// was restored.
     /// Must run on `axQueue`.
-    private static func unminimizeFrontWindowIfAllMinimized(pid: pid_t) {
+    @discardableResult
+    private static func unminimizeFrontWindowIfAllMinimized(pid: pid_t) -> Bool {
         let windows = axWindows(of: pid)
-        guard !windows.isEmpty else { return }
+        guard !windows.isEmpty else { return false }
 
         for window in windows {
             var minimized: CFTypeRef?
@@ -171,13 +173,14 @@ enum AppSwitcherService {
             let isMin = (attrResult == .success) && (minimized as? Bool == true)
             if !isMin {
                 // At least one visible window — nothing to restore.
-                return
+                return false
             }
         }
 
         // All windows are minimized. AX returns windows front-to-back, so the
         // first one is the most recently used — restore just that one.
         AXUIElementSetAttributeValue(windows[0], kAXMinimizedAttribute as CFString, false as CFBoolean)
+        return true
     }
 
     private static func launchApp(at url: URL) {

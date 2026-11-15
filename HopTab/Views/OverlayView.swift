@@ -227,8 +227,14 @@ struct OverlayView: View {
                 HStack(spacing: HopSpacing.md) {
                     HStack(spacing: HopSpacing.xs) {
                         KeyBadge(entry.isPinned ? "⌫" : "P")
-                        Text(entry.isPinned ? "unpin from \(activeProfileName)" : "pin to \(activeProfileName)")
-                            .foregroundStyle(HopOverlay.secondaryText)
+                        // Both phrases are laid out so the footer, and with
+                        // it the panel, keeps one width while cycling.
+                        ZStack(alignment: .leading) {
+                            Text("unpin from \(activeProfileName)").hidden()
+                            Text("pin to \(activeProfileName)").hidden()
+                            Text(entry.isPinned ? "unpin from \(activeProfileName)" : "pin to \(activeProfileName)")
+                        }
+                        .foregroundStyle(HopOverlay.secondaryText)
                     }
                     if ctx.canAddWorkspace {
                         HStack(spacing: HopSpacing.xs) {
@@ -246,11 +252,13 @@ struct OverlayView: View {
                                 KeyBadge("\(slot + 1)")
                                 Text(profile.name)
                                     .foregroundStyle(member ? HopOverlay.primaryText : HopOverlay.tertiaryText)
-                                if member {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 8, weight: .bold))
-                                        .foregroundStyle(HopColor.success)
-                                }
+                                // Always laid out; only visible when the app
+                                // is in this workspace. Keeps the row width
+                                // constant as the highlight moves.
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(HopColor.success)
+                                    .opacity(member ? 1 : 0)
                             }
                         }
                     }

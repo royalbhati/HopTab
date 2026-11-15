@@ -910,6 +910,7 @@ private struct TourPage: View {
         }
         .animation(HopMotion.emphasis, value: completed)
         .onAppear {
+            appState.setTourKeyCapture(true)
             permissions.refresh()
             if !permissions.isTrusted { permissions.startPolling() }
             if baseline.isEmpty {
@@ -918,6 +919,7 @@ private struct TourPage: View {
                 }
             }
         }
+        .onDisappear { appState.setTourKeyCapture(false) }
         .onReceive(NotificationCenter.default.publisher(for: OnboardingProgress.didChange)) { note in
             guard let event = note.object as? OnboardingProgress.Event,
                   OnboardingProgress.count(event) > (baseline[event] ?? 0)

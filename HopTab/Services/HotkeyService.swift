@@ -106,6 +106,12 @@ final class HotkeyService {
     // State
     private(set) var isModifierHeld = false
     private(set) var isSwitcherActive = false
+
+    /// While the onboarding tour is on screen, HopTab's own window is in
+    /// front and the user is asked to press the real shortcuts. Normally keys
+    /// pass straight through when HopTab is active so text fields work; the
+    /// tour page has none, so it flips this on for its lifetime.
+    var handlesKeysWhileActive = false
     private(set) var isProfileModifierHeld = false
     private(set) var isProfileSwitcherActive = false
 
@@ -477,7 +483,7 @@ final class HotkeyService {
         // never text input, and people press them with the menu popover or
         // Settings in front and expect the window to move (the snap then
         // targets HopTab's own frontmost window, which is what Rectangle does).
-        if NSApp.isActive
+        if NSApp.isActive && !handlesKeysWhileActive
             && !isSwitcherActive && !isProfileSwitcherActive
             && !isWindowPickerActive && activeProfileHotkeyId == nil
             && !(type == .keyDown && matchedGlobalSnap(keyCode: event.getIntegerValueField(.keyboardEventKeycode), flags: event.flags) != nil) {

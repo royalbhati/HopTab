@@ -598,6 +598,12 @@ final class AppState: ObservableObject {
         return switcherEntries[selectedIndex]
     }
 
+    /// The onboarding tour asks for real keypresses while its window is in
+    /// front; let the event tap act on them for as long as the page is up.
+    func setTourKeyCapture(_ on: Bool) {
+        hotkeyService.handlesKeysWhileActive = on
+    }
+
     private func showSwitcher(allApps: Bool) {
         switcherShowsAllApps = allApps
         switcherEntries = buildSwitcherEntries()
@@ -1442,6 +1448,17 @@ final class AppState: ObservableObject {
         switchToProfile(id: id)
     }
 
+    /// The incoming workspace's app that was in front most recently, or its
+    /// first running pinned app.
+    private func mostRecentRunningApp(in profile: Profile) -> NSRunningApplication? {
+        let running = profile.pinnedApps.compactMap { $0.runningApplication }
+        guard !running.isEmpty else { return nil }
+        for bundleId in recentActivationOrder {
+            if let app = running.first(where: { $0.bundleIdentifier == bundleId }) { return app }
+        }
+        return running.first
+    }
+
     /// Cancel any in-flight delayed profile switch work (layout/snapshot restores).
     private func cancelPendingProfileWork() {
         for item in profileSwitchWorkItems { item.cancel() }
@@ -1504,15 +1521,31 @@ final class AppState: ObservableObject {
             // otherwise resolve to a different space-bound profile and oscillate.
             self.isApplyingProfile = true
 
-            // 1. Snapshot outgoing profile
-            if let outgoingId, let outgoing = self.store.profiles.first(where: { $0.id == outgoingId }) {
-                let snapshot = SessionSnapshotService.captureSnapshot(for: outgoing)
-                self.store.saveSnapshot(snapshot)
+            // 1. Bring the incoming workspace forward NOW. Unhide is AppKit and
+            //    cheap; activating its most recent app is the visible switch.
+            //    Everything that needs Accessibility (snapshot, restore) comes
+            //    after, off the main thread, so the switch never waits on a
+            //    slow app answering an attribute read.
+            SessionSnapshotService.unhideProfileApps(incoming)
+            if let front = self.mostRecentRunningApp(in: incoming) {
+                front.activate(options: .activateIgnoringOtherApps)
             }
 
-            // 3. Hide outgoing apps (except shared ones)
+            // 2. Snapshot the outgoing profile, then hide its apps once the
+            //    capture has read their window frames. Hidden a beat later
+            //    than the incoming apps appear, which reads as "the new
+            //    workspace came forward" rather than "everything vanished".
             if let outgoingId, let outgoing = self.store.profiles.first(where: { $0.id == outgoingId }) {
-                SessionSnapshotService.hideProfileApps(outgoing, excluding: incoming)
+                SessionSnapshotService.captureSnapshot(for: outgoing) { [weak self] snapshot in
+                    guard let self else { return }
+                    self.store.saveSnapshot(snapshot)
+                    // Exclude whatever is active *now* — a rapid second switch
+                    // may have changed it since the capture started.
+                    let currentId = self.store.activeProfileId
+                    let current = self.store.profiles.first(where: { $0.id == currentId }) ?? incoming
+                    guard current.id != outgoing.id else { return }
+                    SessionSnapshotService.hideProfileApps(outgoing, excluding: current)
+                }
             }
 
             // 4. Switch the active profile
@@ -1525,9 +1558,6 @@ final class AppState: ObservableObject {
 
             // 4c. A focus session is scoped to the outgoing profile — end it (Pro).
             ProServiceRegistry.shared.provider?.endFocusSessionForProfileSwitch()
-
-            // 5. Unhide incoming apps
-            SessionSnapshotService.unhideProfileApps(incoming)
 
             // 5b. Advanced space control (opt-in). Both run inside the
             // isApplyingProfile window, so the space-change events they trigger

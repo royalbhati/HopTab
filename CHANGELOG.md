@@ -89,6 +89,14 @@ Versions before 1.1.0 predate this file and are not covered.
   merely rests over the list.
 
 ### Fixed
+- Switching apps from ⌘Tab / ⌥Tab activates the chosen app immediately. It
+  used to wait on an Accessibility read of every window first, which felt
+  like lag with Electron apps and Chrome.
+- Switching workspaces brings the incoming workspace forward at once; the
+  outgoing snapshot and hide now run after, off the main thread, instead of
+  blocking for up to 1.5 s.
+- The ⌥Tab panel no longer changes width as the highlight moves.
+- The onboarding tour's keys now work with the onboarding window in front.
 - Snap shortcuts (⌃⌥← and friends) now work while HopTab itself is in front,
   with the menu open or Settings focused.
 - Snapping HopTab's own Settings window crashed the app. Its own windows now
