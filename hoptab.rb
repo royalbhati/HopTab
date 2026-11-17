@@ -2,8 +2,8 @@
 # scripts/release.sh rewrites the `version` and `sha256` lines in the tap after
 # each release; keep this copy in sync so the repo does not drift from the tap.
 cask "hoptab" do
-  version "1.4.0"
-  sha256 "b03651533efa10f515eedc3e4a9fe5bb77d8529f371201a5c650d632dbb2a00a"
+  version "1.5.0"
+  sha256 "2a7e66ebb42c621a46869dacf87698968583850bd6e84b7aeeb22f9a2dc57596"
 
   url "https://github.com/royalbhati/HopTab/releases/download/v#{version}/HopTab-#{version}.zip"
   name "HopTab"

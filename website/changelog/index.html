@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What's new in HopTab 1.5 — Changelog</title>
+  <meta name="description" content="HopTab 1.5.0: the ⌥K command palette, a ⌘Tab that lists your workspace first, workspaces built from inside the switcher, Chrome and Safari profiles per workspace, a rebuilt menu bar and a guided tour." />
+  <link rel="canonical" href="https://hoptab.app/changelog/" />
+  <link rel="icon" href="/hoptab_icon.png" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="HopTab" />
+  <meta property="og:title" content="What's new in HopTab 1.5" />
+  <meta property="og:description" content="⌥K command palette, ⌘Tab with your workspace first, workspaces built from the switcher, browser profiles per workspace, a rebuilt menu bar." />
+  <meta property="og:url" content="https://hoptab.app/changelog/" />
+  <meta property="og:image" content="https://hoptab.app/hoptab-og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="What's new in HopTab 1.5" />
+  <meta name="twitter:description" content="⌥K command palette, ⌘Tab with your workspace first, workspaces built from the switcher, browser profiles per workspace, a rebuilt menu bar." />
+  <meta name="twitter:image" content="https://hoptab.app/hoptab-og.png" />
+
+  <link rel="stylesheet" href="/styles.css?v=20260714d" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "name": "What's new in HopTab 1.5 — Changelog",
+        "description": "Release notes for HopTab 1.5.0.",
+        "url": "https://hoptab.app/changelog/",
+        "datePublished": "2026-11-17",
+        "publisher": { "@type": "Organization", "name": "HopTab", "logo": { "@type": "ImageObject", "url": "https://hoptab.app/hoptab_icon.png" } }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://hoptab.app/" },
+          { "@type": "ListItem", "position": 2, "name": "Changelog", "item": "https://hoptab.app/changelog/" }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9SCWYZ03TN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-9SCWYZ03TN');
+  </script>
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="13cd20c2-cfbe-40e7-8897-b67e68517286"></script>
+
+  <style>
+    /* Release page: every figure is a drawn facsimile of the real panel,
+       not a screenshot, so it reads crisp at any width and in both themes. */
+    .rel { max-width: 820px; margin: 0 auto; padding: 8px 32px 56px; }
+    .rel .ver { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 0 0 6px; }
+    .rel .ver h1 { margin: 0; font-size: var(--t-display); letter-spacing: -0.02em; }
+    .rel .ver .date { color: var(--muted); font-size: 14px; }
+    .rel .lede { font-size: 18px; line-height: 1.5; color: var(--ink-soft); max-width: 640px; margin: 10px 0 22px; }
+    .rel .dl { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 48px; }
+    .rel .dl code { font-family: 'SF Mono', monospace; font-size: 13px; color: var(--muted); }
+    .rel section { padding: 36px 0; border-top: 1px solid var(--line); }
+    .rel section h2 { font-size: var(--t-feature); letter-spacing: -0.01em; margin: 0 0 8px; }
+    .rel .kicker { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px; }
+    .rel .k-window { color: var(--c-window); } .rel .k-space { color: var(--c-space); } .rel .k-auto { color: var(--c-auto); } .rel .k-focus { color: var(--c-focus); }
+    .rel section p { line-height: 1.6; color: var(--ink-soft); max-width: 640px; }
+    .rel ul.plain { padding-left: 18px; color: var(--ink-soft); line-height: 1.6; max-width: 640px; }
+    .rel ul.plain li { margin: 4px 0; }
+    .rel kbd { font-family: inherit; font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--paper-2); }
+
+    /* The panel facsimiles */
+    .fig { margin: 22px 0 6px; padding: 28px; border-radius: 16px; background: linear-gradient(160deg, oklch(0.30 0.03 260), oklch(0.18 0.02 265)); display: flex; justify-content: center; overflow: hidden; }
+    .fig figcaption { display: none; }
+    .pan { font: 13px/1.35 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; color: #f2f2f5; background: rgba(30,30,34,0.96); border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.45); width: 100%; }
+    .pan .lab { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #8e8e96; text-transform: uppercase; }
+    .pan .dim { color: #9a9aa3; }
+    .pan .acc { color: #6ea2ff; }
+    .ico { width: 18px; height: 18px; border-radius: 5px; display: inline-block; flex: none; }
+    .i1 { background: #e2574c; } .i2 { background: #5a8dee; } .i3 { background: #58c47c; } .i4 { background: #f2b544; } .i5 { background: #a66ef0; } .i6 { background: #39c1d6; } .i7 { background: #ff8a5b; } .i8 { background: #c9c9d1; }
+    .pan .kb { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,0.12); color: #d8d8de; }
+
+    /* Palette */
+    .pal { max-width: 560px; }
+    .pal .q { padding: 14px 16px; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; gap: 10px; align-items: center; }
+    .pal .q .cur { width: 1px; height: 18px; background: #6ea2ff; }
+    .pal .row { display: flex; align-items: center; gap: 10px; padding: 8px 16px; }
+    .pal .row.sel { background: rgba(110,162,255,0.18); }
+    .pal .row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pal .row .s { color: #8e8e96; font-size: 11px; }
+    .pal .grp { padding: 10px 16px 4px; }
+    .pal .ft { display: flex; gap: 14px; padding: 8px 16px 10px; border-top: 1px solid rgba(255,255,255,0.08); color: #8e8e96; font-size: 11px; }
+
+    /* Switcher */
+    .sw { max-width: 520px; padding: 16px 18px 12px; text-align: center; }
+    .sw .grp { text-align: left; margin-bottom: 10px; }
+    .sw .tiles { display: flex; gap: 10px; margin-top: 6px; }
+    .sw .tile { width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,0.06); }
+    .sw .tile.sel { background: rgba(110,162,255,0.22); outline: 2px solid #6ea2ff; }
+    .sw .tile .ico { width: 30px; height: 30px; border-radius: 8px; }
+    .sw .name { font-size: 14px; font-weight: 500; margin-top: 6px; }
+    .sw .hint { margin-top: 6px; font-size: 11px; color: #9a9aa3; display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+    .sw .slots { margin-top: 6px; font-size: 11px; color: #8e8e96; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .sw .slots .on { color: #f2f2f5; }
+
+    /* Menu panel */
+    .mn { max-width: 320px; }
+    .mn .hd { display: flex; justify-content: space-between; padding: 12px 16px 6px; }
+    .mn .ws { display: flex; align-items: center; gap: 12px; padding: 7px 16px; }
+    .mn .ws.on { background: rgba(110,162,255,0.14); }
+    .mn .ws .tile { width: 28px; height: 28px; border-radius: 7px; background: rgba(255,255,255,0.07); display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; flex: none; }
+    .mn .ws .tile i { border-radius: 3px; display: block; }
+    .mn .ws .nm { font-weight: 500; }
+    .mn .ws .sb { font-size: 11px; color: #8e8e96; }
+    .mn .ws .hk { margin-left: auto; }
+    .mn .new { padding: 8px 16px 12px; }
+    .mn .sec { border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 16px; }
+    .mn .now { display: flex; align-items: center; gap: 12px; padding: 5px 0; }
+    .mn .now .sb { font-size: 11px; color: #8e8e96; }
+    .mn .now .act { margin-left: auto; color: #d8d8de; }
+    .mn .snap { display: flex; align-items: center; gap: 8px; }
+    .mn .snap .b { width: 26px; height: 18px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); position: relative; }
+    .mn .snap .b::after { content: ""; position: absolute; inset: 2px; background: #6ea2ff; border-radius: 2px; }
+    .mn .snap .l::after { right: 50%; } .mn .snap .r::after { left: 50%; } .mn .snap .c::after { inset: 3px 6px; }
+    .mn .ftr { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 16px; color: #d8d8de; }
+
+    /* Tour */
+    .tr { max-width: 560px; padding: 14px; }
+    .tr .step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px; }
+    .tr .step.done { border-color: rgba(88,196,124,0.5); }
+    .tr .n { width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.1); display: grid; place-items: center; font-size: 11px; flex: none; }
+    .tr .step.done .n { background: #58c47c; color: #0b2a16; }
+    .tr .step .t { flex: 1; }
+    .tr .step .d { font-size: 11px; color: #9a9aa3; margin-top: 2px; }
+    .tr .keys { display: flex; gap: 4px; flex: none; }
+
+    .rel .two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+    @media (max-width: 640px) { .rel { padding: 8px 16px 40px; } .rel .two { grid-template-columns: 1fr; } .fig { padding: 16px; } .sw .tiles { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <div class="ht">
+    <header>
+      <a href="/" class="logo">
+        <img src="/hoptab_icon.png" alt="HopTab" />
+        HopTab
+      </a>
+      <div class="header-links">
+        <a href="/#features">Features</a>
+        <a href="/#pro">Pro</a>
+        <a href="/guides/">Guides</a>
+        <a href="/#install">Install</a>
+        <a href="/download" class="dl-btn" onclick="track('download_click',{location:'changelog_header'})">Download</a>
+      </div>
+    </header>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span>&rsaquo;</span>Changelog
+    </nav>
+
+    <article class="rel">
+      <div class="eyebrow" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Release notes</div>
+      <div class="ver">
+        <h1>HopTab 1.5</h1>
+        <span class="date">17 November 2026 &middot; macOS 14+</span>
+      </div>
+      <p class="lede">The biggest release since 1.0. One search box for everything on your Mac, a &#8984;Tab that knows which apps belong together, and workspaces you build without ever opening Settings.</p>
+      <div class="dl">
+        <a href="/download" class="dl-btn" onclick="track('download_click',{location:'changelog_hero'})">Download 1.5.0</a>
+        <code>brew install --cask royalbhati/tap/hoptab</code>
+      </div>
+
+      <section>
+        <div class="kicker k-window">New</div>
+        <h2>&#8997;K finds anything</h2>
+        <p>One search over your workspaces, running and installed apps, Chrome tabs, bookmarks and 30 days of history across every profile, recent VS Code / VSCodium / Cursor projects, and HopTab's own actions. The list is ranked by the app that was in front when you pressed it: in Chrome, tabs and history come first; in your editor, projects do.</p>
+        <figure class="fig">
+          <div class="pan pal" role="img" aria-label="The command palette with a query typed and results grouped by Chrome tabs, projects and apps">
+            <div class="q"><span>design rev</span><span class="cur"></span></div>
+            <div class="grp lab">Chrome &middot; Work</div>
+            <div class="row sel"><i class="ico i2"></i><span class="t">Design review notes &mdash; Figma</span><span class="s">tab</span></div>
+            <div class="row"><i class="ico i2"></i><span class="t">Design Review &mdash; Linear</span><span class="s">history &middot; 2d</span></div>
+            <div class="grp lab">Projects</div>
+            <div class="row"><i class="ico i6"></i><span class="t">design-system</span><span class="s">Cursor</span></div>
+            <div class="grp lab">Actions</div>
+            <div class="row"><i class="ico i5"></i><span class="t">Switch to workspace: Design</span><span class="s">&#8997;`</span></div>
+            <div class="ft"><span><span class="kb">&#8629;</span> open</span><span><span class="kb">&#8984;&#8629;</span> new window</span><span><span class="kb">&#8984;&#9003;</span> close tab</span><span><span class="kb">&#8984;N</span> save as command</span></div>
+          </div>
+        </figure>
+        <p>Anything that matches nothing opens as a URL or a web search. &#8984;Enter opens a link in a new Chrome window, &#8984;&#9003; closes a Chrome tab from the list, &#8984;1&ndash;9 jumps to a row. Reading Chrome tabs asks once for Automation access.</p>
+        <p><strong>Your own commands.</strong> Settings &rarr; Command Palette adds rows that open a link, file or folder, press a shortcut inside an app, run a shell command, or paste text. Scope a command to an app and it ranks first there. &#8984;N in the palette turns whatever you typed into a new command. Commands export and import as JSON.</p>
+      </section>
+
+      <section>
+        <div class="kicker k-space">New</div>
+        <h2>&#8984;Tab, with your workspace first</h2>
+        <p>Turn on &ldquo;Replace &#8984;Tab&rdquo; and HopTab's switcher takes over the key. Your active workspace's apps come first, every other running app after, in most-recently-used order. &#8997;Tab is now strictly the workspace switcher.</p>
+        <figure class="fig">
+          <div class="pan sw" role="img" aria-label="The app switcher with the workspace's apps first and other running apps after, and a footer showing which keys pin the app">
+            <div class="grp"><div class="lab">Design</div>
+              <div class="tiles"><div class="tile"><i class="ico i2"></i></div><div class="tile sel"><i class="ico i5"></i></div><div class="tile"><i class="ico i6"></i></div></div></div>
+            <div class="grp"><div class="lab">Other running</div>
+              <div class="tiles"><div class="tile"><i class="ico i1"></i></div><div class="tile"><i class="ico i3"></i></div><div class="tile"><i class="ico i4"></i></div><div class="tile"><i class="ico i7"></i></div></div></div>
+            <div class="name">Figma</div>
+            <div class="hint"><span><span class="kb">&#9003;</span> unpin from Design</span><span><span class="kb">N</span> new workspace</span></div>
+            <div class="slots"><span class="on"><span class="kb">1</span> Design &#10003;</span><span><span class="kb">2</span> Writing</span><span><span class="kb">3</span> Calls</span></div>
+          </div>
+        </figure>
+        <p><strong>Build workspaces without leaving the switcher.</strong> While it is open, <kbd>P</kbd> pins the highlighted app to the active workspace, <kbd>1</kbd>&ndash;<kbd>9</kbd> toggles it in any workspace, <kbd>N</kbd> starts a new workspace with it, <kbd>&#9003;</kbd> unpins. The footer shows where the app already lives.</p>
+      </section>
+
+      <section>
+        <div class="kicker k-space">Redesigned</div>
+        <h2>The menu bar is your workspaces</h2>
+        <p>Every workspace is a row: its app icons, name, how many apps are running, and its hotkey. Click to switch. Hover for Save &amp; Close, Restore, Apply Layout, Edit and Delete. &ldquo;New workspace from what's open&rdquo; expands into a picker where you tick exactly the running apps you want.</p>
+        <figure class="fig">
+          <div class="pan mn" role="img" aria-label="The menu bar panel listing workspaces, a Now block with the next meeting and today's tracked time, a snap row and footer">
+            <div class="hd"><span class="lab">Workspaces</span><span class="dim" style="font-size:11px">Option + ` switches</span></div>
+            <div class="ws on"><div class="tile"><i class="i2"></i><i class="i5"></i><i class="i6"></i><i class="i8"></i></div><div><div class="nm">Design</div><div class="sb acc">Active &middot; 4 apps &middot; 3 running</div></div><span class="kb hk">&#8997;1</span></div>
+            <div class="ws"><div class="tile"><i class="i1"></i><i class="i3"></i><i class="i8"></i><i class="i8"></i></div><div><div class="nm">Writing</div><div class="sb">2 apps &middot; Chrome: Personal</div></div><span class="kb hk">&#8997;2</span></div>
+            <div class="ws"><div class="tile"><i class="i4"></i><i class="i7"></i><i class="i2"></i><i class="i8"></i></div><div><div class="nm">Calls</div><div class="sb">3 apps &middot; 1 running</div></div><span class="kb hk">&#8997;3</span></div>
+            <div class="new acc">+&nbsp; New workspace from what's open</div>
+            <div class="sec"><div class="lab" style="margin-bottom:6px">Now</div>
+              <div class="now"><i class="ico i6" style="border-radius:50%"></i><div>Weekly sync<div class="sb">At 3:00 PM</div></div><span class="act">Join early</span></div>
+              <div class="now"><i class="ico i8" style="opacity:.5"></i><div>3h 05m today<div class="sb">Most in Design &middot; 2h 10m</div></div><span class="act">Details</span></div>
+            </div>
+            <div class="sec snap"><span class="lab">Snap</span><span class="dim" style="font-size:11px">&#8963;&#8997; arrows</span><span style="flex:1"></span><span class="b l"></span><span class="b r"></span><span class="b"></span><span class="b c"></span></div>
+            <div class="ftr"><span>Settings&hellip;</span><span>Check for Updates</span><span>Quit</span></div>
+          </div>
+        </figure>
+        <p>The <strong>Now</strong> block shows what is happening: the current or next meeting with a Join button, a running focus session or Pomodoro, the time until your next screen break, and today's tracked time. Those need Pro; the rest of the panel is free. The old 12-cell snap grid is now one row of the four you actually use plus undo.</p>
+      </section>
+
+      <section>
+        <div class="kicker k-auto">New</div>
+        <h2>Browser profiles per workspace</h2>
+        <p>Tie a workspace to a Chrome or Safari profile in Settings &rarr; Workspaces &rarr; Behaviour. Switching brings that profile's window to the front and opens one if there is none, so your Work and Personal browsing stop bleeding into each other. Safari has no profile API, so HopTab reads its File menu and window toolbars through Accessibility. &#8997;K lists a &ldquo;Switch to profile&rdquo; row for each one.</p>
+      </section>
+
+      <section>
+        <div class="kicker k-focus">New</div>
+        <h2>A tour that checks your work</h2>
+        <p>Onboarding is three steps: grant Accessibility, build your first workspace from what is running, then try each key. The last step ticks a row only when HopTab sees the key actually pressed. No reading, no &ldquo;got it&rdquo; buttons.</p>
+        <figure class="fig">
+          <div class="pan tr" role="img" aria-label="The onboarding tour with five keyboard tasks, the first two ticked off">
+            <div class="step done"><span class="n">&#10003;</span><div class="t">Switch between apps<div class="d">Hold &#8984;, tap Tab, let go.</div></div><span class="keys"><span class="kb">&#8984;</span><span class="kb">Tab</span></span></div>
+            <div class="step done"><span class="n">&#10003;</span><div class="t">Cycle just this workspace<div class="d">Hold Option, tap Tab.</div></div><span class="keys"><span class="kb">&#8997;</span><span class="kb">Tab</span></span></div>
+            <div class="step"><span class="n">3</span><div class="t">Jump to another workspace<div class="d">Hold Option, tap `.</div></div><span class="keys"><span class="kb">&#8997;</span><span class="kb">`</span></span></div>
+            <div class="step"><span class="n">4</span><div class="t">Find anything<div class="d">Press &#8997;K, type, Enter.</div></div><span class="keys"><span class="kb">&#8997;</span><span class="kb">K</span></span></div>
+            <div class="step"><span class="n">5</span><div class="t">Snap a window<div class="d">&#8963;&#8997;&#8592; fills the left half.</div></div><span class="keys"><span class="kb">&#8963;&#8997;</span><span class="kb">&#8592;</span></span></div>
+          </div>
+        </figure>
+      </section>
+
+      <section>
+        <div class="kicker k-window">Faster</div>
+        <h2>Switching that keeps up with your hands</h2>
+        <p>Both switches now do the visible part first and the bookkeeping after. &#8984;Tab and &#8997;Tab activate the chosen app the moment you let go; the Accessibility reads that used to come before it, and that Electron apps answer slowly, now run afterwards. Workspace switches bring the incoming apps forward at once and snapshot the outgoing windows in the background instead of blocking for up to 1.5&nbsp;s. Opening the switcher or palette no longer rebuilds its window, and app icons are cached.</p>
+      </section>
+
+      <section>
+        <div class="two">
+          <div>
+            <div class="kicker k-auto">Also new</div>
+            <ul class="plain">
+              <li><strong>Launch at login</strong>, one toggle in Settings.</li>
+              <li><strong>Grow / shrink a split.</strong> <kbd>&#8963;&#8997;=</kbd> and <kbd>&#8963;&#8997;-</kbd> resize the shared edge between two snapped windows.</li>
+              <li><strong>Space-aware workspaces.</strong> Pin a workspace to a macOS Space; switching goes there, and can pull its windows along.</li>
+              <li><strong>Drag-away restore.</strong> Drag a snapped window off its spot and it returns to its pre-snap size under the cursor.</li>
+              <li><strong>Launch orchestration.</strong> Per-workspace launch groups, delays and files to open.</li>
+              <li><code style="font-size:12px">hoptab://settings/&lt;section&gt;</code> deep links.</li>
+            </ul>
+          </div>
+          <div>
+            <div class="kicker k-focus">Changed</div>
+            <ul class="plain">
+              <li><strong>Settings is organised by feature.</strong> Workspaces, Shortcuts, Calendar, Time Tracking, Screen Breaks, Automation, General. Each Pro pane explains itself before asking for a license.</li>
+              <li><strong>Shortcuts shows the everyday set first.</strong> Sixths, ninths and the rare sizes sit under &ldquo;More&rdquo;. Existing bindings still fire.</li>
+              <li><strong>Pro is one promise:</strong> HopTab switches your workspace for you. Time tracking, Pomodoro, focus sessions and screen breaks live under Labs.</li>
+              <li><strong>Removed:</strong> Focus Border, Focus Dimming, Themes, Per-Profile Visuals and Auto-Declutter. They cost main-thread time on every switch and pulled focus from what HopTab is about.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="kicker k-window">Fixed</div>
+        <ul class="plain">
+          <li>Snap shortcuts work while HopTab itself is in front, with the menu open or Settings focused.</li>
+          <li>Snapping HopTab's own Settings window no longer crashes the app.</li>
+          <li>The &#8997;Tab panel keeps one width as the highlight moves.</li>
+          <li>The onboarding tour's keys work with the onboarding window in front.</li>
+          <li>Switching to an app with several windows no longer pops the window picker unless you turn that on.</li>
+        </ul>
+        <p style="margin-top:18px">Full technical notes and the signed download are on the <a href="https://github.com/royalbhati/HopTab/releases/tag/v1.5.0" style="color:var(--accent)">GitHub release</a>. The app is Developer ID signed and notarized; existing users get an update prompt in the menu bar.</p>
+      </section>
+    </article>
+
+    <footer>
+      <span>HopTab &mdash; by <a href="https://royalbhati.com">Royal Bhati</a></span>
+      <div style="display:flex;gap:16px;">
+        <a href="/">Home</a>
+        <a href="/guides/">Guides</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="https://github.com/royalbhati/HopTab" onclick="track('github_click',{location:'changelog_footer'})">GitHub</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
